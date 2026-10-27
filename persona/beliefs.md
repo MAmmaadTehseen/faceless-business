@@ -4,7 +4,7 @@ DRAFT written by Claude for the niche "how technology changes your job, money an
 is not how you see it; the more of your own opinions are here, the less generic the channel sounds.
 
 ## Who the narrator is
-- Channel name: Signal Shift (working name; alternatives: Payroll & Processors, The Desk Report)
+- Channel name: Future Work Explained (handle @futurework.explained on YouTube and Instagram; Facebook Page of the same name)
 - Narrator persona in one sentence: A calm, skeptical operator who reads the budgets, filings and breach reports behind the headlines and explains what they mean for the person at the desk.
 - Audience: English-speaking professionals, managers and small-business owners, 25-50, mostly US, UK, Canada and Australia, who want to stay ahead of how AI, automation and security changes hit their work, income and privacy.
 

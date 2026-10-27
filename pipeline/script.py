@@ -22,7 +22,7 @@ SCRIPT_SCHEMA = {
         "tags": {"type": "array", "items": {"type": "string"}},
         "chapters": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["title", "paragraph_index"], "properties": {"title": {"type": "string"}, "paragraph_index": {"type": "integer"}}}},
         "script": {"type": "array", "items": {"type": "string"}, "description": "Narration paragraphs in order, spoken English only, no headings, no stage directions, 1300-1900 words total"},
-        "shot_list": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["paragraph_index", "query", "mood"], "properties": {"paragraph_index": {"type": "integer"}, "query": {"type": "string", "description": "2-4 word stock footage search, concrete and visual (e.g. 'server room aisle', 'city traffic timelapse')"}, "mood": {"type": "string", "enum": ["calm", "tense", "bright", "dark"]}}}, "description": "One entry per paragraph"},
+        "shot_list": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["paragraph_index", "query", "mood"], "properties": {"paragraph_index": {"type": "integer"}, "query": {"type": "string", "description": "2-4 word stock VIDEO search that a free stock library will certainly have: generic, physical, filmable things (e.g. 'office worker typing', 'server room aisle', 'city street timelapse', 'handshake meeting', 'parliament building exterior'). Never company names, countries, people, abstract nouns, or events."}, "mood": {"type": "string", "enum": ["calm", "tense", "bright", "dark"]}}}, "description": "One entry per paragraph"},
         "facts_check": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["claim", "source", "confidence"], "properties": {"claim": {"type": "string"}, "source": {"type": "string"}, "confidence": {"type": "string", "enum": ["verified", "likely", "unverified"]}}}},
         "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 50 chars, no hashtags"}, "script": {"type": "string", "description": "110-150 words, self-contained, hook first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
     },
@@ -45,7 +45,7 @@ def write_script(claude: Claude, topic: dict, content_id: str) -> dict:
         "Each paragraph is 2-5 sentences and is one visual beat. Put a clear framework in the middle. "
         "Attribute facts in-line in spoken form. End with one question for the comments and a one-sentence CTA to subscribe.\n"
         "Step 3: produce 5 titles across different formulas, thumbnail text, description with chapters, tags, "
-        "one shot-list query per paragraph (concrete, filmable things, never abstract words like 'innovation'), "
+        "one shot-list query per paragraph (generic stock-video phrases that always exist: people at desks, buildings, screens, streets, hands, machines; vary them so no two consecutive paragraphs share a query; never names of companies, countries, or people), "
         "a facts_check table, and 2-3 Shorts scripts each covering one idea from the video.\n"
         "Hard rules: no income promises, no medical/legal/financial advice, no fabricated quotes, no 'experts say' without naming who. "
         "The first two paragraphs must be a pattern break that pays off the title within ninety seconds."
