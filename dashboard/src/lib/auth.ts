@@ -1,6 +1,6 @@
 // Session cookie: "<expiry>.<hmac>" signed with DASHBOARD_SECRET. Uses Web Crypto so it runs in middleware (edge) and node.
 export const COOKIE_NAME = "fb_session";
-const SESSION_DAYS = 30;
+const SESSION_DAYS = 3;
 
 function secret(): string {
   const s = process.env.DASHBOARD_SECRET;
