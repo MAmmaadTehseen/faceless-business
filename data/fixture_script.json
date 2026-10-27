@@ -1,0 +1,30 @@
+{
+  "topic": "Why the first AI job losses are hitting offices, not factories",
+  "title": "The Next 3 Years of AI Work: Why Offices Change First",
+  "title_variants": ["2026, 2027, 2028: The Desk Job Shift Nobody Is Ready For", "Factories Are Safe. Your Inbox Is Not.", "What Insiders Aren't Saying About AI and Office Work", "Three Stages of the Office Shift Starting Now"],
+  "thumbnail_text": "OFFICES FIRST",
+  "description": "Most people picture robots on a factory floor when they hear AI is taking jobs. The data says the opposite: the first jobs to change are the ones done at a desk. Here is the three-stage pattern, with sources.\n\nSources:\nhttps://example.com/report",
+  "tags": ["AI", "future of work", "automation", "office jobs"],
+  "chapters": [{"title": "The wrong picture", "paragraph_index": 0}, {"title": "Three stages", "paragraph_index": 2}, {"title": "What to do", "paragraph_index": 4}],
+  "script": [
+    "Most people think the robots are coming for the factory floor. They are wrong. The first jobs to change are the ones done at a desk, and the shift already started last year.",
+    "Here is the part most people miss. A factory robot costs millions and takes years to install. A piece of software that drafts contracts, answers tickets, or builds a slide deck costs almost nothing and ships overnight. That difference decides who feels the change first.",
+    "There are three stages to this. Stage one is the quiet one. Teams keep the same headcount but stop hiring. Stage two is the reshuffle, where job titles change and the person who can run the tools gets the work. Stage three is the one everyone talks about, and it comes last.",
+    "Take customer support. Companies that moved their first-line tickets to AI assistants reported handling the same volume with teams about a third smaller, according to their own earnings calls. Nobody announced layoffs. They just stopped posting the jobs.",
+    "So what does this mean for your next twelve months? Stay with me. The safest move is not to fear the tools. It is to be the person on your team who knows what they can and cannot do. That person is hard to replace and easy to promote.",
+    "Which stage is your workplace in right now? Tell me in the comments. And if this was useful, subscribe, because the next video covers the one industry where this pattern runs backwards."
+  ],
+  "shot_list": [
+    {"paragraph_index": 0, "query": "robot arm factory", "mood": "tense"},
+    {"paragraph_index": 1, "query": "office workers computers", "mood": "calm"},
+    {"paragraph_index": 2, "query": "empty office desks", "mood": "dark"},
+    {"paragraph_index": 3, "query": "call center headset", "mood": "calm"},
+    {"paragraph_index": 4, "query": "person typing laptop", "mood": "bright"},
+    {"paragraph_index": 5, "query": "city skyline evening", "mood": "bright"}
+  ],
+  "facts_check": [{"claim": "Support teams shrank by about a third after AI rollout", "source": "earnings calls", "confidence": "likely"}],
+  "shorts": [
+    {"hook_title": "The robots are not coming for the factory first", "script": "Everyone pictures robots on a factory floor. Wrong picture. A factory robot costs millions and takes years. Software that drafts your contracts costs almost nothing and ships overnight. That is why the first jobs to change are at a desk, not on a line. Stage one is quiet: same headcount, no new hiring. Stage two is the reshuffle. Stage three is the one on the news, and it comes last. Which stage is your office in?", "query": "office workers computers"},
+    {"hook_title": "Nobody announced the layoffs", "script": "Companies that moved first-line support tickets to AI did not announce layoffs. They just stopped posting the jobs. Same ticket volume, teams about a third smaller, straight from their own earnings calls. That is what stage one looks like. It is quiet, and it is already here. The move is simple: be the person on your team who knows what the tools can and cannot do. Hard to replace. Easy to promote.", "query": "call center headset"}
+  ]
+}

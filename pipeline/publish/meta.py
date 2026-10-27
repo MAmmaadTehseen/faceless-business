@@ -1,0 +1,146 @@
+"""Instagram Reels + Facebook Reels via the Graph API.
+Instagram needs a public, direct mp4 URL. We put the file in a public Supabase Storage bucket (free tier)
+when Supabase is configured, else as a GitHub release asset (public repo)."""
+from __future__ import annotations
+
+import os
+import subprocess
+import time
+from pathlib import Path
+
+import requests
+
+from ..common import log
+
+G = "https://graph.facebook.com/v21.0"
+
+
+def configured() -> bool:
+    return all(os.getenv(k) for k in ("META_ACCESS_TOKEN", "META_PAGE_ID", "META_IG_USER_ID"))
+
+
+def _tok() -> str:
+    return os.environ["META_ACCESS_TOKEN"]
+
+
+def public_url_for(video: Path, tag: str) -> str:
+    """Return a public direct URL for the mp4. Prefers Supabase Storage bucket 'media' (public)."""
+    url, key = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY")
+    if url and key:
+        from supabase import create_client
+        sb = create_client(url, key)
+        try:
+            sb.storage.create_bucket("media", options={"public": True})
+        except Exception:
+            pass
+        path = f"{tag}/{video.name}"
+        with open(video, "rb") as f:
+            sb.storage.from_("media").upload(path, f, {"content-type": "video/mp4", "upsert": "true"})
+        return sb.storage.from_("media").get_public_url(path)
+    return _github_release_url(video, tag)
+
+
+def _github_release_url(video: Path, tag: str) -> str:
+    """Fallback: GitHub release asset (public repo). Needs gh CLI with GH_TOKEN."""
+    repo = os.getenv("GITHUB_REPOSITORY")
+    cmd_base = ["gh", "release"]
+    env = os.environ.copy()
+    if repo:
+        cmd_base += []  # gh picks GITHUB_REPOSITORY up automatically
+    try:
+        subprocess.run([*cmd_base, "view", tag], capture_output=True, env=env, check=True)
+    except subprocess.CalledProcessError:
+        subprocess.run([*cmd_base, "create", tag, "--title", tag, "--notes", "temporary media host for Meta publishing"], check=True, env=env)
+    subprocess.run([*cmd_base, "upload", tag, str(video), "--clobber"], check=True, env=env)
+    repo = repo or subprocess.run(["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"], capture_output=True, text=True, check=True).stdout.strip()
+    return f"https://github.com/{repo}/releases/download/{tag}/{video.name}"
+
+
+def _wait_container(container_id: str, timeout: int = 600) -> None:
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        r = requests.get(f"{G}/{container_id}", params={"fields": "status_code,status", "access_token": _tok()}, timeout=30).json()
+        if r.get("status_code") == "FINISHED":
+            return
+        if r.get("status_code") == "ERROR":
+            raise RuntimeError(f"meta container error: {r}")
+        time.sleep(10)
+    raise RuntimeError("meta container timed out")
+
+
+def publish_instagram_reel(video_url: str, caption: str, thumb_offset_ms: int = 2000) -> dict:
+    ig = os.environ["META_IG_USER_ID"]
+    r = requests.post(f"{G}/{ig}/media", data={"media_type": "REELS", "video_url": video_url, "caption": caption[:2200],
+                                              "share_to_feed": "true", "thumb_offset": thumb_offset_ms, "access_token": _tok()}, timeout=60).json()
+    if "id" not in r:
+        raise RuntimeError(f"instagram container failed: {r}")
+    _wait_container(r["id"])
+    p = requests.post(f"{G}/{ig}/media_publish", data={"creation_id": r["id"], "access_token": _tok()}, timeout=60).json()
+    if "id" not in p:
+        raise RuntimeError(f"instagram publish failed: {p}")
+    perm = requests.get(f"{G}/{p['id']}", params={"fields": "permalink", "access_token": _tok()}, timeout=30).json().get("permalink")
+    log.info("instagram: reel %s", p["id"])
+    return {"id": p["id"], "url": perm}
+
+
+def publish_facebook_reel(video_path: Path, description: str) -> dict:
+    page = os.environ["META_PAGE_ID"]
+    s = requests.post(f"{G}/{page}/video_reels", data={"upload_phase": "start", "access_token": _tok()}, timeout=60).json()
+    if "video_id" not in s:
+        raise RuntimeError(f"facebook reel start failed: {s}")
+    vid = s["video_id"]
+    size = video_path.stat().st_size
+    with open(video_path, "rb") as f:
+        up = requests.post(f"https://rupload.facebook.com/video-upload/v21.0/{vid}",
+                           headers={"Authorization": f"OAuth {_tok()}", "offset": "0", "file_size": str(size)}, data=f, timeout=600).json()
+    if not up.get("success"):
+        raise RuntimeError(f"facebook reel upload failed: {up}")
+    fin = requests.post(f"{G}/{page}/video_reels", data={"upload_phase": "finish", "video_id": vid, "video_state": "PUBLISHED",
+                                                         "description": description[:5000], "access_token": _tok()}, timeout=60).json()
+    if not fin.get("success"):
+        raise RuntimeError(f"facebook reel finish failed: {fin}")
+    log.info("facebook: reel %s", vid)
+    return {"id": vid, "url": f"https://www.facebook.com/reel/{vid}"}
+
+
+def ig_insights(media_id: str) -> dict:
+    r = requests.get(f"{G}/{media_id}", params={"fields": "like_count,comments_count", "access_token": _tok()}, timeout=30).json()
+    views = 0
+    try:
+        ins = requests.get(f"{G}/{media_id}/insights", params={"metric": "views", "access_token": _tok()}, timeout=30).json()
+        for m in ins.get("data", []):
+            views = m.get("values", [{}])[0].get("value", 0)
+    except Exception:
+        pass
+    return {"views": views, "likes": r.get("like_count", 0), "comments": r.get("comments_count", 0)}
+
+
+def fb_insights(video_id: str) -> dict:
+    r = requests.get(f"{G}/{video_id}", params={"fields": "views,likes.summary(true),comments.summary(true)", "access_token": _tok()}, timeout=30).json()
+    return {"views": r.get("views", 0), "likes": r.get("likes", {}).get("summary", {}).get("total_count", 0),
+            "comments": r.get("comments", {}).get("summary", {}).get("total_count", 0)}
+
+
+def ig_comments(media_id: str) -> list[dict]:
+    r = requests.get(f"{G}/{media_id}/comments", params={"fields": "id,text,username,timestamp", "limit": 50, "access_token": _tok()}, timeout=30).json()
+    return [{"platform_comment_id": c["id"], "author": c.get("username"), "text": c.get("text", ""), "posted_at": c.get("timestamp")} for c in r.get("data", [])]
+
+
+def fb_comments(video_id: str) -> list[dict]:
+    r = requests.get(f"{G}/{video_id}/comments", params={"fields": "id,message,from,created_time", "limit": 50, "access_token": _tok()}, timeout=30).json()
+    return [{"platform_comment_id": c["id"], "author": (c.get("from") or {}).get("name"), "text": c.get("message", ""), "posted_at": c.get("created_time")} for c in r.get("data", [])]
+
+
+def ig_reply(comment_id: str, text: str) -> str:
+    r = requests.post(f"{G}/{comment_id}/replies", data={"message": text[:2200], "access_token": _tok()}, timeout=30).json()
+    return r.get("id", "")
+
+
+def fb_reply(comment_id: str, text: str) -> str:
+    r = requests.post(f"{G}/{comment_id}/comments", data={"message": text[:8000], "access_token": _tok()}, timeout=30).json()
+    return r.get("id", "")
+
+
+def fb_like(comment_id: str) -> bool:
+    r = requests.post(f"{G}/{comment_id}/likes", data={"access_token": _tok()}, timeout=30).json()
+    return bool(r.get("success"))

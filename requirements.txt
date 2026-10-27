@@ -1,0 +1,11 @@
+anthropic>=2.3.0
+edge-tts>=7.0
+requests>=2.32
+pillow>=11
+feedparser>=6
+google-api-python-client>=2.150
+google-auth-oauthlib>=1.2
+google-auth-httplib2>=0.2
+supabase>=2.10
+python-dotenv>=1.0
+pydantic>=2
