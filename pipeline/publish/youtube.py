@@ -87,7 +87,7 @@ def analytics(video_ids: list[str], days: int = 28) -> dict[str, dict]:
     try:
         res = yt_analytics().reports().query(
             ids="channel==MINE", startDate=start.isoformat(), endDate=end.isoformat(),
-            metrics="views,averageViewDuration,impressions,impressionClickThroughRate",
+            metrics="views,averageViewDuration,averageViewPercentage,likes,subscribersGained",
             dimensions="video", filters="video==" + ",".join(video_ids[:200]),
         ).execute()
     except Exception as e:
@@ -97,8 +97,10 @@ def analytics(video_ids: list[str], days: int = 28) -> dict[str, dict]:
     out = {}
     for row in res.get("rows", []):
         d = dict(zip(cols, row))
-        out[d["video"]] = {"avg_view_duration_sec": d.get("averageViewDuration"), "impressions": d.get("impressions"),
-                           "ctr": d.get("impressionClickThroughRate")}
+        # The Analytics API has no impressions/CTR (Studio only). ctr column stores average view percentage (0-1) instead.
+        avp = d.get("averageViewPercentage")
+        out[d["video"]] = {"avg_view_duration_sec": d.get("averageViewDuration"), "impressions": None,
+                           "ctr": (avp / 100.0) if avp is not None else None}
     return out
 
 
