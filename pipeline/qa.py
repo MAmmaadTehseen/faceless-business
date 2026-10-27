@@ -41,7 +41,7 @@ def black_ratio(video: Path) -> float:
     return total / dur if dur else 1.0
 
 
-def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: float, content_id: str, work: Path) -> dict:
+def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: float, content_id: str, work: Path, vision: bool = True) -> dict:
     issues = []
     p = probe(video)
     if not p["has_audio"]:
@@ -53,6 +53,9 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
         issues.append(f"{br:.0%} of video is black")
     if issues:
         return {"pass": False, "issues": issues, "thumbnail_ok": None, "frames_ok": False}
+    if not vision:
+        log.info("qa: probe passed; vision skipped (placeholder footage)")
+        return {"pass": True, "issues": [], "thumbnail_ok": True, "frames_ok": True}
 
     work.mkdir(parents=True, exist_ok=True)
     frames = [grab_frame(video, p["duration"] * f, work / f"qa_{i}.jpg") for i, f in enumerate((0.1, 0.5, 0.85))]

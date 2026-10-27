@@ -8,8 +8,8 @@ from .db import DB
 
 REVIEW = {"type": "object", "additionalProperties": False, "required": ["learnings", "promote_ids", "keyword_suggestions"],
           "properties": {"learnings": {"type": "string", "description": "Markdown bullets, concrete and actionable, max 12 lines"},
-                         "promote_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 2},
-                         "keyword_suggestions": {"type": "array", "items": {"type": "string"}, "maxItems": 6}}}
+                         "promote_ids": {"type": "array", "items": {"type": "string"}},
+                         "keyword_suggestions": {"type": "array", "items": {"type": "string"}}}}
 
 
 def main():

@@ -61,19 +61,39 @@ def synthesize(paragraphs: list[str], out_dir: Path, voice: str = DEFAULT_VOICE,
 
 
 def _restore_punctuation(words: list[dict], original: str) -> None:
-    """edge-tts word boundaries drop punctuation; map them back onto the original tokens in order."""
+    """edge-tts word boundaries drop punctuation and expand numbers ("2025" -> three boundaries).
+    Map boundaries back onto the original tokens in order; boundaries that belong to one original
+    token (numbers, symbols) are merged into it, keeping the first start and the last end."""
     tokens = original.split()
-    ti = 0
+
     def norm(t: str) -> str:
         return re.sub(r"[^a-z0-9]", "", t.lower())
+
+    def match(b: str, t: str) -> bool:
+        b, t = norm(b), norm(t)
+        return bool(b) and bool(t) and (t.startswith(b[:4]) or b.startswith(t[:4]))
+
+    merged: list[dict] = []
+    ti = 0
     for w in words:
-        target = norm(w["text"])
-        # look ahead a few tokens for a match
-        for k in range(ti, min(ti + 4, len(tokens))):
-            if norm(tokens[k]).startswith(target[:4]) or target.startswith(norm(tokens[k])[:4]):
-                w["text"] = tokens[k]
-                ti = k + 1
-                break
+        if ti < len(tokens) and match(w["text"], tokens[ti]):
+            merged.append({"text": tokens[ti], "start": w["start"], "end": w["end"]})
+            ti += 1
+        elif ti + 1 < len(tokens) and match(w["text"], tokens[ti + 1]):
+            # boundary skipped a token (rare); emit the skipped token with this timing, then this one
+            merged.append({"text": tokens[ti], "start": w["start"], "end": w["start"]})
+            merged.append({"text": tokens[ti + 1], "start": w["start"], "end": w["end"]})
+            ti += 2
+        elif merged and ti < len(tokens) and not re.search(r"[a-z]", norm(tokens[ti])) :
+            # current token is a number/symbol being spoken as several words: start it, then absorb
+            merged.append({"text": tokens[ti], "start": w["start"], "end": w["end"]})
+            ti += 1
+        elif merged:
+            # extra spoken word for the previous token (e.g. "sixty thousand" for "60,000"): extend it
+            merged[-1]["end"] = w["end"]
+        else:
+            merged.append({"text": w["text"], "start": w["start"], "end": w["end"]})
+    words[:] = merged
 
 
 def _mp3_duration(path: Path) -> float:

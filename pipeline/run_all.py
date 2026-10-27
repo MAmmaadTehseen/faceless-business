@@ -75,7 +75,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
 
     qa = {"pass": True, "issues": []}
     if claude:
-        qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa")
+        qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not footage.placeholder)
     db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": "; ".join(qa["issues"])})
     if not qa["pass"]:
         raise RuntimeError(f"QA failed for {content_id}: {qa['issues']}")

@@ -16,21 +16,21 @@ SCRIPT_SCHEMA = {
     "required": ["title", "title_variants", "thumbnail_text", "description", "tags", "chapters", "script", "shot_list", "facts_check", "shorts"],
     "properties": {
         "title": {"type": "string", "description": "Best title, under 65 chars"},
-        "title_variants": {"type": "array", "items": {"type": "string"}, "minItems": 4, "maxItems": 6, "description": "Other strong titles using different formulas"},
+        "title_variants": {"type": "array", "items": {"type": "string"}, "description": "Exactly 4 to 6 other strong titles using different formulas"},
         "thumbnail_text": {"type": "string", "description": "Max 3 words, uppercase"},
         "description": {"type": "string", "description": "YouTube description: 2-3 sentence summary, then chapters with timestamps as 'mm:ss Title' lines, then 'Sources:' with the urls used"},
-        "tags": {"type": "array", "items": {"type": "string"}, "maxItems": 15},
+        "tags": {"type": "array", "items": {"type": "string"}},
         "chapters": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["title", "paragraph_index"], "properties": {"title": {"type": "string"}, "paragraph_index": {"type": "integer"}}}},
         "script": {"type": "array", "items": {"type": "string"}, "description": "Narration paragraphs in order, spoken English only, no headings, no stage directions, 1300-1900 words total"},
         "shot_list": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["paragraph_index", "query", "mood"], "properties": {"paragraph_index": {"type": "integer"}, "query": {"type": "string", "description": "2-4 word stock footage search, concrete and visual (e.g. 'server room aisle', 'city traffic timelapse')"}, "mood": {"type": "string", "enum": ["calm", "tense", "bright", "dark"]}}}, "description": "One entry per paragraph"},
         "facts_check": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["claim", "source", "confidence"], "properties": {"claim": {"type": "string"}, "source": {"type": "string"}, "confidence": {"type": "string", "enum": ["verified", "likely", "unverified"]}}}},
-        "shorts": {"type": "array", "minItems": 2, "maxItems": 3, "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 50 chars, no hashtags"}, "script": {"type": "string", "description": "110-150 words, self-contained, hook first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
+        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 50 chars, no hashtags"}, "script": {"type": "string", "description": "110-150 words, self-contained, hook first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
     },
 }
 
 HOOK_SCHEMA = {
     "type": "object", "additionalProperties": False, "required": ["opening_paragraphs", "changed"],
-    "properties": {"opening_paragraphs": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}, "changed": {"type": "boolean"}},
+    "properties": {"opening_paragraphs": {"type": "array", "items": {"type": "string"}}, "changed": {"type": "boolean"}},
 }
 
 
