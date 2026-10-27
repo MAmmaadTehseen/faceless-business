@@ -3,11 +3,14 @@ import { COOKIE_NAME, cookieOptions, createSessionToken } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const expected = process.env.DASHBOARD_PASSWORD;
-  if (!expected || typeof body.password !== "string" || body.password !== expected) {
-    return NextResponse.json({ error: "invalid" }, { status: 401 });
-  }
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(COOKIE_NAME, await createSessionToken(), cookieOptions());
+  const owner = process.env.DASHBOARD_PASSWORD;
+  const reviewer = process.env.DASHBOARD_REVIEWER_PASSWORD;
+  const pw = typeof body.password === "string" ? body.password : "";
+  let role: "owner" | "reviewer" | null = null;
+  if (owner && pw === owner) role = "owner";
+  else if (reviewer && pw === reviewer) role = "reviewer";
+  if (!role) return NextResponse.json({ error: "invalid" }, { status: 401 });
+  const res = NextResponse.json({ ok: true, role });
+  res.cookies.set(COOKIE_NAME, await createSessionToken(role), cookieOptions());
   return res;
 }

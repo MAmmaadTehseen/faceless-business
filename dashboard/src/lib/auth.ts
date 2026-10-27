@@ -20,21 +20,25 @@ async function hmac(data: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function createSessionToken(): Promise<string> {
+export type Role = "owner" | "reviewer";
+
+export async function createSessionToken(role: Role = "owner"): Promise<string> {
   const exp = Date.now() + SESSION_DAYS * 86400_000;
-  return `${exp}.${await hmac(String(exp))}`;
+  return `${exp}.${role}.${await hmac(`${exp}.${role}`)}`;
 }
 
-export async function verifySessionToken(token: string | undefined): Promise<boolean> {
-  if (!token) return false;
-  const [exp, sig] = token.split(".");
-  if (!exp || !sig) return false;
-  if (Number(exp) < Date.now()) return false;
-  const expected = await hmac(exp);
-  if (expected.length !== sig.length) return false;
+/** Returns the role for a valid token, or null. */
+export async function verifySessionToken(token: string | undefined): Promise<Role | null> {
+  if (!token) return null;
+  const [exp, role, sig] = token.split(".");
+  if (!exp || !role || !sig) return null;
+  if (role !== "owner" && role !== "reviewer") return null;
+  if (Number(exp) < Date.now()) return null;
+  const expected = await hmac(`${exp}.${role}`);
+  if (expected.length !== sig.length) return null;
   let diff = 0;
   for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
-  return diff === 0;
+  return diff === 0 ? (role as Role) : null;
 }
 
 export function cookieOptions() {
