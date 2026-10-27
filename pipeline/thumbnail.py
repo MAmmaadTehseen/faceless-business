@@ -23,8 +23,25 @@ def grab_frame(video: Path, at_sec: float, out: Path) -> Path:
     return out
 
 
-def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0) -> Path:
-    clean = video.with_suffix(".clean.jpg")
+def candidate_frames(video: Path) -> list[Path]:
+    c = [video.with_suffix(".clean.jpg")] + [video.with_suffix(f".clean{i}.jpg") for i in range(1, 6)]
+    found = [p for p in c if p.exists()]
+    if len(found) <= 1:
+        # Older renders: grab frames inside the silent gaps between paragraphs (no caption burned there).
+        import json
+        tj = video.parent / "voice_timings.json"
+        if tj.exists():
+            timings = json.loads(tj.read_text())
+            for i, t in enumerate(timings[2:14:2], start=1):
+                p = video.with_suffix(f".gap{i}.jpg")
+                if not p.exists():
+                    grab_frame(video, t["end"] + 0.25, p)
+                found.append(p)
+    return found
+
+
+def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, frame: Path | None = None) -> Path:
+    clean = frame or video.with_suffix(".clean.jpg")
     if clean.exists():
         frame = clean
     else:

@@ -29,31 +29,45 @@ from .tts import synthesize
 FIXTURE = ROOT / "data" / "fixture_script.json"
 
 
-def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None) -> dict:
+def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None) -> dict:
     voice = db.setting("tts_voice", "en-US-AndrewMultilingualNeural")
     shorts_per_long = int(db.setting("shorts_per_long", 2))
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    if dry_run:
+    if resume:
+        content_id = resume
+        out_dir = OUT_DIR / content_id
+        data = json.loads((out_dir / "script.json").read_text())
+        row = db.one("content", {"id": content_id}) or {}
+        topic = {"topic": row.get("topic") or data.get("title"), "angle": "", "source_url": None, "source_headline": None, "queue_id": None}
+        log.info("resuming %s", content_id)
+    elif dry_run:
         data = json.loads(FIXTURE.read_text())
         topic = {"topic": data["topic"], "angle": "", "source_url": None, "source_headline": None, "queue_id": None}
     else:
         topic = choose_topic(db, claude)
         if not topic:
             raise RuntimeError("No topic available")
-    content_id = f"{today}-{slugify(topic['topic'])}"
-    out_dir = OUT_DIR / content_id
-    out_dir.mkdir(parents=True, exist_ok=True)
-    db.upsert("content", {"id": content_id, "kind": "long", "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
-    if topic.get("queue_id"):
-        db.update("topic_queue", {"id": topic["queue_id"]}, {"status": "used"})
+    if not resume:
+        content_id = f"{today}-{slugify(topic['topic'])}"
+        out_dir = OUT_DIR / content_id
+        out_dir.mkdir(parents=True, exist_ok=True)
+        db.upsert("content", {"id": content_id, "kind": "long", "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
+        if topic.get("queue_id"):
+            db.update("topic_queue", {"id": topic["queue_id"]}, {"status": "used"})
+        data = data if dry_run else write_script(claude, topic, content_id)
+        write_json(out_dir / "script.json", data)
 
-    data = data if dry_run else write_script(claude, topic, content_id)
-    write_json(out_dir / "script.json", data)
-
-    tts = synthesize(data["script"], out_dir, voice=voice)
-    segs = segments_from_timings(tts["timings"], data["shot_list"])
-    video = render(segs, tts["audio"], tts["srt"], out_dir / f"{content_id}.mp4", "landscape", footage)
+    video = out_dir / f"{content_id}.mp4"
+    timings_file = out_dir / "voice_timings.json"
+    if resume and video.exists() and timings_file.exists():
+        timings = json.loads(timings_file.read_text())
+        tts = {"timings": timings, "duration": timings[-1]["end"] if timings else 0, "audio": out_dir / "voice.mp3", "srt": out_dir / "voice.srt"}
+        tts["duration"] = float(__import__("subprocess").run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(video)], capture_output=True, text=True).stdout.strip() or tts["duration"])
+    else:
+        tts = synthesize(data["script"], out_dir, voice=voice)
+        segs = segments_from_timings(tts["timings"], data["shot_list"])
+        video = render(segs, tts["audio"], tts["srt"], video, "landscape", footage)
     thumb = make_thumbnail(video, data["thumbnail_text"], out_dir / f"{content_id}.jpg")
 
     chapters = []
@@ -76,7 +90,8 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     qa = {"pass": True, "issues": []}
     if claude:
         qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not footage.placeholder)
-    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": "; ".join(qa["issues"])})
+    thumb = qa.get("thumbnail") or thumb
+    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": "; ".join(qa["issues"]), "thumbnail_path": str(thumb)})
     if not qa["pass"]:
         raise RuntimeError(f"QA failed for {content_id}: {qa['issues']}")
 
@@ -109,6 +124,7 @@ def main():
     ap.add_argument("--no-publish", action="store_true")
     ap.add_argument("--privacy", choices=["private", "public", "unlisted"])
     ap.add_argument("--count", type=int, default=None, help="long videos this run (default from settings)")
+    ap.add_argument("--resume", help="content id in out/ to continue from its rendered video (thumbnail, QA, shorts, publish)")
     args = ap.parse_args()
 
     db = DB()
@@ -120,13 +136,13 @@ def main():
     claude = None if args.dry_run else Claude(db)
     guard = None if args.dry_run else CostGuard(db)
     footage = Footage(placeholder=args.dry_run or args.placeholder)
-    count = args.count or int(db.setting("long_videos_per_run", 1))
+    count = 1 if args.resume else (args.count or int(db.setting("long_videos_per_run", 1)))
     if guard and not guard.check("produce", est_usd=1.0):
         count = min(count, 1)
     results, errors = [], []
     for _ in range(count):
         try:
-            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy))
+            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume))
         except Exception as e:
             errors.append(f"{e}\n{traceback.format_exc()}")
             log.error("produce failed: %s", e)

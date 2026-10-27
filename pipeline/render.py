@@ -57,9 +57,10 @@ def render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation:
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(visual)], check=True)
 
     # clean frame (no captions) for the thumbnail
-    clean = out.with_suffix(".clean.jpg")
     total = sum(max(sg["end"] - sg["start"], 1.0) for sg in segments)
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", f"{min(12.0, total * 0.4):.2f}", "-i", str(visual), "-frames:v", "1", "-q:v", "2", str(clean)], check=True)
+    for i, frac in enumerate((0.08, 0.2, 0.35, 0.5, 0.65, 0.8)):
+        clean = out.with_suffix(f".clean{i}.jpg") if i else out.with_suffix(".clean.jpg")
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", f"{max(1.0, total * frac):.2f}", "-i", str(visual), "-frames:v", "1", "-q:v", "2", str(clean)], check=True)
 
     srt_path = str(srt.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     fontsdir = f":fontsdir={FONT_DIR}" if _font() else ""
