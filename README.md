@@ -29,7 +29,7 @@ placeholder footage. Needs ffmpeg installed.
 1. **Claude**: put `ANTHROPIC_API_KEY` in `.env` (copy `.env.example`).
 2. **Persona**: fill in `persona/beliefs.md`. This is the single biggest quality lever.
 3. **Niche**: `python niche_research.py` writes `data/niche_report.md`. Pick one, set `niche_keywords` in the dashboard (or the settings table).
-4. **Pexels**: free key at pexels.com/api -> `PEXELS_API_KEY`.
+4. **Footage**: free key at pixabay.com/api/docs (log in, key is shown on the page) -> `PIXABAY_API_KEY`. Pexels also works via `PEXELS_API_KEY` if you have one.
 5. **Supabase**: new project (free) -> SQL editor -> paste `supabase/schema.sql` -> run. Copy Project URL and service_role key.
    Storage: a public bucket named `media` is created automatically for Reels hosting.
 6. **YouTube**: follow the docstring in `scripts/youtube_auth.py`. Then in Google Cloud submit the *YouTube API Services compliance audit*

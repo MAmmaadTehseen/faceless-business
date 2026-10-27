@@ -1,5 +1,5 @@
-"""Stock footage from Pexels (free). Falls back to Pexels photos (Ken Burns) and finally to generated
-gradient clips so a dry run works without any key."""
+"""Stock footage from Pixabay and/or Pexels (both free). Order: Pixabay video, Pexels video, Pixabay photo,
+Pexels photo (Ken Burns), then a generated placeholder clip so a dry run works without any key."""
 from __future__ import annotations
 
 import hashlib
@@ -19,9 +19,10 @@ API = "https://api.pexels.com"
 class Footage:
     def __init__(self, placeholder: bool = False):
         self.key = os.getenv("PEXELS_API_KEY")
-        self.placeholder = placeholder or not self.key
+        self.pb_key = os.getenv("PIXABAY_API_KEY")
+        self.placeholder = placeholder or not (self.key or self.pb_key)
         if self.placeholder:
-            log.warning("footage: placeholder mode (no PEXELS_API_KEY)")
+            log.warning("footage: placeholder mode (no PIXABAY_API_KEY or PEXELS_API_KEY)")
         self.used: set[int] = set()
         CACHE.mkdir(parents=True, exist_ok=True)
 
@@ -39,32 +40,90 @@ class Footage:
         """Return a local video file at least min_sec long (or a photo-based clip)."""
         if self.placeholder:
             return self._placeholder(query, min_sec, orientation)
-        try:
-            data = self._get("/videos/search", query=query, per_page=15, orientation=orientation, size="medium")
-            vids = [v for v in data.get("videos", []) if v["id"] not in self.used and v["duration"] >= min(min_sec, 4)]
-            vids.sort(key=lambda v: abs(v["duration"] - max(min_sec, 8)))
-            for v in vids[:5]:
-                files = [f for f in v["video_files"] if f.get("width") and f["width"] >= 1280 and f.get("file_type") == "video/mp4"]
-                if not files:
-                    continue
-                files.sort(key=lambda f: f["width"])
-                f = files[0]
-                path = self._download(f["link"], f"v{v['id']}_{f['width']}.mp4")
-                self.used.add(v["id"])
-                return path
-        except Exception as e:
-            log.warning("footage video search failed for %r: %s", query, e)
-        try:
-            data = self._get("/v1/search", query=query, per_page=10, orientation=orientation)
-            for ph in data.get("photos", []):
-                if ph["id"] in self.used:
-                    continue
-                self.used.add(ph["id"])
-                img = self._download(ph["src"]["large2x"], f"p{ph['id']}.jpg")
-                return self._ken_burns(img, min_sec, orientation)
-        except Exception as e:
-            log.warning("footage photo search failed for %r: %s", query, e)
+        if self.pb_key:
+            try:
+                path = self._pixabay_video(query, min_sec, orientation)
+                if path:
+                    return path
+            except Exception as e:
+                log.warning("pixabay video failed for %r: %s", query, e)
+        if self.key:
+            try:
+                data = self._get("/videos/search", query=query, per_page=15, orientation=orientation, size="medium")
+                vids = [v for v in data.get("videos", []) if v["id"] not in self.used and v["duration"] >= min(min_sec, 4)]
+                vids.sort(key=lambda v: abs(v["duration"] - max(min_sec, 8)))
+                for v in vids[:5]:
+                    files = [f for f in v["video_files"] if f.get("width") and f["width"] >= 1280 and f.get("file_type") == "video/mp4"]
+                    if not files:
+                        continue
+                    files.sort(key=lambda f: f["width"])
+                    f = files[0]
+                    path = self._download(f["link"], f"v{v['id']}_{f['width']}.mp4")
+                    self.used.add(v["id"])
+                    return path
+            except Exception as e:
+                log.warning("pexels video search failed for %r: %s", query, e)
+        if self.pb_key:
+            try:
+                path = self._pixabay_photo(query, min_sec, orientation)
+                if path:
+                    return path
+            except Exception as e:
+                log.warning("pixabay photo failed for %r: %s", query, e)
+        if self.key:
+            try:
+                data = self._get("/v1/search", query=query, per_page=10, orientation=orientation)
+                for ph in data.get("photos", []):
+                    if ph["id"] in self.used:
+                        continue
+                    self.used.add(ph["id"])
+                    img = self._download(ph["src"]["large2x"], f"p{ph['id']}.jpg")
+                    return self._ken_burns(img, min_sec, orientation)
+            except Exception as e:
+                log.warning("pexels photo search failed for %r: %s", query, e)
         return self._placeholder(query, min_sec, orientation)
+
+    # ---------- Pixabay ----------
+    def _pb(self, path: str, **params) -> dict:
+        for attempt in range(3):
+            r = requests.get(f"https://pixabay.com/api/{path}", params={"key": self.pb_key, "safesearch": "true", **params}, timeout=30)
+            if r.status_code == 429:
+                time.sleep(20 * (attempt + 1))
+                continue
+            r.raise_for_status()
+            return r.json()
+        raise RuntimeError("Pixabay rate limited")
+
+    def _pixabay_video(self, query: str, min_sec: float, orientation: str) -> Path | None:
+        data = self._pb("videos/", q=query[:100], per_page=20, video_type="film")
+        want_landscape = orientation == "landscape"
+        hits = []
+        for h in data.get("hits", []):
+            key = f"pb{h['id']}"
+            if key in self.used or h.get("duration", 0) < min(min_sec, 4):
+                continue
+            f = h["videos"].get("medium") or h["videos"].get("large") or h["videos"].get("small")
+            if not f or not f.get("url"):
+                continue
+            is_landscape = (f.get("width") or 16) >= (f.get("height") or 9)
+            score = (0 if is_landscape == want_landscape else 1, abs(h["duration"] - max(min_sec, 8)))
+            hits.append((score, key, f["url"], f.get("width", 0)))
+        hits.sort()
+        for _, key, url, w in hits[:1]:
+            self.used.add(key)
+            return self._download(url, f"{key}_{w}.mp4")
+        return None
+
+    def _pixabay_photo(self, query: str, min_sec: float, orientation: str) -> Path | None:
+        data = self._pb("", q=query[:100], per_page=20, image_type="photo", orientation="horizontal" if orientation == "landscape" else "vertical", min_width=1280)
+        for h in data.get("hits", []):
+            key = f"pbp{h['id']}"
+            if key in self.used:
+                continue
+            self.used.add(key)
+            img = self._download(h["largeImageURL"], f"{key}.jpg")
+            return self._ken_burns(img, min_sec, orientation)
+        return None
 
     def _download(self, url: str, name: str) -> Path:
         path = CACHE / name

@@ -103,7 +103,7 @@ insert into settings (key, value) values
   ('reply_tone_notes', '"Warm, direct, ask a follow-up question. Never argue."'),
   ('monthly_budget_usd', '95'),
   ('publish_privacy', '"private"'),
-  ('niche_keywords', '["artificial intelligence", "AI business", "automation", "future of work"]'),
+  ('niche_keywords', '["AI jobs", "layoffs automation", "future of work", "data breach", "cybersecurity scam", "AI company earnings", "remote work policy", "ransomware", "wages AI", "tech regulation"]'),
   ('tts_voice', '"en-US-AndrewMultilingualNeural"')
 on conflict (key) do nothing;
 
