@@ -26,7 +26,12 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto mt-24 max-w-xs">
-      <h1 className="mb-4 text-xl font-semibold">Dashboard login</h1>
+      <h1 className="mb-1 text-xl font-semibold">Future Work Explained</h1>
+      <p className="mb-4 text-sm opacity-80">
+        Private publishing dashboard for the{" "}
+        <a href="https://www.youtube.com/@futurework.explained" className="underline">Future Work Explained YouTube channel</a>.
+        Uses YouTube API Services.
+      </p>
       <form onSubmit={submit} className="card space-y-3">
         <input
           type="password"
@@ -41,6 +46,10 @@ export default function LoginPage() {
           {busy ? "..." : "Log in"}
         </button>
       </form>
+      <p className="mt-6 text-center text-xs opacity-80">
+        <a href="/privacy" className="underline">Privacy Policy</a> · <a href="/terms" className="underline">Terms of Service</a> ·{" "}
+        <a href="https://www.youtube.com/t/terms" className="underline">YouTube Terms</a> · <a href="https://policies.google.com/privacy" className="underline">Google Privacy Policy</a>
+      </p>
     </div>
   );
 }

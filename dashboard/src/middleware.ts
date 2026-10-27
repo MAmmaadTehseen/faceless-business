@@ -3,7 +3,7 @@ import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (pathname === "/login" || pathname === "/api/login") return NextResponse.next();
+  if (pathname === "/login" || pathname === "/api/login" || pathname === "/privacy" || pathname === "/terms") return NextResponse.next();
   const role = await verifySessionToken(req.cookies.get(COOKIE_NAME)?.value);
   if (role) {
     // Reviewer accounts are read-only: any mutating API call is refused.
