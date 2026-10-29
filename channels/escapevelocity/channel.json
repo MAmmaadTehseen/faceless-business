@@ -8,7 +8,7 @@
   "style": {"accent": [34, 211, 238], "bg": [4, 7, 14], "caption_colour": "&H00FFFFFF", "caption_outline": "&HA0000000", "font_size_long": 20, "font_size_short": 26},
   "footage": {"providers": ["nasa", "pixabay", "pexels"], "nasa": true},
   "schedule": {"days": ["Mon", "Thu", "Sun"], "utc_hour": 16},
-  "shorts_per_long": 2,
+  "shorts_per_long": 4,
   "category_id": "28",
   "description_footer": "Sources are listed above. Footage courtesy of NASA/ESA and public archives. Narration is AI-generated. Three videos a week: subscribe."
 }

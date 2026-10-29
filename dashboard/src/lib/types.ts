@@ -86,6 +86,7 @@ export type Run = {
 export type Settings = {
   pipeline_paused: boolean;
   long_videos_per_run: number;
+  youtube_quota_units_per_day?: number;
   shorts_per_long: number;
   auto_reply: { youtube: boolean; instagram: boolean; facebook: boolean };
   auto_like: { facebook: boolean };
@@ -110,7 +111,8 @@ export const CHANNEL_KEYWORD_KEYS = [
 export const DEFAULT_SETTINGS: Settings = {
   pipeline_paused: false,
   long_videos_per_run: 1,
-  shorts_per_long: 2,
+  youtube_quota_units_per_day: 10000,
+  shorts_per_long: 4,
   auto_reply: { youtube: true, instagram: true, facebook: true },
   auto_like: { facebook: true },
   max_replies_per_day: 40,

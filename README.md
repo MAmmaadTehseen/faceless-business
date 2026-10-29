@@ -11,7 +11,7 @@ persona/     shared formulas.md
 pipeline/    ideate -> script -> tts -> footage -> render -> thumbnail -> qa -> shorts -> publish ; sync, engage, optimize, review
 dashboard/   Next.js app (Vercel free tier) over the Supabase database
 supabase/    schema.sql
-.github/     produce (2x daily), sync (6h), engage (6h), optimize (daily), weekly-review
+.github/     produce (channel schedules), shorts (daily), sync (6h), engage (6h), optimize (daily), weekly-review
 scripts/     youtube_auth.py, meta_token.py
 niche_research.py   one-off niche scoring report
 ```
@@ -22,8 +22,32 @@ niche_research.py   one-off niche scoring report
 uv venv -p 3.12 .venv && uv pip install -p .venv/bin/python -r requirements.txt
 .venv/bin/python -m pipeline.run_all --dry-run
 ```
-Produces `out/<id>/` with the long mp4, two vertical Shorts, a thumbnail and `script.json`, using a fixture script and
+Produces `out/<id>/` with the long mp4, four vertical Shorts, a thumbnail and `script.json`, using a fixture script and
 placeholder footage. Needs ffmpeg installed.
+
+## Workflows
+
+| Workflow | Schedule (UTC) | Output |
+|---|---|---|
+| produce.yml | Channel schedules in AGENTS.md | One long video + four distinct Shorts |
+| shorts.yml | Daily 09:30, three-channel matrix | One standalone Short per channel |
+| sync.yml | Every 6h | Drain queued YouTube uploads, then metrics/comments |
+| engage.yml | Every 6h | Moderate and reply |
+| optimize.yml | Daily | Optimize titles/thumbnails |
+| review.yml | Weekly | Review channel performance |
+
+YouTube shares a project-wide daily unit budget (Automation setting, default 10,000), with a
+1,000-unit reserve. Uploads cost 1,600 plus 50 for a thumbnail: five uploads fit at the default;
+remaining uploads queue until capacity returns. Public Instagram/Facebook Reels are unaffected.
+Apply `supabase/migrations/004_quota.sql` before deploying, including after a fresh schema install.
+It adds atomic reservations and private durable queue storage. Increase the setting to 26,000 only
+after Google's approval. Failed upload attempts retain their quota reservation.
+
+Standalone local preview:
+```bash
+DB_BACKEND=sqlite TTS_BACKEND=edge .venv/bin/python -m pipeline.shorts_daily --channel escapevelocity --dry-run --placeholder
+```
+Offline quota regression check: `.venv/bin/python -m scripts.check_youtube_queue`.
 
 ## Setup (one time, about 2 hours)
 

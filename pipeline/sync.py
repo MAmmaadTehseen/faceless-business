@@ -5,7 +5,7 @@ import re
 
 from .common import Channel, log, now_iso
 from .db import DB
-from .publish import meta, youtube
+from .publish import meta, youtube, drain_youtube_queue
 
 FLAG = re.compile(r"\b(lawsuit|lawyer|sue|legal action|defam|copyright|dmca|refund|chargeback|scam|fraud|suicide|kill (my|your)self|diagnos|prescri|medical advice|overdose|invest(ment)? advice|guaranteed returns)\b", re.I)
 ABUSE = re.compile(r"\b(idiot|stupid|moron|trash|garbage channel|fake|bot channel|ai slop)\b", re.I)
@@ -29,6 +29,7 @@ def main():
 
 
 def sync_channel(db, channel):
+    drain_youtube_queue(db, channel)
     youtube.use_channel(channel); meta.use_channel(channel)
     ids = {c["id"] for c in db.select("content", {"channel": channel.key})}
     pubs = [p for p in db.select("publications", {"status": "live"}) if p["content_id"] in ids]

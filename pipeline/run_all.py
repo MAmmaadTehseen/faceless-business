@@ -43,6 +43,8 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         data = json.loads((out_dir / "script.json").read_text())
         row = db.one("content", {"id": content_id}) or {}
         topic = {"topic": row.get("topic") or data.get("title"), "angle": "", "source_url": None, "source_headline": None, "queue_id": None}
+        if publish and row.get("placeholder"):
+            raise RuntimeError("Refusing to publish a resumed placeholder video")
         log.info("resuming %s", content_id)
     elif dry_run:
         data = json.loads(FIXTURE.read_text())
@@ -58,7 +60,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "long", "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
         if topic.get("queue_id"):
             db.update("topic_queue", {"id": topic["queue_id"]}, {"status": "used"})
-        data = data if dry_run else write_script(claude, topic, content_id)
+        data = data if dry_run else write_script(claude, topic, content_id, shorts_per_long)
         write_json(out_dir / "script.json", data)
 
     video = out_dir / f"{content_id}.mp4"
@@ -87,7 +89,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     db.update("content", {"id": content_id}, {
         "title": data["title"], "title_variants": data["title_variants"], "description": desc,
         "script": "\n\n".join(data["script"]), "chapters": chapters, "tags": data.get("tags", []),
-        "duration_sec": tts["duration"], "file_path": str(video), "thumbnail_path": str(thumb), "status": "rendered",
+        "duration_sec": tts["duration"], "file_path": str(video), "thumbnail_path": str(thumb), "status": "rendered", "placeholder": bool(row.get("placeholder")) if resume and video.exists() else footage.placeholder,
     })
 
     qa = {"pass": True, "issues": []}
@@ -106,9 +108,14 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         except Exception as e:
             log.error("short %s failed: %s", sid, e)
             continue
+        short_qa = run_qa(claude, res["file"], None, res["duration"], sid, out_dir / f"qa-{sid}", vision=not footage.placeholder)
+        if not short_qa["pass"]:
+            log.error("short %s failed QA: %s", sid, short_qa["issues"])
+            db.update("content", {"id": sid}, {"qa_status": "failed", "qa_notes": "; ".join(short_qa["issues"])})
+            continue
         db.upsert("content", {"id": sid, "channel": channel.key, "kind": "short", "parent_id": content_id, "topic": topic["topic"], "title": res["title"],
                               "description": f"{res['title']}\n\nFull video: {{LONG_URL}}\n#shorts", "script": res["script"],
-                              "duration_sec": res["duration"], "file_path": str(res["file"]), "status": "rendered", "qa_status": "passed"}, on="id")
+                              "duration_sec": res["duration"], "file_path": str(res["file"]), "status": "rendered", "qa_status": "passed", "placeholder": footage.placeholder}, on="id")
         shorts.append({"id": sid, **res})
 
     result = {"content_id": content_id, "video": str(video), "thumbnail": str(thumb), "shorts": [str(s["file"]) for s in shorts], "title": data["title"]}
@@ -157,9 +164,12 @@ def main():
         raise SystemExit(2)
     count = 1 if args.resume else (args.count or int(db.setting("long_videos_per_run", 1)))
     if guard and not guard.check("produce", est_usd=1.0):
-        count = min(count, 1)
+        db.update("runs", {"id": run["id"]}, {"status": "skipped", "finished_at": now_iso(), "log": "budget guard"})
+        return
     results, errors = [], []
     for _ in range(count):
+        if guard and not guard.check("produce", est_usd=1.0):
+            break
         try:
             results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume, channel=channel))
         except Exception as e:

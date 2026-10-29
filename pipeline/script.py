@@ -34,7 +34,7 @@ HOOK_SCHEMA = {
 }
 
 
-def write_script(claude: Claude, topic: dict, content_id: str) -> dict:
+def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: int = 4) -> dict:
     user = (
         f"Today's video topic: {topic['topic']}\n"
         f"Angle: {topic.get('angle') or 'choose the persona\'s strongest honest angle'}\n"
@@ -46,7 +46,9 @@ def write_script(claude: Claude, topic: dict, content_id: str) -> dict:
         "Attribute facts in-line in spoken form. End with one question for the comments and a one-sentence CTA to subscribe.\n"
         "Step 3: produce 5 titles across different formulas, thumbnail text, description with chapters, tags, "
         "one shot-list query per paragraph (generic stock-video phrases that always exist: people at desks, buildings, screens, streets, hands, machines; vary them so no two consecutive paragraphs share a query; never names of companies, countries, or people), "
-        "a facts_check table, and 2-3 Shorts scripts each covering one idea from the video.\n"
+        f"a facts_check table, and exactly {shorts_per_long} Shorts scripts. Each must cover a DIFFERENT angle "
+        "(the number, the human consequence, the contrarian take, the what-to-do-now), be self-contained, "
+        "110-150 words, with its own hook in the first line. No two Shorts may share a hook or statistic.\n"
         "Hard rules: no income promises, no medical/legal/financial advice, no fabricated quotes, no 'experts say' without naming who. "
         "The first two paragraphs must be a pattern break that pays off the title within ninety seconds."
     )
@@ -74,6 +76,16 @@ def write_script(claude: Claude, topic: dict, content_id: str) -> dict:
     data["title"] = safe[0]
     data["title_variants"] = safe[1:]
     data["thumbnail_text"] = " ".join(data["thumbnail_text"].upper().split()[:3])
+    seen = set()
+    unique = []
+    for short in data.get("shorts", []):
+        first = re.split(r"(?<=[.!?])\s+|\n", short["script"].strip(), maxsplit=1)[0].casefold()
+        if first in seen or BANNED_TITLE.search(short["hook_title"]):
+            log.warning("dropping short with duplicate first sentence or unsafe hook: %s", short["hook_title"])
+            continue
+        seen.add(first)
+        unique.append(short)
+    data["shorts"] = unique[:shorts_per_long]
     words = sum(len(p.split()) for p in data["script"])
     log.info("script: %d paragraphs, %d words, title: %s", len(data["script"]), words, data["title"])
     return data

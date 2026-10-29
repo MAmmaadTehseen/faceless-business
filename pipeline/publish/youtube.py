@@ -72,6 +72,7 @@ def upload(video: Path, title: str, description: str, tags: list[str], privacy: 
     return {"id": vid, "url": f"https://youtu.be/{vid}" if not is_short else f"https://youtube.com/shorts/{vid}"}
 
 
+
 def update_title(video_id: str, title: str) -> None:
     v = yt().videos().list(part="snippet", id=video_id).execute()["items"][0]
     v["snippet"]["title"] = title[:100]

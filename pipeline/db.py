@@ -50,6 +50,9 @@ class DB:
         self.conn.executescript(sql)
         for stmt in ("alter table content add column channel text not null default 'futurework'",
                      "alter table topic_queue add column channel text not null default 'futurework'",
+                     "alter table content add column placeholder boolean default false",
+                     "alter table publications add column media_key text",
+                     "alter table publications add column thumbnail_key text",
                      "alter table costs add column channel text", "alter table runs add column channel text"):
             try:
                 self.conn.execute(stmt)

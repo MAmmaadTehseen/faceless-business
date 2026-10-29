@@ -3,6 +3,7 @@
 create table if not exists content (
   id text primary key,                       -- slug: 2026-10-27-ai-agents-2027
   channel text not null default 'futurework',
+  placeholder boolean default false,
   kind text not null,                        -- long | short
   parent_id text references content(id),     -- shorts point at their long video
   topic text not null,
@@ -26,6 +27,8 @@ create table if not exists publications (
   id bigserial primary key,
   content_id text references content(id),
   platform text not null,                    -- youtube | instagram | facebook | tiktok
+  media_key text,
+  thumbnail_key text,
   platform_id text,                          -- video id / media id
   url text,
   privacy text,                              -- private | public | scheduled
@@ -99,7 +102,8 @@ create table if not exists settings (
 insert into settings (key, value) values
   ('pipeline_paused', 'false'),
   ('long_videos_per_run', '1'),
-  ('shorts_per_long', '2'),
+  ('shorts_per_long', '4'),
+  ('youtube_quota_units_per_day', '10000'),
   ('auto_reply', '{"youtube": true, "instagram": true, "facebook": true}'),
   ('auto_like', '{"facebook": true}'),
   ('max_replies_per_day', '40'),
@@ -144,3 +148,6 @@ create table if not exists articles (
 );
 
 alter table articles enable row level security;
+
+create table if not exists quota_log (day text primary key, units int not null default 0);
+alter table quota_log enable row level security;

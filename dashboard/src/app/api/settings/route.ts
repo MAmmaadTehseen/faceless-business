@@ -14,6 +14,7 @@ export async function PUT(req: Request) {
   const clean: Settings = {
     pipeline_paused: !!b.pipeline_paused,
     long_videos_per_run: int(b.long_videos_per_run, 1),
+    youtube_quota_units_per_day: int(b.youtube_quota_units_per_day, 10000),
     shorts_per_long: int(b.shorts_per_long, 2),
     auto_reply: {
       youtube: !!b.auto_reply?.youtube,

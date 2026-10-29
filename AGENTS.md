@@ -28,7 +28,7 @@ Flags: `--dry-run --placeholder --publish --no-publish --privacy X --count N --r
 Publishing refuses placeholder footage. Content ids are `<channel>-<date>-<slug>`.
 
 Cloud: `gh workflow run produce.yml -f channel=<key> -f privacy=private`. Workflows: produce (3 crons,
-one per channel), sync (6h), engage (6h), optimize (daily), review (weekly).
+one per channel), shorts (daily 09:30 UTC, all three channels), sync (6h), engage (6h), optimize (daily), review (weekly).
 
 ## Hard rules (do not break)
 - Secrets only in local `.env`, GitHub Actions secrets, Vercel env. Never print them, never commit them.
@@ -43,6 +43,18 @@ one per channel), sync (6h), engage (6h), optimize (daily), review (weekly).
 - Budget guard stops at $95 month-to-date (`CostGuard` in `pipeline/common.py`). Every Claude call logs to `costs`.
 - Each Instagram account needs its own Facebook Page; Meta env is `META_<NAME>_<CHANNELKEY>`.
 - YouTube's 2026 inauthentic-content rule: channels must stay distinct (voice, style, persona, schedule).
+
+- Each long video requests four distinct-angle Shorts (channel `shorts_per_long: 4`); each Short gets its own QA including vision on real footage.
+- YouTube upload quota is shared across channels: default `youtube_quota_units_per_day=10000`,
+  1600/upload + 50/thumbnail, with 1000 units reserved for sync/engage. Atomic UTC-day reservations
+  include failed/uncertain attempts. At 10k, only five uploads fit; subsequent uploads queue.
+  Sync drains each channel's queue oldest-first every 6h. Public Meta Reels still publish immediately.
+  Queued files live in private Supabase Storage `youtube-queue`, so fresh runners can drain them.
+  Apply `supabase/migrations/004_quota.sql` before deploying (also required after a fresh schema install:
+  adds the reservation RPC and private storage bucket). Increase to 26000 only after Google approves.
+- `python -m pipeline.shorts_daily --channel <key>` produces one standalone Short daily using the
+  channel persona/voice, 14-day topic avoidance, and CostGuard estimate $0.30; supports `--dry-run`,
+  `--placeholder`, `--no-publish`, `--privacy`. `.github/workflows/shorts.yml` runs all channels at 09:30 UTC.
 
 ## Current state (2026-10-29)
 Done: pipeline end to end (one private long video + 2 Shorts on Future Work), Supabase schema + channel

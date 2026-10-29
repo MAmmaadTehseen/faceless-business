@@ -286,6 +286,7 @@ function ContentCard({ c, pubs, latest, kids, dim, showChannel }: {
 
 function statusClass(s: string) {
   if (s === "published" || s === "live" || s === "passed") return "text-ok-fg";
+  if (s === "queued") return "text-muted";
   if (s === "failed" || s === "killed") return "text-alert-fg";
   return "text-muted";
 }

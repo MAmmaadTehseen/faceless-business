@@ -1,0 +1,79 @@
+name: shorts
+on:
+  schedule:
+    - cron: "30 9 * * *"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Channel (all runs the daily matrix)"
+        type: choice
+        options: [all, futurework, tradewinds, escapevelocity]
+        default: all
+      privacy:
+        description: "private | public | unlisted (default: dashboard setting)"
+        type: choice
+        options: ["", private, public, unlisted]
+        required: false
+jobs:
+  shorts:
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [futurework, tradewinds, escapevelocity]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+      YT_REFRESH_TOKEN_TRADEWINDS: ${{ secrets.YT_REFRESH_TOKEN_TRADEWINDS }}
+      YT_REFRESH_TOKEN_ESCAPEVELOCITY: ${{ secrets.YT_REFRESH_TOKEN_ESCAPEVELOCITY }}
+      META_ACCESS_TOKEN_FUTUREWORK: ${{ secrets.META_ACCESS_TOKEN_FUTUREWORK }}
+      META_PAGE_ID_FUTUREWORK: ${{ secrets.META_PAGE_ID_FUTUREWORK }}
+      META_IG_USER_ID_FUTUREWORK: ${{ secrets.META_IG_USER_ID_FUTUREWORK }}
+      META_ACCESS_TOKEN_TRADEWINDS: ${{ secrets.META_ACCESS_TOKEN_TRADEWINDS }}
+      META_PAGE_ID_TRADEWINDS: ${{ secrets.META_PAGE_ID_TRADEWINDS }}
+      META_IG_USER_ID_TRADEWINDS: ${{ secrets.META_IG_USER_ID_TRADEWINDS }}
+      META_ACCESS_TOKEN_ESCAPEVELOCITY: ${{ secrets.META_ACCESS_TOKEN_ESCAPEVELOCITY }}
+      META_PAGE_ID_ESCAPEVELOCITY: ${{ secrets.META_PAGE_ID_ESCAPEVELOCITY }}
+      META_IG_USER_ID_ESCAPEVELOCITY: ${{ secrets.META_IG_USER_ID_ESCAPEVELOCITY }}
+      GH_TOKEN: ${{ github.token }}
+      TTS_BACKEND: kokoro
+      HF_HOME: ${{ github.workspace }}/.hf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core espeak-ng
+      - name: Install dependencies (CPU torch, then Kokoro)
+        run: |
+          pip install -r requirements.txt
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install kokoro soundfile
+      - name: Cache Kokoro model
+        uses: actions/cache@v4
+        with:
+          path: .hf
+          key: kokoro-82m-v1
+      - name: Produce standalone Short
+        if: github.event_name == 'schedule' || inputs.channel == 'all' || inputs.channel == matrix.channel
+        env:
+          CHANNEL: ${{ matrix.channel }}
+          PRIVACY: ${{ inputs.privacy }}
+        run: |
+          ARGS=(--channel "$CHANNEL")
+          if [ -n "$PRIVACY" ]; then ARGS+=(--privacy "$PRIVACY"); fi
+          python -m pipeline.shorts_daily "${ARGS[@]}"
+      - name: Keep rendered files for 3 days
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shorts-${{ matrix.channel }}-${{ github.run_id }}
+          path: out/
+          retention-days: 3
+          if-no-files-found: ignore

@@ -8,7 +8,7 @@
   "style": {"accent": [231, 196, 122], "bg": [28, 16, 16], "caption_colour": "&H00FFFFFF", "caption_outline": "&H90000000", "font_size_long": 19, "font_size_short": 25},
   "footage": {"providers": ["pixabay", "pexels"], "nasa": false},
   "schedule": {"days": ["Tue", "Thu", "Sat"], "utc_hour": 11},
-  "shorts_per_long": 2,
+  "shorts_per_long": 4,
   "category_id": "25",
   "description_footer": "Sources are listed above. Narration is AI-generated. Three videos a week: subscribe."
 }

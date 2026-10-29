@@ -55,6 +55,10 @@ export function SettingsForm({ initial }: { initial: Settings }) {
           <Field label="Shorts per long">
             <input type="number" min={0} value={s.shorts_per_long} onChange={(e) => set("shorts_per_long", Number(e.target.value))} className="w-full" />
           </Field>
+          <Field label="YouTube quota units per day">
+            <input type="number" min={1000} step={1} value={s.youtube_quota_units_per_day ?? 10000} onChange={(e) => set("youtube_quota_units_per_day", Number(e.target.value))} className="w-full" />
+            <span className="text-xs text-muted">10,000 until Google approves the quota extension, then 26,000</span>
+          </Field>
           <Field label="Publish privacy">
             <select value={s.publish_privacy} onChange={(e) => set("publish_privacy", e.target.value as Settings["publish_privacy"])} className="w-full">
               <option value="private">private</option>
