@@ -78,6 +78,18 @@ Open, in order:
    Optional Facebook URL overrides are documented in `hub/README.md`; hub Facebook Page still needs creation.
 5. Phase 2: TikTok (funnel only, no payout in Pakistan). X skipped.
 
+## TODO (owner-approved, not started; give to Codex)
+- Comments: fetch reply threads (YouTube `commentThreads.list` part=snippet,replies; IG/FB replies) so viewer replies to our
+  replies are seen; continue a thread for at most 3 turns.
+- Replies: when a comment suggests a topic, add it to that channel's `topic_queue` (added_by "comment", priority +5)
+  and acknowledge it in the reply. Add `suggested_topic` (nullable) to REPLY_SCHEMA in pipeline/engage.py.
+- Reply quality: at least two sentences with one concrete useful thought; personal hardship (layoff, illness, money
+  trouble) is held for owner review instead of auto-sent.
+- Retry: failed YouTube uploads and failed replies get re-queued with an attempt counter, max 3 tries across syncs.
+- Hub: create the second Vercel project for hub.ammaad.online (root `hub`, include files outside root,
+  SUPABASE_URL + SUPABASE_SERVICE_KEY) and the `hub` CNAME. Hub Facebook Page "Plainsight Media".
+- Instagram token refresh warned "grant type not supported" on day 1; re-check after 2026-11-05 (tokens expire 2026-12-28).
+
 ## Where things are
 `pipeline/` (common, db, ideate, script, tts, footage, render, thumbnail, shorts, qa, publish/{youtube,meta},
 run_all, sync, engage, optimize, review) · `dashboard/` (Next.js 15, root dir on Vercel = `dashboard`) ·
