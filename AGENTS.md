@@ -88,8 +88,8 @@ Open, in order:
 - Retry: failed YouTube uploads and failed replies get re-queued with an attempt counter, max 3 tries across syncs.
 - Hub: create the second Vercel project for hub.ammaad.online (root `hub`, include files outside root,
   SUPABASE_URL + SUPABASE_SERVICE_KEY) and the `hub` CNAME. Hub Facebook Page "Plainsight Media".
-- Hub SEO technicals: sitemap.xml, robots.txt, canonical URLs, Open Graph image per article, related-articles links,
-  Google Search Console verification + indexing API. Expect little organic traffic for 3-6 months on a new domain.
+- Hub SEO owner setup: apply migration 009, configure Search Console verification and submit /sitemap.xml
+  (see hub/README.md). Expect little organic traffic for 3-6 months on a new domain.
 - Instagram token refresh warned "grant type not supported" on day 1; re-check after 2026-11-05 (tokens expire 2026-12-28).
 
 ## Where things are
@@ -100,3 +100,6 @@ run_all, sync, engage, optimize, review) · `dashboard/` (Next.js 15, root dir o
 (full manual account-setup procedure) · `docs/privacy.html` (GitHub Pages privacy policy) · `.env.example` (every variable).
 
 Blog writing rules live in `persona/blog-rules.md`; transferable video script writing rules live in `persona/formulas.md`.
+
+## Hub SEO
+Hub includes sitemap/robots, canonical and English alternate URLs, page metadata and Twitter cards, static shared OG artwork and dynamic article OG PNGs, Article/FAQ/Breadcrumb/Video JSON-LD, RSS (global and per channel), related and previous/next stories, next/image thumbnails and a tracked lite YouTube facade. URLs omit trailing slashes; `NEXT_PUBLIC_SITE_URL` defaults to https://hub.ammaad.online. Optional `GOOGLE_SITE_VERIFICATION` supports Search Console. Apply `supabase/migrations/009_hub_seo.sql` for sharing summaries and modification dates. New article slugs are at most 60 characters; existing URLs are preserved. Setup and verification instructions: `hub/README.md`.

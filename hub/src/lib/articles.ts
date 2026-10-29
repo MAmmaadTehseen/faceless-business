@@ -2,6 +2,7 @@ import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 
 export type Article = {
+  summary_for_og: string | null; updated_at: string | null;
   id: string; content_id: string; channel: string; slug: string; title: string;
   meta_title: string | null; meta_description: string | null; primary_keyword: string | null;
   faqs: {question: string; answer: string}[] | null; entities: string[] | null;
@@ -20,12 +21,20 @@ function db() {
 export async function articles(channel?: string): Promise<Article[]> {
   const client = db();
   if (!client) return [];
-  let query = client.from('articles').select('*').not('published_at', 'is', null)
-    .lte('published_at', new Date().toISOString()).order('published_at', { ascending: false });
-  if (channel) query = query.eq('channel', channel);
-  const { data, error } = await query;
-  if (error) throw new Error('Unable to load articles');
-  return data as Article[];
+  const result: Article[] = [];
+  const cutoff = new Date().toISOString();
+  // PostgREST caps responses; page explicitly so sitemap and RSS include the archive.
+  for (let offset = 0; ; offset += 500) {
+    let query = client.from('articles').select('*').not('published_at', 'is', null)
+      .lte('published_at', cutoff).order('published_at', { ascending: false })
+      .order('id', { ascending: true }).range(offset, offset + 499);
+    if (channel) query = query.eq('channel', channel);
+    const { data, error } = await query;
+    if (error) throw new Error('Unable to load articles');
+    result.push(...data as Article[]);
+    if (data.length < 500) break;
+  }
+  return result;
 }
 export async function article(slug: string): Promise<Article | null> {
   const client = db();

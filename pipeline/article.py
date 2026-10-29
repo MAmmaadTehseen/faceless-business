@@ -97,7 +97,22 @@ def validation_errors(data, body):
     return errors
 
 
+def sharing_summary(excerpt: str) -> str | None:
+    if len(excerpt) <= 160:
+        return None
+    prefix = excerpt[:159]
+    if not excerpt[159].isspace() and not prefix[-1].isspace():
+        prefix = prefix.rsplit(" ", 1)[0] if " " in prefix else ""
+    return prefix.rstrip() + "…"
+
+
 def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_run: bool = False) -> dict:
+    # SQLite bootstraps older schemas locally; keep the optional SEO columns compatible.
+    if getattr(db, "kind", None) == "sqlite":
+        columns = {r[1] for r in db.conn.execute("pragma table_info(articles)")}
+        for name in ("summary_for_og", "updated_at"):
+            if name not in columns:
+                db.conn.execute(f"alter table articles add column {name} text")
     content = db.one("content", {"id": content_id})
     if not content or content["kind"] != "long":
         raise ValueError("Article requires an existing long content row")
@@ -108,8 +123,9 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
     youtube_id = publication.get("platform_id") if publication.get("status") == "live" else None
     # Keep reruns cheap, but pick up a newly available YouTube ID.
     if existing and existing.get("published_at") and not dry_run:
-        db.update("articles", {"id": content_id}, {"youtube_id": youtube_id})
-        return {**existing, "youtube_id": youtube_id}
+        updates = {"youtube_id": youtube_id, "summary_for_og": sharing_summary(existing.get("excerpt") or "")}
+        db.update("articles", {"id": content_id}, updates)
+        return {**existing, **updates}
     if dry_run:
         # Offline fixture path deliberately avoids API calls and research claims.
         data = {"title": script["title"], "excerpt": "Local preview article from the fixture script.",
@@ -149,10 +165,20 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
             if attempt:
                 raise ValueError("Article validation failed: " + "; ".join(failures))
             prompt += "\n\nPrevious attempt failed these checks. Correct all on this retry:\n" + "\n".join(failures)
+    # Preserve all existing URLs; new URLs use short readable slugs with numeric collision suffixes.
+    if existing:
+        article_slug = existing["slug"]
+    else:
+        base_slug = slugify(data["slug"], max_len=60).strip("-") or "story"
+        article_slug = base_slug
+        suffix = 2
+        while db.one("articles", {"slug": article_slug}):
+            tail = f"-{suffix}"
+            article_slug = base_slug[:60 - len(tail)].rstrip("-") + tail
+            suffix += 1
     row = {
         "id": content_id, "content_id": content_id, "channel": channel.key,
-        # Content id makes slugs stable and unique across channels and similar titles.
-        "slug": existing["slug"] if existing else f"{slugify(data['slug'])}-{content_id}",
+        "slug": article_slug, "summary_for_og": sharing_summary(data["excerpt"]), "updated_at": now_iso(),
         "title": data["title"], "excerpt": data["excerpt"], "body_md": data["body_md"],
         **{k: data[k] for k in ("meta_title", "meta_description", "primary_keyword", "faqs", "entities", "quick_answer")},
         "takeaways": data["key_takeaways"],

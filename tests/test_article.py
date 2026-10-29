@@ -60,7 +60,7 @@ class ArticleChecks(unittest.TestCase):
         out_dir.__truediv__.return_value.__truediv__.return_value.read_text.return_value = '{}'
         guard.return_value.check.return_value = True
         db = Mock()
-        db.one.side_effect = [{'id': 'fixture', 'kind': 'long', 'channel': 'tradewinds'}, None, None]
+        db.one.side_effect = lambda table, match: {'id': 'fixture', 'kind': 'long', 'channel': 'tradewinds'} if table == 'content' else None
         db.upsert.side_effect = lambda table, row, on: row
         claude = Mock(channel=Channel('tradewinds'))
         good = valid_article()
@@ -99,7 +99,7 @@ class ArticleChecks(unittest.TestCase):
         out_dir.__truediv__.return_value.__truediv__.return_value.read_text.return_value = '{}'
         guard.return_value.check.return_value = True
         db = Mock()
-        db.one.side_effect = [{'id': 'fixture', 'kind': 'long', 'channel': 'tradewinds'}, None, None]
+        db.one.side_effect = lambda table, match: {'id': 'fixture', 'kind': 'long', 'channel': 'tradewinds'} if table == 'content' else None
         claude = Mock(channel=Channel('tradewinds'))
         bad = valid_article()
         bad['faqs'] = []

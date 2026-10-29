@@ -1,3 +1,4 @@
 export const revalidate = 600;
-export const metadata = {title: 'About'};
+import { pageMetadata } from '@/lib/seo';
+export const metadata = pageMetadata('About', 'Meet Plainsight Media and its three channels exploring work, global power and frontier science.', '/about');
 export default function About() { return <article className="reading prose"><p className="eyebrow">ABOUT PLAINSIGHT</p><h1>Ideas with a wider view.</h1><p>Plainsight Media brings together three distinct channels: Future Work Explained, Trade Winds Report and Escape Velocity.</p><p>We explore how technology changes work, how global power shapes economics, and how science pushes the boundaries of possibility. Each channel has its own voice and perspective.</p><h2>From screen to page</h2><p>Our articles adapt the ideas and sources from our long videos into a format you can read and revisit. We use AI to help write articles and narrate videos. Articles preserve the context and caveats of their source scripts; they are general information, not professional advice.</p><p>Explore each channel from the home page to find its stories and social accounts.</p></article>; }

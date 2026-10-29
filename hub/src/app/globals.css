@@ -4,3 +4,6 @@
 .prose .evidence-box{background:#1b2022;border:1px solid #3c474b;border-left:4px solid #e7c47a;border-radius:4px;padding:16px 22px;margin:24px 0}.evidence-box p{margin:8px 0}.evidence-box strong{color:#f3d996}.faq{margin-top:40px}
 
 .prose table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:24px 0}.prose th,.prose td{border:1px solid #3c474b;padding:10px 14px;text-align:left}.prose th{background:#1b2022}
+
+/* System fonts render immediately; no downloaded font or font-display delay. */
+.video-box{position:relative;aspect-ratio:16/9;width:100%;background:#000;overflow:hidden}.video-box iframe,.video-play{position:absolute;inset:0;width:100%;height:100%;border:0}.video-play{cursor:pointer;background:#000}.video-play img{object-fit:cover}.video-play span{position:relative;background:#101112dd;color:white;font-size:40px;padding:12px 28px;border-radius:12px}.video-play:focus-visible{outline:3px solid #fbbf24;outline-offset:-3px}.thumbnail{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;margin-top:18px}.channel-index{margin-bottom:32px}.article-pagination{justify-content:space-between;margin:32px 0}.reading .article-grid{grid-template-columns:1fr}.reading .card h3{font-size:22px}
