@@ -63,7 +63,7 @@ select jsonb_build_object(
  'articles',coalesce((select jsonb_agg(to_jsonb(article_stats)) from article_stats),'[]'::jsonb),
  'channels',coalesce((select jsonb_agg(to_jsonb(channel_stats)) from channel_stats),'[]'::jsonb),
  'daily',coalesce((select jsonb_agg(jsonb_build_object('date',day,'views',views) order by day) from (
- select to_char(ts at time zone 'UTC','YYYY-MM-DD') day,count(*) views from e where event='pageview' group by 1) d),'[]'::jsonb),
+ select to_char(ts at time zone 'UTC','YYYY-MM-DD') as day,count(*) views from e where event='pageview' group by 1) d),'[]'::jsonb),
  'dimensions',coalesce((select jsonb_agg(to_jsonb(ranked)-'rank') from ranked where rank<=10),'[]'::jsonb)
 );
 $$;
