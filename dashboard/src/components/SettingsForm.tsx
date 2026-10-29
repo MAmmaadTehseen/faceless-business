@@ -43,7 +43,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
   return (
     <form onSubmit={save} className="space-y-4">
       <section className="card space-y-3">
-        <h2 className="font-medium">Pipeline</h2>
+        <h2 className="section-title">Pipeline</h2>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={s.pipeline_paused} onChange={(e) => set("pipeline_paused", e.target.checked)} />
           Pipeline paused
@@ -71,7 +71,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
       </section>
 
       <section className="card space-y-3">
-        <h2 className="font-medium">Per-channel keywords</h2>
+        <h2 className="section-title">Per-channel keywords</h2>
         <p className="text-xs text-muted">One per line. Leave a channel empty to use the defaults from its channel.json.</p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {CHANNELS.map((c) => (
@@ -89,7 +89,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
       </section>
 
       <section className="card space-y-3">
-        <h2 className="font-medium">Engagement</h2>
+        <h2 className="section-title">Engagement</h2>
         <div className="flex flex-wrap gap-4 text-sm">
           {(["youtube", "instagram", "facebook"] as const).map((p) => (
             <label key={p} className="flex items-center gap-2">
@@ -113,7 +113,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
       </section>
 
       <section className="card space-y-3">
-        <h2 className="font-medium">Budget</h2>
+        <h2 className="section-title">Budget</h2>
         <Field label="Monthly budget (USD)">
           <input type="number" min={0} step="0.01" value={s.monthly_budget_usd} onChange={(e) => set("monthly_budget_usd", Number(e.target.value))} className="w-full sm:w-48" />
         </Field>

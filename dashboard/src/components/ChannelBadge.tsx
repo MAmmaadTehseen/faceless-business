@@ -5,20 +5,24 @@ export function ChannelDot({ meta, className = "" }: { meta: ChannelMeta; classN
     <span
       aria-hidden
       className={`inline-block h-2 w-2 shrink-0 rounded-full ${className}`}
-      style={{ backgroundColor: accentCss(meta) }}
+      style={{ backgroundColor: accentCss(meta), boxShadow: `0 0 6px ${accentCss(meta)}` }}
     />
   );
 }
 
-/** Name + accent dot for a channel key. Renders the raw key when unknown, nothing when null. */
-export function ChannelBadge({ channel }: { channel: string | null | undefined }) {
+/** Brand-coloured pill for a channel key. Renders the raw key when unknown, nothing when null. */
+export function ChannelBadge({ channel, short = false }: { channel: string | null | undefined; short?: boolean }) {
   if (!channel) return null;
   const meta = channelMeta(channel);
   if (!meta) return <span className="badge">{channel}</span>;
   return (
-    <span className="badge inline-flex items-center gap-1.5" title={`@${meta.handle}`}>
+    <span
+      className="badge"
+      title={`@${meta.handle}`}
+      style={{ backgroundColor: meta.brand.bg, color: meta.brand.fg, borderColor: `${meta.brand.fg}55` }}
+    >
       <ChannelDot meta={meta} />
-      {meta.name}
+      {short ? meta.short : meta.name}
     </span>
   );
 }
