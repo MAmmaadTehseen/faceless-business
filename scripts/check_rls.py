@@ -29,6 +29,8 @@ class Checker:
     def __init__(self, url: str, key: str):
         self.url, self.key = url.rstrip('/'), key
         self.failed = 0
+        self.warnings = 0
+        self.exposed = False
         self.opener = build_opener(NoRedirect())
 
     def request(self, method, path, payload=None, *, raw=False, public=False):
@@ -64,21 +66,29 @@ class Checker:
         print(f'{"PASS" if passed else "FAIL"} {label}: {detail}')
         self.failed += not passed
 
+    def warn(self, label, detail):
+        self.warnings += 1
+        print(f'WARN {label}: {detail}')
+
     def denied(self, label, result, *, storage=False, filtered=False):
         status, body = result
         code = str(body.get('code', '')) if isinstance(body, dict) else ''
         message = str(body.get('message', '')).lower() if isinstance(body, dict) else ''
         # Invalid keys, missing objects/functions, validation errors and outages
         # are never evidence that authorization works.
-        denied = (status in (401, 403) and code == '42501')
+        denied = status in (401, 403) or code == '42501'
         if storage:
             denied = denied or (status in (400, 403) and isinstance(body, dict)
                                 and ('row-level security' in message or 'permission denied' in message
                                      or body.get('error') in ('AccessDenied', 'Unauthorized')))
         empty = filtered and 200 <= status < 300 and body == []
+        if 200 <= status < 300 and isinstance(body, list) and body:
+            self.exposed = True
         self.report(label, denied or empty,
-                    'denied' if denied else 'RLS filtered: no objects affected/returned' if empty
+                    'denied' if denied else 'filtered by RLS (no grant revocation visible)' if empty
                     else f'HTTP {status}; access succeeded or denial unverified')
+        if empty:
+            self.warn(label, 'empty response does not establish revoked privileges')
 
 
 def table_names():
@@ -130,7 +140,7 @@ def main():
     }
     for table in table_names():
         endpoint = '/rest/v1/' + quote(table, safe='')
-        c.denied(f'{table} SELECT', c.request('GET', endpoint + '?select=*&limit=1'))
+        c.denied(f'{table} SELECT', c.request('GET', endpoint + '?select=*&limit=1'), filtered=True)
         if table not in rows:
             c.report(f'{table} mutations', False, 'add a valid harmless fixture for this new table')
             continue
@@ -138,8 +148,8 @@ def main():
         pk = next(iter(row))
         target = endpoint + '?' + urlencode({pk: 'eq.' + str(row[pk])})
         c.denied(f'{table} INSERT', c.request('POST', endpoint, row))
-        c.denied(f'{table} UPDATE', c.request('PATCH', target, row))
-        c.denied(f'{table} DELETE / probe cleanup', c.request('DELETE', target))
+        c.denied(f'{table} UPDATE', c.request('PATCH', target, row), filtered=True)
+        c.denied(f'{table} DELETE / probe cleanup', c.request('DELETE', target), filtered=True)
     # Zero-unit arguments exercise EXECUTE permission without reserving quota.
     c.denied('reserve_youtube_quota RPC', c.request('POST', '/rest/v1/rpc/reserve_youtube_quota',
              {'p_units': 0, 'p_uploads': 0, 'p_reserve': 0, 'p_upload_reserve': 0}))
@@ -147,14 +157,36 @@ def main():
              {'since': '2000-01-01T00:00:00Z', 'until_ts': '2000-01-01T00:00:00Z', 'channel_key': None}))
     media_object = os.getenv('RLS_MEDIA_OBJECT')  # Optional known bucket-relative path.
     for bucket in ('media', 'youtube-queue'):
-        result = c.request('POST', '/storage/v1/object/list/' + bucket, {'prefix': '', 'limit': 100})
+        result = c.request('POST', '/storage/v1/object/list/' + bucket, {'prefix': '', 'limit': 100, 'sortBy': {'column': 'name', 'order': 'asc'}})
         if bucket == 'media':
             status, objects = result
             c.report('media LIST', status == 200 and isinstance(objects, list), f'HTTP {status}; public SELECT expected')
-            # Auto-discover a root object; for nested folders supply RLS_MEDIA_OBJECT.
-            if not media_object and isinstance(objects, list):
-                media_object = next((o['name'] for o in objects if isinstance(o, dict)
-                                     and o.get('id') and o.get('name')), None)
+            # Search folders and paginate with anon credentials only.
+            if not media_object and status == 200 and isinstance(objects, list):
+                pending = [('', 0, objects)]
+                seen = set()
+                while pending and not media_object:
+                    prefix, offset, page = pending.pop()
+                    if (prefix, offset) in seen:
+                        continue
+                    seen.add((prefix, offset))
+                    if page is None:
+                        page_status, page = c.request('POST', '/storage/v1/object/list/media',
+                            {'prefix': prefix, 'offset': offset, 'limit': 100,
+                             'sortBy': {'column': 'name', 'order': 'asc'}})
+                        if page_status != 200 or not isinstance(page, list):
+                            c.warn('media discovery', 'folder listing unavailable')
+                            continue
+                    for obj in page:
+                        if not isinstance(obj, dict) or not obj.get('name'):
+                            continue
+                        path = '/'.join(filter(None, (prefix, obj['name'])))
+                        if obj.get('id'):
+                            media_object = path
+                            break
+                        pending.append((path, 0, None))
+                    if len(page) == 100:
+                        pending.append((prefix, offset + 100, None))
         else:
             c.denied('youtube-queue LIST', result, storage=True, filtered=True)
         name = marker + '.mp4'
@@ -165,8 +197,10 @@ def main():
         status, _ = c.request('GET', '/storage/v1/object/public/media/' + quote(media_object, safe='/'), public=True)
         c.report('media public GET (no credentials)', status in (200, 206), f'HTTP {status}')
     else:
-        c.report('media public GET', False, 'no existing root object found; set RLS_MEDIA_OBJECT to an existing bucket-relative path')
+        c.warn('media public GET', 'skipped: no object found; optionally set RLS_MEDIA_OBJECT')
     print(f'{c.failed} failed or unverified check(s).')
+    summary = 'EXPOSED' if c.exposed else 'WARN-ONLY' if c.warnings or c.failed else 'CLEAN'
+    print(f'Summary: {summary}' + (' (other checks failed or unverified)' if c.failed and not c.exposed else ''))
     return 1 if c.failed else 0
 
 

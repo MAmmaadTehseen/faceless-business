@@ -2,6 +2,16 @@
 -- Apply as postgres after migrations 002-010. Atomic and safe to re-run.
 begin;
 
+-- Revoke existing grants explicitly; default privileges affect only future objects.
+revoke all on all tables in schema public from public, anon, authenticated;
+revoke all on all sequences in schema public from public, anon, authenticated;
+revoke all on all functions in schema public from public, anon, authenticated;
+-- Removing PUBLIC usage also removes inherited schema access. This intentionally
+-- disables all public-schema API access for anon/authenticated, including RPCs.
+-- PostgREST switches to service_role for server requests; retain its schema usage.
+grant usage on schema public to service_role;
+revoke usage on schema public from public, anon, authenticated;
+
 -- service_role has BYPASSRLS; FORCE ROW LEVEL SECURITY is unnecessary and
 -- would not constrain it. Server clients must continue using service_role.
 do $$
@@ -54,6 +64,29 @@ alter default privileges for role postgres in schema public
   revoke all on functions from public, anon, authenticated;
 -- A schema-local REVOKE cannot undo the global default EXECUTE for PUBLIC.
 alter default privileges for role postgres revoke execute on functions from public;
+
+-- Supabase-created objects may use supabase_admin's defaults, not postgres's.
+-- Attempting ALTER is the authoritative permission check (including membership).
+do $$
+begin
+  if exists (select from pg_roles where rolname = 'supabase_admin') then
+    begin
+      alter default privileges for role supabase_admin in schema public
+        revoke all on tables from public, anon, authenticated;
+      alter default privileges for role supabase_admin in schema public
+        revoke all on sequences from public, anon, authenticated;
+      alter default privileges for role supabase_admin in schema public
+        revoke all on functions from public, anon, authenticated;
+      alter default privileges for role supabase_admin
+        revoke execute on functions from public;
+    exception when insufficient_privilege then
+      raise notice 'Cannot alter supabase_admin default privileges as %; owner must arrange this separately', current_user;
+    end;
+  else
+    raise notice 'Role supabase_admin does not exist; skipping its default privileges';
+  end if;
+end;
+$$;
 
 -- Harden every installed quota RPC overload, including any legacy signature.
 -- Harden every installed overload instead of assuming one argument signature.
@@ -108,3 +141,36 @@ create policy hardening_storage_delete on storage.objects as restrictive for del
 -- A public bucket bypasses download RLS. Enforce private queue even if drifted.
 update storage.buckets set public = false where id = 'youtube-queue';
 commit;
+
+-- Run after COMMIT so these notices describe the committed grants. Catalog views
+-- show grants visible to the executing role; inherited role access needs review too.
+do $$
+declare obj record; remaining integer := 0;
+begin
+  for obj in
+    select grantee, table_schema || '.' || table_name as object_name, privilege_type
+    from information_schema.role_table_grants
+    where table_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC')
+    union all
+    select grantee, routine_schema || '.' || specific_name, privilege_type
+    from information_schema.routine_privileges
+    where routine_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC')
+    union all
+    select grantee, table_schema || '.' || table_name || '.' || column_name, privilege_type
+    from information_schema.column_privileges
+    where table_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC')
+    union all
+    select grantee, object_schema || '.' || object_name, privilege_type
+    from information_schema.usage_privileges
+    where object_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC')
+  loop
+    remaining := remaining + 1;
+    raise notice 'Remaining public grant: % % on %', obj.grantee, obj.privilege_type, obj.object_name;
+  end loop;
+  raise notice 'Public object grant verification: % remaining visible grants to anon/authenticated/PUBLIC', remaining;
+  raise notice 'Schema USAGE: anon=%, authenticated=%, service_role=%',
+    has_schema_privilege('anon', 'public', 'USAGE'),
+    has_schema_privilege('authenticated', 'public', 'USAGE'),
+    has_schema_privilege('service_role', 'public', 'USAGE');
+end;
+$$;
