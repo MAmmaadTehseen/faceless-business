@@ -107,6 +107,60 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
         return None
 
 
+def _media_url(db, s) -> str:
+    """Public mp4 URL for a Short: stored at production time, else uploaded now from the local file."""
+    if s.get("media_url"):
+        return s["media_url"]
+    url = meta.public_url_for(Path(s["file_path"]), tag=f"media-{datetime.now(timezone.utc):%Y%m%d}")
+    db.update("content", {"id": s["id"]}, {"media_url": url})
+    s["media_url"] = url
+    return url
+
+
+def _local_file(db, s) -> Path:
+    """Local mp4 for a Short; on a fresh runner, download it from its public media URL."""
+    f = Path(s.get("file_path") or "")
+    if f.exists():
+        return f
+    import requests
+    from ..common import OUT_DIR
+    target = OUT_DIR / s["id"] / f"{s['id']}.mp4"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with requests.get(_media_url(db, s), stream=True, timeout=600) as r:
+        r.raise_for_status()
+        with open(target, "wb") as fh:
+            for chunk in r.iter_content(1 << 20):
+                fh.write(chunk)
+    return target
+
+
+def follow_youtube_to_reels(db, channel) -> int:
+    """Shorts whose YouTube copy has gone public (scheduled publish) get their Instagram/Facebook Reels now."""
+    meta.use_channel(channel)
+    if not (meta.ig_configured() or meta.fb_configured()):
+        return 0
+    shorts = {c["id"]: c for c in db.select("content", {"channel": channel.key, "kind": "short"})
+              if c.get("qa_status") == "passed" and not c.get("placeholder")}
+    done = 0
+    for p in db.select("publications", {"platform": "youtube", "status": "live"}):
+        s = shorts.get(p["content_id"])
+        if not s or p.get("privacy") != "public":
+            continue
+        have = {q["platform"] for q in db.select("publications", {"content_id": s["id"]}) if q.get("status") == "live"}
+        want = ({"instagram"} if meta.ig_configured() else set()) | ({"facebook"} if meta.fb_configured() else set())
+        if want <= have:
+            continue
+        parent = db.one("publications", {"content_id": s.get("parent_id") or "", "platform": "youtube"}) if s.get("parent_id") else None
+        try:
+            res = publish_short(db, s, channel, "public", long_url=(parent or {}).get("url"))
+            done += sum(1 for r in res if r["platform"] in ("instagram", "facebook"))
+        except Exception as e:
+            log.error("reels follow-up failed for %s (%s)", s["id"], type(e).__name__)
+    if done:
+        log.info("reels[%s]: published %d following YouTube going public", channel.key, done)
+    return done
+
+
 def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, queue_youtube=False):
     youtube.use_channel(channel); meta.use_channel(channel)
     s = dict(short_row)
@@ -134,7 +188,7 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
             if ig and ig.get("status") == "live":
                 r = {"id": ig["platform_id"], "url": ig.get("url")}
             else:
-                url = meta.public_url_for(Path(s["file_path"]), tag=f"media-{datetime.now(timezone.utc):%Y%m%d}")
+                url = _media_url(db, s)
                 r = meta.publish_instagram_reel(url, caption)
             db.upsert("publications", {"content_id": s["id"], "platform": "instagram", "platform_id": r["id"], "url": r.get("url"), "privacy": "public",
                                        "status": "live", "published_at": now_iso()}, on="content_id,platform")
@@ -148,7 +202,7 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
             if fb and fb.get("status") == "live":
                 r = {"id": fb["platform_id"], "url": fb.get("url")}
             else:
-                r = meta.publish_facebook_reel(Path(s["file_path"]), caption)
+                r = meta.publish_facebook_reel(_local_file(db, s), caption)
             db.upsert("publications", {"content_id": s["id"], "platform": "facebook", "platform_id": r["id"], "url": r.get("url"), "privacy": "public",
                                        "status": "live", "published_at": now_iso()}, on="content_id,platform")
             results.append({"platform": "facebook", "content_id": s["id"], **r})

@@ -5,7 +5,7 @@ import re
 
 from .common import Channel, log, now_iso
 from .db import DB
-from .publish import meta, youtube, drain_youtube_queue
+from .publish import meta, youtube, drain_youtube_queue, follow_youtube_to_reels
 
 FLAG = re.compile(r"\b(lawsuit|lawyer|sue|legal action|defam|copyright|dmca|refund|chargeback|scam|fraud|suicide|kill (my|your)self|diagnos|prescri|medical advice|overdose|invest(ment)? advice|guaranteed returns)\b", re.I)
 ABUSE = re.compile(r"\b(idiot|stupid|moron|trash|garbage channel|fake|bot channel|ai slop)\b", re.I)
@@ -76,6 +76,10 @@ def sync_channel(db, channel):
                         _store_comment(db, p, "facebook", c)
                 except Exception as e:
                     log.warning("fb sync failed %s: %s", p["platform_id"], e)
+    try:
+        follow_youtube_to_reels(db, channel)
+    except Exception as e:
+        log.error("reels follow-up failed for %s: %s", channel.key, e)
     log.info("sync[%s]: %d publications", channel.key, len(pubs))
 
 

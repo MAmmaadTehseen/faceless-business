@@ -4,6 +4,7 @@ create table if not exists content (
   id text primary key,                       -- slug: 2026-10-27-ai-agents-2027
   channel text not null default 'futurework',
   placeholder boolean default false,
+  media_url text,
   kind text not null,                        -- long | short
   parent_id text references content(id),     -- shorts point at their long video
   topic text not null,

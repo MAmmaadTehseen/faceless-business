@@ -116,6 +116,12 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         db.upsert("content", {"id": sid, "channel": channel.key, "kind": "short", "parent_id": content_id, "topic": topic["topic"], "title": res["title"],
                               "description": f"{res['title']}\n\nFull video: {{LONG_URL}}\n#shorts", "script": res["script"],
                               "duration_sec": res["duration"], "file_path": str(res["file"]), "status": "rendered", "qa_status": "passed", "placeholder": footage.placeholder}, on="id")
+        if publish and not footage.placeholder:
+            try:
+                from .publish import meta
+                db.update("content", {"id": sid}, {"media_url": meta.public_url_for(res["file"], tag=f"media-{datetime.now(timezone.utc):%Y%m%d}")})
+            except Exception as e:
+                log.warning("short %s: could not store public media url (%s)", sid, type(e).__name__)
         shorts.append({"id": sid, **res})
 
     result = {"content_id": content_id, "video": str(video), "thumbnail": str(thumb), "shorts": [str(s["file"]) for s in shorts], "title": data["title"]}
