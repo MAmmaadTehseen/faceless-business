@@ -20,3 +20,4 @@ pages = requests.get(f"{G}/me/accounts", params={"access_token": long_user}).jso
 for p in pages:
     ig = requests.get(f"{G}/{p['id']}", params={"fields": "instagram_business_account", "access_token": p["access_token"]}).json().get("instagram_business_account", {})
     print(f"\nPage: {p['name']}\nMETA_PAGE_ID={p['id']}\nMETA_IG_USER_ID={ig.get('id', 'NOT LINKED')}\nMETA_ACCESS_TOKEN={p['access_token']}")
+    print("  (for a channel page, suffix the three names with _FUTUREWORK / _TRADEWINDS / _ESCAPEVELOCITY; for the hub page use _HUB)")

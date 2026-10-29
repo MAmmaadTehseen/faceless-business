@@ -1,5 +1,7 @@
 """Two-step YouTube OAuth without a local server (works in sandboxes).
 Step 1: python scripts/youtube_auth.py url        -> prints the URL to open; log in with the channel's account, click Allow.
+        Multi-channel: add the channel key as a third arg, e.g. `url tradewinds` / `token "<url>" tradewinds`;
+        the token is then saved as YT_REFRESH_TOKEN_TRADEWINDS. Without a key it saves YT_REFRESH_TOKEN.
 Step 2: the browser lands on http://localhost:8765/?code=... (page will not load; that is expected).
         python scripts/youtube_auth.py token "<paste that full URL>"   -> saves YT_REFRESH_TOKEN into .env
 
@@ -26,6 +28,8 @@ if not cid or not sec:
 flow = Flow.from_client_config({"installed": {"client_id": cid, "client_secret": sec, "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                                               "token_uri": "https://oauth2.googleapis.com/token", "redirect_uris": [REDIRECT]}}, SCOPES, redirect_uri=REDIRECT, autogenerate_code_verifier=False)
 cmd = sys.argv[1] if len(sys.argv) > 1 else "url"
+key = (sys.argv[3] if cmd == "token" and len(sys.argv) > 3 else sys.argv[2] if cmd == "url" and len(sys.argv) > 2 else "").strip().upper()
+VAR = f"YT_REFRESH_TOKEN_{key}" if key else "YT_REFRESH_TOKEN"
 if cmd == "url":
     url, _ = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true")
     print(url)
@@ -41,6 +45,6 @@ elif cmd == "token":
     if not rt:
         sys.exit("No refresh token returned; remove the app's access at myaccount.google.com/permissions and retry")
     env = (ROOT / ".env").read_text()
-    env = re.sub(r"^YT_REFRESH_TOKEN=.*$", f"YT_REFRESH_TOKEN={rt}", env, flags=re.M) if "YT_REFRESH_TOKEN=" in env else env + f"\nYT_REFRESH_TOKEN={rt}\n"
+    env = re.sub(rf"^{VAR}=.*$", f"{VAR}={rt}", env, flags=re.M) if re.search(rf"^{VAR}=", env, flags=re.M) else env.rstrip("\n") + f"\n{VAR}={rt}\n"
     (ROOT / ".env").write_text(env)
-    print("YT_REFRESH_TOKEN saved to .env")
+    print(f"{VAR} saved to .env")
