@@ -19,3 +19,4 @@ hub/.env*
 
 .claude/
 persona/blog-rules-source.md
+.vercel

@@ -7,3 +7,13 @@ export function pageMetadata(title: string, description: string, path: string, i
     openGraph: {type: 'website', siteName: 'Plainsight Media', locale: 'en_US', title, description, url, images: [{url: absolute(image), width: 1200, height: 630, alt: title}]},
     twitter: {card: 'summary_large_image', title, description, images: [absolute(image)]}};
 }
+
+export function organizationJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Plainsight Media',
+    url: absolute('/'),
+    logo: absolute('/icon-512.png'),
+  };
+}
