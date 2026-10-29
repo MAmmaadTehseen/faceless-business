@@ -100,6 +100,21 @@ export function SettingsForm({
                 className="w-full"
               />
             </Field>
+            <Field label="YouTube uploads per day">
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={s.youtube_uploads_per_day ?? 100}
+                onChange={(e) =>
+                  set("youtube_uploads_per_day", Number(e.target.value))
+                }
+                className="w-full"
+              />
+              <span className="text-xs text-muted">
+                Google's default is 100 per day across all channels. Uploads beyond this queue for the next sync.
+              </span>
+            </Field>
             <Field label="YouTube quota units per day">
               <input
                 type="number"
@@ -112,7 +127,7 @@ export function SettingsForm({
                 className="w-full"
               />
               <span className="text-xs text-muted">
-                10,000 until Google approves the quota extension, then 26,000
+                General bucket (thumbnails, title updates, replies). Google's default is 10,000. Uploads are counted separately below.
               </span>
             </Field>
             <Field label="Publish privacy">

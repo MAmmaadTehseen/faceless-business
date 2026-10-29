@@ -92,6 +92,7 @@ export type Settings = {
   pipeline_paused: boolean;
   long_videos_per_run: number;
   youtube_quota_units_per_day?: number;
+  youtube_uploads_per_day?: number;
   shorts_per_long: number;
   auto_reply: { youtube: boolean; instagram: boolean; facebook: boolean };
   auto_like: { facebook: boolean };
