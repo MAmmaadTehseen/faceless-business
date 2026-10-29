@@ -129,6 +129,8 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
         ig = db.one("publications", {"content_id": s["id"], "platform": "instagram"})
         fb = db.one("publications", {"content_id": s["id"], "platform": "facebook"})
         try:
+            if not meta.ig_configured():
+                raise RuntimeError("instagram not configured for this channel")
             if ig and ig.get("status") == "live":
                 r = {"id": ig["platform_id"], "url": ig.get("url")}
             else:
@@ -141,6 +143,8 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
             log.error("instagram failed: %s", e)
             db.upsert("publications", {"content_id": s["id"], "platform": "instagram", "status": "failed", "error": str(e)[:500]}, on="content_id,platform")
         try:
+            if not meta.fb_configured():
+                raise RuntimeError("facebook not configured for this channel")
             if fb and fb.get("status") == "live":
                 r = {"id": fb["platform_id"], "url": fb.get("url")}
             else:

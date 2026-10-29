@@ -12,7 +12,8 @@ import requests
 
 from ..common import log
 
-G = "https://graph.facebook.com/v21.0"
+G = "https://graph.facebook.com/v21.0"      # Facebook Pages (page token)
+IG = "https://graph.instagram.com/v21.0"    # Instagram API with Instagram Login (user token, 60-day, refreshable)
 
 
 from ..common import Channel
@@ -25,12 +26,59 @@ def use_channel(channel: Channel) -> None:
     _current = channel
 
 
+def fb_configured() -> bool:
+    return all(_current.env(k) for k in ("META_ACCESS_TOKEN", "META_PAGE_ID"))
+
+
+def ig_configured() -> bool:
+    return bool(_current.env("META_IG_USER_ID") and _ig_tok())
+
+
 def configured() -> bool:
-    return all(_current.env(k) for k in ("META_ACCESS_TOKEN", "META_PAGE_ID", "META_IG_USER_ID"))
+    return fb_configured() or ig_configured()
 
 
 def _tok() -> str:
     return _current.env("META_ACCESS_TOKEN")
+
+
+_ig_cache: dict[str, str] = {}
+
+
+def _ig_tok() -> str | None:
+    """Instagram user token: refreshed copy in the settings table wins over the env seed."""
+    key = _current.key
+    if key not in _ig_cache:
+        tok = None
+        if os.getenv("SUPABASE_URL") or os.getenv("DB_BACKEND"):
+            try:
+                from ..db import DB
+                tok = DB().setting(f"ig_token_{key}")
+            except Exception:
+                tok = None
+        _ig_cache[key] = tok or _current.env("IG_ACCESS_TOKEN") or ""
+    return _ig_cache[key] or None
+
+
+def refresh_ig_token(db, channel: Channel, min_age_days: int = 7) -> bool:
+    """Instagram Login tokens last 60 days; refresh after 7 and store in settings so every job uses the new one."""
+    use_channel(channel)
+    tok = _ig_tok()
+    if not tok:
+        return False
+    from datetime import datetime, timezone
+    last = db.setting(f"ig_token_refreshed_{channel.key}")
+    if last and (datetime.now(timezone.utc) - datetime.fromisoformat(last)).days < min_age_days:
+        return False
+    r = requests.get(f"{IG}/refresh_access_token", params={"grant_type": "ig_refresh_access_token", "access_token": tok}, timeout=30).json()
+    if "access_token" not in r:
+        log.warning("instagram token refresh failed for %s: %s", channel.key, r.get("error", {}).get("message", r))
+        return False
+    db.set_setting(f"ig_token_{channel.key}", r["access_token"])
+    db.set_setting(f"ig_token_refreshed_{channel.key}", datetime.now(timezone.utc).isoformat())
+    _ig_cache[channel.key] = r["access_token"]
+    log.info("instagram: token refreshed for %s (expires in %s days)", channel.key, r.get("expires_in", 0) // 86400)
+    return True
 
 
 def public_url_for(video: Path, tag: str) -> str:
@@ -69,7 +117,7 @@ def _github_release_url(video: Path, tag: str) -> str:
 def _wait_container(container_id: str, timeout: int = 600) -> None:
     t0 = time.time()
     while time.time() - t0 < timeout:
-        r = requests.get(f"{G}/{container_id}", params={"fields": "status_code,status", "access_token": _tok()}, timeout=30).json()
+        r = requests.get(f"{IG}/{container_id}", params={"fields": "status_code,status", "access_token": _ig_tok()}, timeout=30).json()
         if r.get("status_code") == "FINISHED":
             return
         if r.get("status_code") == "ERROR":
@@ -80,15 +128,15 @@ def _wait_container(container_id: str, timeout: int = 600) -> None:
 
 def publish_instagram_reel(video_url: str, caption: str, thumb_offset_ms: int = 2000) -> dict:
     ig = _current.env("META_IG_USER_ID")
-    r = requests.post(f"{G}/{ig}/media", data={"media_type": "REELS", "video_url": video_url, "caption": caption[:2200],
-                                              "share_to_feed": "true", "thumb_offset": thumb_offset_ms, "access_token": _tok()}, timeout=60).json()
+    r = requests.post(f"{IG}/{ig}/media", data={"media_type": "REELS", "video_url": video_url, "caption": caption[:2200],
+                                              "share_to_feed": "true", "thumb_offset": thumb_offset_ms, "access_token": _ig_tok()}, timeout=60).json()
     if "id" not in r:
         raise RuntimeError(f"instagram container failed: {r}")
     _wait_container(r["id"])
-    p = requests.post(f"{G}/{ig}/media_publish", data={"creation_id": r["id"], "access_token": _tok()}, timeout=60).json()
+    p = requests.post(f"{IG}/{ig}/media_publish", data={"creation_id": r["id"], "access_token": _ig_tok()}, timeout=60).json()
     if "id" not in p:
         raise RuntimeError(f"instagram publish failed: {p}")
-    perm = requests.get(f"{G}/{p['id']}", params={"fields": "permalink", "access_token": _tok()}, timeout=30).json().get("permalink")
+    perm = requests.get(f"{IG}/{p['id']}", params={"fields": "permalink", "access_token": _ig_tok()}, timeout=30).json().get("permalink")
     log.info("instagram: reel %s", p["id"])
     return {"id": p["id"], "url": perm}
 
@@ -114,10 +162,10 @@ def publish_facebook_reel(video_path: Path, description: str) -> dict:
 
 
 def ig_insights(media_id: str) -> dict:
-    r = requests.get(f"{G}/{media_id}", params={"fields": "like_count,comments_count", "access_token": _tok()}, timeout=30).json()
+    r = requests.get(f"{IG}/{media_id}", params={"fields": "like_count,comments_count", "access_token": _ig_tok()}, timeout=30).json()
     views = 0
     try:
-        ins = requests.get(f"{G}/{media_id}/insights", params={"metric": "views", "access_token": _tok()}, timeout=30).json()
+        ins = requests.get(f"{IG}/{media_id}/insights", params={"metric": "views", "access_token": _ig_tok()}, timeout=30).json()
         for m in ins.get("data", []):
             views = m.get("values", [{}])[0].get("value", 0)
     except Exception:
@@ -132,7 +180,7 @@ def fb_insights(video_id: str) -> dict:
 
 
 def ig_comments(media_id: str) -> list[dict]:
-    r = requests.get(f"{G}/{media_id}/comments", params={"fields": "id,text,username,timestamp", "limit": 50, "access_token": _tok()}, timeout=30).json()
+    r = requests.get(f"{IG}/{media_id}/comments", params={"fields": "id,text,username,timestamp", "limit": 50, "access_token": _ig_tok()}, timeout=30).json()
     return [{"platform_comment_id": c["id"], "author": c.get("username"), "text": c.get("text", ""), "posted_at": c.get("timestamp")} for c in r.get("data", [])]
 
 
@@ -142,7 +190,7 @@ def fb_comments(video_id: str) -> list[dict]:
 
 
 def ig_reply(comment_id: str, text: str) -> str:
-    r = requests.post(f"{G}/{comment_id}/replies", data={"message": text[:2200], "access_token": _tok()}, timeout=30).json()
+    r = requests.post(f"{IG}/{comment_id}/replies", data={"message": text[:2200], "access_token": _ig_tok()}, timeout=30).json()
     return r.get("id", "")
 
 

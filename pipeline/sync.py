@@ -31,6 +31,10 @@ def main():
 def sync_channel(db, channel):
     drain_youtube_queue(db, channel)
     youtube.use_channel(channel); meta.use_channel(channel)
+    try:
+        meta.refresh_ig_token(db, channel)
+    except Exception as e:
+        log.warning("ig token refresh skipped for %s: %s", channel.key, e)
     ids = {c["id"] for c in db.select("content", {"channel": channel.key})}
     pubs = [p for p in db.select("publications", {"status": "live"}) if p["content_id"] in ids]
     if not pubs:
