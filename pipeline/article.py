@@ -139,7 +139,7 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
             if not CostGuard(db).check("article", est_usd=0.5):
                 raise RuntimeError("Article skipped by budget guard")
             data, _ = claude.run("article", prompt, schema=ARTICLE_SCHEMA, effort="medium",
-                                 web_search=True, max_searches=4, max_tokens=10000, content_id=content_id)
+                                 web_search=True, max_searches=4, max_tokens=20000, content_id=content_id)
             data["body_md"] = assemble_body(data)
             failures = validation_errors(data, data["body_md"])
             if not failures:
