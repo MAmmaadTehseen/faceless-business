@@ -34,6 +34,31 @@ HOOK_SCHEMA = {
 }
 
 
+def strip_script_dashes(value):
+    """Normalize generated text recursively, preserving numeric en-dash ranges."""
+    count = 0
+    def clean(item):
+        nonlocal count
+        if isinstance(item, str):
+            pattern = r"\s*\u2014\s*|\s*(?<!\d)\u2013\s*|\s*\u2013(?!\d)\s*"
+            def replace(match):
+                nonlocal count
+                count += 1
+                prefix = item[:match.start()].rstrip()
+                if not prefix or prefix[-1] in ",.;:!?":
+                    return " "
+                return ", "
+            return re.sub(pattern, replace, item).strip()
+        if isinstance(item, list):
+            return [clean(v) for v in item]
+        if isinstance(item, dict):
+            return {k: clean(v) for k, v in item.items()}
+        return item
+    result = clean(value)
+    log.info("script: replaced %d em/en dashes", count)
+    return result
+
+
 def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: int = 4) -> dict:
     user = (
         f"Today's video topic: {topic['topic']}\n"
@@ -42,6 +67,9 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "Step 1: research. Use web search to confirm the core facts, find 4-8 concrete, recent, attributable facts "
         "(numbers, names, dates, quotes) and at least one contrasting view. Prefer primary sources and major outlets.\n"
         "Step 2: write the long video following the script sequence and style exactly. 1300-1900 words of narration. "
+        "Each of the five parts must introduce a genuinely different angle. No two paragraphs may restate the same point. "
+        "Use simple natural spoken English, no filler or generic transitions. Hedge uncertain causes with can, may, "
+        "or may indicate. No em dashes in any captions, titles, descriptions or Shorts. Attribute every statistic in-line. "
         "Each paragraph is 2-5 sentences and is one visual beat. Put a clear framework in the middle. "
         "Attribute facts in-line in spoken form. End with one question for the comments and a one-sentence CTA to subscribe.\n"
         "Step 3: produce 5 titles across different formulas, thumbnail text, description with chapters, tags, "
@@ -58,7 +86,8 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
     hook_prompt = (
         "Here is the title and the first two narration paragraphs of a video. Rewrite the two paragraphs only if they can be "
         "made sharper: a bolder specific claim in the first sentence, stakes by the third sentence, no throat-clearing. Keep length similar. "
-        "Keep every fact. If they are already strong, return them unchanged with changed=false.\n\n"
+        "Keep every fact and in-line statistic attribution. Use natural spoken English, hedge uncertain causes, "
+        "and use no em dashes, filler or generic transitions. If they are already strong, return them unchanged with changed=false.\n\n"
         f"Title: {data['title']}\n\nParagraph 1: {data['script'][0]}\n\nParagraph 2: {data['script'][1] if len(data['script']) > 1 else ''}"
     )
     try:
@@ -67,6 +96,8 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
             data["script"][0], data["script"][1] = hook["opening_paragraphs"]
     except Exception as e:  # non-fatal
         log.warning("hook pass skipped: %s", e)
+
+    data = strip_script_dashes(data)
 
     # Title guardrail.
     all_titles = [data["title"], *data["title_variants"]]

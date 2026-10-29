@@ -143,6 +143,13 @@ create table if not exists articles (
   title text,
   excerpt text,
   body_md text,
+  meta_title text,
+  meta_description text,
+  primary_keyword text,
+  faqs jsonb,
+  entities jsonb,
+  quick_answer text,
+  takeaways jsonb,
   youtube_id text,
   published_at timestamptz,
   created_at timestamptz default now()

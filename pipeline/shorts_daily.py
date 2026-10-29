@@ -12,7 +12,7 @@ from .footage import Footage
 from .ideate import fetch_news
 from .publish import publish_short
 from .qa import run_qa
-from .script import BANNED_TITLE, SCRIPT_SCHEMA
+from .script import BANNED_TITLE, SCRIPT_SCHEMA, strip_script_dashes
 from .shorts import make_short
 
 DAILY_SCHEMA = {
@@ -77,6 +77,8 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
             "120-160 spoken words, a specific hook on the first line, one clear idea with a payoff and human stakes. "
             "The Short must stand alone without a long video. Title under 50 characters. "
             "No income promises, medical/legal/financial advice, fabricated claims or unsupported statistics. "
+            "Use simple natural spoken English without filler or generic transitions. Hedge uncertain causes, "
+            "attribute every statistic in-line and use no em dashes. "
             "Include attributable source URLs in facts_check and description. Use a generic physical footage query. "
             f"Do not repeat any of these recent topics or titles: {json.dumps(recent)}"
         )
@@ -86,6 +88,7 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
             raise RuntimeError("Daily Short script outside 120-160 word range")
         if any(f["confidence"] == "unverified" for f in data["facts_check"]):
             raise RuntimeError("Daily Short contains unverified claims")
+    data = strip_script_dashes(data)
     if BANNED_TITLE.search(data["hook_title"]):
         raise RuntimeError("Daily Short title failed policy guardrail")
     content_id = f"{prefix}{slugify(topic['topic'], 40)}"

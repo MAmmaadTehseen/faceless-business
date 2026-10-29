@@ -83,3 +83,5 @@ Open, in order:
 run_all, sync, engage, optimize, review) · `dashboard/` (Next.js 15, root dir on Vercel = `dashboard`) ·
 `supabase/schema.sql` + `migrations/` · `scripts/` (youtube_auth, meta_token, brand) · `docs/setup/channel-setup-brief.md`
 (full manual account-setup procedure) · `docs/privacy.html` (GitHub Pages privacy policy) · `.env.example` (every variable).
+
+Blog writing rules live in `persona/blog-rules.md`; transferable video script writing rules live in `persona/formulas.md`.

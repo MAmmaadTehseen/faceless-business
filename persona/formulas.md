@@ -32,3 +32,6 @@ Line 1: the hook (a claim, a number, or a contradiction). Lines 2-6: one idea, o
 
 ## Thumbnail text
 Max three words. All caps. One emotional word allowed. Must make sense next to the title without repeating it.
+
+## Writing Rules Shared With Articles
+Each part of the five-part sequence must introduce a genuinely different angle. Every paragraph adds information instead of restating an earlier point. Write simple, natural spoken English without filler, AI phrasing, generic transitions or repetitive conclusions. Hedge uncertain causes with "can", "may", or "may indicate". Attribute every statistic in-line to a named source. Keep claims bounded by the evidence; no medical, legal, financial or income promises. Do not use em dashes in narration, captions, titles, descriptions or Shorts. Use punctuation that reads naturally aloud. See `persona/blog-rules.md` for the article-specific structure and SEO checks.

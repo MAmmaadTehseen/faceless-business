@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 
 export type Article = {
   id: string; content_id: string; channel: string; slug: string; title: string;
+  meta_title: string | null; meta_description: string | null; primary_keyword: string | null;
+  faqs: {question: string; answer: string}[] | null; entities: string[] | null;
+  quick_answer: string | null; takeaways: string[] | null;
   excerpt: string; body_md: string; youtube_id: string | null; published_at: string;
 };
 function db() {

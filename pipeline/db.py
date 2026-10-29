@@ -11,6 +11,7 @@ from typing import Any
 from .common import DATA_DIR, log
 
 JSON_COLS = {
+    "articles": {"faqs", "entities", "takeaways"},
     "content": {"title_variants", "chapters", "tags"},
     "settings": {"value"},
 }
@@ -58,6 +59,10 @@ class DB:
                 self.conn.execute(stmt)
             except sqlite3.OperationalError:
                 pass
+        existing = {r[1] for r in self.conn.execute("pragma table_info(articles)")}
+        for column in ("meta_title", "meta_description", "primary_keyword", "faqs", "entities", "quick_answer", "takeaways"):
+            if column not in existing:
+                self.conn.execute(f"alter table articles add column {column} text")
         self.conn.commit()
 
     # ---------- generic ops ----------
