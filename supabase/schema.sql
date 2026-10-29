@@ -284,7 +284,9 @@ insert into storage.buckets (id, name, public) values ('youtube-queue', 'youtube
 on conflict (id) do nothing;
 
 -- Mirror migration 011: keep this block synchronized with that migration.
--- Apply as postgres after migrations 002-010. Atomic and safe to re-run.
+-- Migration 011: server-only public schema and scoped Storage access.
+-- Apply as postgres after migrations 002-010. Safe to re-run.
+-- Public-schema hardening is atomic; managed Storage changes are best-effort.
 begin;
 
 -- Revoke existing grants explicitly; default privileges affect only future objects.
@@ -400,9 +402,16 @@ alter function public.hub_analytics(timestamptz, timestamptz, text)
 revoke all on function public.hub_analytics(timestamptz, timestamptz, text) from public, anon, authenticated;
 grant execute on function public.hub_analytics(timestamptz, timestamptz, text) to service_role;
 
+commit;
+
 -- Storage's managed tables retain their grants. Restrictive policies constrain
 -- even pre-existing broad permissive policies, without changing other buckets.
+-- Hosted postgres may not own these tables. Each exception handler rolls back
+-- only its own Storage changes; public-schema hardening is already committed.
 -- Public URL downloads of media bypass RLS; leave that bucket's public flag alone.
+do $storage$
+declare
+  policy_sql constant text := $policies$
 alter table storage.objects enable row level security;
 drop policy if exists hardening_media_read on storage.objects;
 create policy hardening_media_read on storage.objects for select to anon
@@ -423,9 +432,50 @@ create policy hardening_storage_update on storage.objects as restrictive for upd
 drop policy if exists hardening_storage_delete on storage.objects;
 create policy hardening_storage_delete on storage.objects as restrictive for delete to anon, authenticated
   using (bucket_id not in ('media', 'youtube-queue'));
+$policies$;
+begin
+  if not exists (
+    select from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'storage' and c.relname = 'objects'
+      and (pg_has_role(current_user, c.relowner, 'USAGE')
+        or (select rolsuper from pg_roles where rolname = current_user))
+  ) then
+    raise notice 'Storage policies skipped: % is not an owner of storage.objects. Apply through Supabase dashboard (Storage > Policies) / storage policy UI using these exact definitions:%',
+      current_user, chr(10) || policy_sql;
+    return;
+  end if;
+  execute policy_sql;
+exception when insufficient_privilege then
+  raise notice 'Storage policies rolled back: %. Apply through Supabase dashboard (Storage > Policies) / storage policy UI using these exact definitions:%',
+    SQLERRM, chr(10) || policy_sql;
+end;
+$storage$;
+
 -- A public bucket bypasses download RLS. Enforce private queue even if drifted.
+-- Guard separately so a policy ownership failure does not skip this update.
+do $storage$
+declare
+  bucket_sql constant text := $bucket$
 update storage.buckets set public = false where id = 'youtube-queue';
-commit;
+$bucket$;
+begin
+  if not (has_table_privilege(current_user, 'storage.buckets', 'UPDATE')
+    and has_table_privilege(current_user, 'storage.buckets', 'SELECT')) then
+    raise notice 'Storage bucket update skipped: % lacks privileges. In Supabase dashboard Storage, set youtube-queue to private (public OFF); Storage > Policies / storage policy UI fallback SQL:%',
+      current_user, chr(10) || bucket_sql;
+    return;
+  end if;
+  execute bucket_sql;
+  -- RLS can silently filter UPDATE; verify the queue is not still public.
+  if exists (select from storage.buckets where id = 'youtube-queue' and public) then
+    raise notice 'youtube-queue is still public. In Supabase dashboard Storage, set youtube-queue to private (public OFF); Storage > Policies / storage policy UI fallback SQL:%',
+      chr(10) || bucket_sql;
+  end if;
+exception when insufficient_privilege then
+  raise notice 'Storage bucket update rolled back: %. In Supabase dashboard Storage, set youtube-queue to private (public OFF); Storage > Policies / storage policy UI fallback SQL:%',
+    SQLERRM, chr(10) || bucket_sql;
+end;
+$storage$;
 
 -- Run after COMMIT so these notices describe the committed grants. Catalog views
 -- show grants visible to the executing role; inherited role access needs review too.

@@ -111,6 +111,7 @@ Hub includes sitemap/robots, canonical and English alternate URLs, page metadata
 
 ## RLS regression check
 Apply `supabase/migrations/011_rls_hardening.sql` as postgres after migrations 002–010.
+Hosted postgres may lack ownership of managed Storage tables; migration 011 skips denied Storage changes with NOTICEs containing exact SQL to apply through Storage > Policies (storage policy UI), and the youtube-queue bucket must be set private in the dashboard when its update is denied.
 Run `python3 scripts/check_rls.py` after **every migration**, with `SUPABASE_URL` and
 owner-supplied `SUPABASE_ANON_KEY` exported in your shell. The script never reads `.env`
 or uses a service key. Missing configuration exits 2; failed or unverified checks exit 1.
