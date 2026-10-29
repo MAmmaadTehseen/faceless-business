@@ -14,6 +14,9 @@ on:
         type: choice
         options: ["", private, public, unlisted]
         required: false
+permissions:
+  contents: write
+  actions: read
 jobs:
   shorts:
     strategy:

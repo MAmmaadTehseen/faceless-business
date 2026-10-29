@@ -3,6 +3,9 @@ on:
   schedule:
     - cron: "15 */6 * * *"
   workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -10,6 +13,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      GH_TOKEN: ${{ github.token }}
       YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
       YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
       YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}

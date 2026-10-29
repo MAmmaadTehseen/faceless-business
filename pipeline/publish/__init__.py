@@ -22,13 +22,19 @@ def _next_slot(db, kind: str, channel: Channel | None = None) -> datetime:
     return base
 
 
+BIG_FILE = 45 * 1024 * 1024   # Supabase free tier caps objects at 50 MB; larger queued files go to a GitHub release
+
+
 def _persist_queue(db, row):
-    """Store privately so another Actions runner can drain the queue."""
+    """Store privately so another Actions runner can drain the queue. Big files go to a release asset (key = URL)."""
     fields = {}
     if db.sb:
         for column, key_column in (("file_path", "media_key"), ("thumbnail_path", "thumbnail_key")):
             if row.get(column):
                 path = Path(row[column])
+                if path.stat().st_size > BIG_FILE:
+                    fields[key_column] = meta._github_release_url(path, tag=f"queue-{datetime.now(timezone.utc):%Y%m%d}")
+                    continue
                 key = f"{row['id']}/{path.name}"
                 db.sb.storage.from_("youtube-queue").upload(key, path.read_bytes(),
                     {"upsert": "true", "content-type": "video/mp4" if column == "file_path" else "image/jpeg"})
@@ -42,10 +48,20 @@ def _restore_queue(db, row, pub):
         work = OUT_DIR / row["id"]
         work.mkdir(parents=True, exist_ok=True)
         for column, key_column in (("file_path", "media_key"), ("thumbnail_path", "thumbnail_key")):
-            if pub.get(key_column):
-                target = work / Path(pub[key_column]).name
-                target.write_bytes(db.sb.storage.from_("youtube-queue").download(pub[key_column]))
-                row[column] = str(target)
+            key = pub.get(key_column)
+            if not key:
+                continue
+            target = work / Path(key).name
+            if key.startswith("https://"):
+                import requests
+                with requests.get(key, stream=True, timeout=900) as r:
+                    r.raise_for_status()
+                    with open(target, "wb") as fh:
+                        for chunk in r.iter_content(1 << 20):
+                            fh.write(chunk)
+            else:
+                target.write_bytes(db.sb.storage.from_("youtube-queue").download(key))
+            row[column] = str(target)
     return row
 
 
@@ -93,12 +109,18 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
         db.update("content", {"id": row["id"]}, {"status": "published"})
         if draining and db.sb:
             keys = [existing[k] for k in ("media_key", "thumbnail_key") if existing.get(k)]
-            if keys:
-                try:
-                    db.sb.storage.from_("youtube-queue").remove(keys)
+            try:
+                bucket_keys = [k for k in keys if not k.startswith("https://")]
+                if bucket_keys:
+                    db.sb.storage.from_("youtube-queue").remove(bucket_keys)
+                for url in (k for k in keys if k.startswith("https://")):
+                    tag, name = url.rsplit("/", 2)[-2:]
+                    import subprocess
+                    subprocess.run(["gh", "release", "delete-asset", tag, name, "-y"], capture_output=True)
+                if keys:
                     db.update("publications", {"id": existing["id"]}, {"media_key": None, "thumbnail_key": None})
-                except Exception:
-                    log.warning("queue media cleanup deferred for %s", row["id"])
+            except Exception:
+                log.warning("queue media cleanup deferred for %s", row["id"])
         return {"platform": "youtube", "content_id": row["id"], **r}
     except Exception as e:
         log.error("youtube upload failed for %s (%s)", row["id"], type(e).__name__)

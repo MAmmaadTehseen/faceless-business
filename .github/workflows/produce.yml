@@ -20,6 +20,9 @@ on:
 concurrency:
   group: produce-${{ github.event.inputs.channel || github.event.schedule }}
   cancel-in-progress: false
+permissions:
+  contents: write
+  actions: read
 jobs:
   produce:
     runs-on: ubuntu-latest
