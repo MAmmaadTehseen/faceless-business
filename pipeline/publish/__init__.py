@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ..common import Channel, log, now_iso
 from . import meta, youtube
-from .quota import UPLOAD_COST, THUMB_COST, UPDATE_COST, reserve
+from .quota import THUMB_COST, UPDATE_COST, reserve
 
 
 def _next_slot(db, kind: str, channel: Channel | None = None) -> datetime:
@@ -81,8 +81,8 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
     if not video.exists():
         raise FileNotFoundError(f"Queued media missing for {row['id']}")
     thumbnail = Path(row["thumbnail_path"]) if row.get("thumbnail_path") else None
-    units = UPLOAD_COST + (THUMB_COST if thumbnail and thumbnail.exists() else 0)
-    if force_queue or not reserve(db, units):
+    units = THUMB_COST if thumbnail and thumbnail.exists() else 0
+    if force_queue or not reserve(db, units, uploads=1):
         fields = {}
         if not draining:
             db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued",

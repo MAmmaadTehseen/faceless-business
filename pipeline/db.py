@@ -38,6 +38,8 @@ class DB:
     # ---------- sqlite bootstrap ----------
     def _init_sqlite(self):
         sql = (Path(__file__).resolve().parent.parent / "supabase" / "schema.sql").read_text()
+        # Remaining objects are Postgres-only telemetry, RPCs and grants.
+        sql = sql.split("-- First-party, cookie-free hub telemetry.", 1)[0]
         # Coerce Postgres types to SQLite.
         sql = (sql.replace("bigserial primary key", "integer primary key autoincrement")
                   .replace("timestamptz default now()", "text default (datetime('now'))")
@@ -49,7 +51,8 @@ class DB:
         sql = "\n".join(l for l in sql.splitlines() if not l.strip().startswith("alter table"))
         # Includes articles from schema.sql; the same type coercion applies to its timestamps.
         self.conn.executescript(sql)
-        for stmt in ("alter table content add column channel text not null default 'futurework'",
+        for stmt in ("alter table quota_log add column uploads int not null default 0",
+                     "alter table content add column channel text not null default 'futurework'",
                      "alter table topic_queue add column channel text not null default 'futurework'",
                      "alter table content add column placeholder boolean default false",
                      "alter table content add column media_url text",

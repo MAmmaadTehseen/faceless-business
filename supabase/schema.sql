@@ -106,6 +106,7 @@ insert into settings (key, value) values
   ('long_videos_per_run', '1'),
   ('shorts_per_long', '4'),
   ('youtube_quota_units_per_day', '10000'),
+  ('youtube_uploads_per_day', '100'),
   ('auto_reply', '{"youtube": true, "instagram": true, "facebook": true}'),
   ('auto_like', '{"facebook": true}'),
   ('max_replies_per_day', '40'),
@@ -158,7 +159,8 @@ create table if not exists articles (
 
 alter table articles enable row level security;
 
-create table if not exists quota_log (day text primary key, units int not null default 0);
+create table if not exists quota_log (day text primary key, units int not null default 0, uploads int not null default 0);
+alter table quota_log add column if not exists uploads int not null default 0;
 alter table quota_log enable row level security;
 -- First-party, cookie-free hub telemetry. No anonymous or authenticated access.
 create table if not exists public.hub_events (
@@ -231,3 +233,163 @@ select jsonb_build_object(
 $$;
 revoke all on function public.hub_analytics(timestamptz,timestamptz,text) from public,anon,authenticated;
 grant execute on function public.hub_analytics(timestamptz,timestamptz,text) to service_role;
+
+-- Complete fresh-install objects previously supplied only by migrations.
+-- Optional sharing summary and accurate modification dates for article metadata/sitemaps.
+alter table articles add column if not exists summary_for_og text;
+alter table articles add column if not exists updated_at timestamptz;
+
+create or replace function set_article_updated_at() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+drop trigger if exists articles_updated_at on articles;
+create trigger articles_updated_at before update on articles
+for each row when (old.* is distinct from new.*)
+execute function set_article_updated_at();
+
+drop function if exists public.reserve_youtube_quota(int, int);
+create or replace function reserve_youtube_quota(p_units int, p_uploads int, p_reserve int, p_upload_reserve int) returns boolean
+language plpgsql security definer set search_path = pg_catalog, public as $$
+declare
+  d text := to_char(now() at time zone 'UTC', 'YYYY-MM-DD');
+  spent int;
+  uploaded int;
+  budget int;
+  upload_budget int;
+begin
+  if p_units is null or p_uploads is null or p_reserve is null or p_upload_reserve is null
+     or p_units < 0 or p_uploads < 0 or (p_units = 0 and p_uploads = 0) then
+    return false;
+  end if;
+  insert into public.quota_log(day, units, uploads) values(d, 0, 0) on conflict(day) do nothing;
+  select units, uploads into spent, uploaded from public.quota_log where day = d for update;
+  select (value #>> '{}')::int into budget from public.settings where key = 'youtube_quota_units_per_day';
+  select (value #>> '{}')::int into upload_budget from public.settings where key = 'youtube_uploads_per_day';
+  if spent + p_units > coalesce(budget, 10000) - greatest(p_reserve, 0)
+     or uploaded + p_uploads > coalesce(upload_budget, 100) - greatest(p_upload_reserve, 0) then
+    return false;
+  end if;
+  update public.quota_log set units = spent + p_units, uploads = uploaded + p_uploads where day = d;
+  return true;
+end;
+$$;
+revoke all on function reserve_youtube_quota(int, int, int, int) from public, anon, authenticated;
+grant execute on function reserve_youtube_quota(int, int, int, int) to service_role;
+-- Private durable files for future sync runners.
+insert into storage.buckets (id, name, public) values ('youtube-queue', 'youtube-queue', false)
+on conflict (id) do nothing;
+
+-- Mirror migration 010: keep this block synchronized with that migration.
+-- Apply as postgres after migrations 002-009. Atomic and safe to re-run.
+begin;
+
+-- service_role has BYPASSRLS; FORCE ROW LEVEL SECURITY is unnecessary and
+-- would not constrain it. Server clients must continue using service_role.
+do $$
+declare obj record;
+begin
+  for obj in select schemaname, tablename from pg_tables where schemaname = 'public'
+  loop
+    execute format('alter table %I.%I enable row level security', obj.schemaname, obj.tablename);
+  end loop;
+  -- No public-schema policies are required by our server-only clients.
+  for obj in select schemaname, tablename, policyname from pg_policies where schemaname = 'public'
+  loop
+    execute format('drop policy %I on %I.%I', obj.policyname, obj.schemaname, obj.tablename);
+  end loop;
+  -- Include views, materialized views, partitioned tables and sequences too.
+  -- PUBLIC must also be revoked: privileges inherited from it survive a
+  -- direct revoke from anon/authenticated.
+  for obj in select c.relname, c.relkind from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind in ('r','p','v','m','f','S')
+  loop
+    execute format('revoke all privileges on %s public.%I from public, anon, authenticated',
+      case when obj.relkind = 'S' then 'sequence' else 'table' end, obj.relname);
+  end loop;
+  -- Table-level REVOKE does not remove separately granted column privileges.
+  for obj in select c.relname, a.attname from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_attribute a on a.attrelid = c.oid
+    where n.nspname = 'public' and c.relkind in ('r','p','v','m','f')
+      and a.attnum > 0 and not a.attisdropped and a.attacl is not null
+  loop
+    execute format('revoke all privileges (%I) on table public.%I from public, anon, authenticated',
+      obj.attname, obj.relname);
+  end loop;
+  for obj in select p.oid, p.proname, p.prokind from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'
+  loop
+    execute format('revoke all privileges on %s public.%I(%s) from public, anon, authenticated',
+      case when obj.prokind = 'p' then 'procedure' else 'function' end,
+      obj.proname, pg_get_function_identity_arguments(obj.oid));
+  end loop;
+end;
+$$;
+
+alter default privileges for role postgres in schema public
+  revoke all on tables from public, anon, authenticated;
+alter default privileges for role postgres in schema public
+  revoke all on sequences from public, anon, authenticated;
+alter default privileges for role postgres in schema public
+  revoke all on functions from public, anon, authenticated;
+-- A schema-local REVOKE cannot undo the global default EXECUTE for PUBLIC.
+alter default privileges for role postgres revoke execute on functions from public;
+
+-- Support both the original quota RPC and the concurrent upload-count migration.
+-- Harden every installed overload instead of assuming one argument signature.
+do $$
+declare obj record;
+begin
+  if not exists (select from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname='reserve_youtube_quota') then
+    raise exception 'Install the quota migration before RLS hardening';
+  end if;
+  for obj in select p.oid, p.proname from pg_proc p
+    join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname='reserve_youtube_quota' and p.prokind='f'
+  loop
+    execute format('alter function public.%I(%s) security definer set search_path = pg_catalog, public',
+      obj.proname, pg_get_function_identity_arguments(obj.oid));
+    execute format('revoke all on function public.%I(%s) from public, anon, authenticated',
+      obj.proname, pg_get_function_identity_arguments(obj.oid));
+    execute format('grant execute on function public.%I(%s) to service_role',
+      obj.proname, pg_get_function_identity_arguments(obj.oid));
+  end loop;
+end;
+$$;
+alter function public.hub_analytics(timestamptz, timestamptz, text)
+  security invoker set search_path = pg_catalog, public;
+revoke all on function public.hub_analytics(timestamptz, timestamptz, text) from public, anon, authenticated;
+grant execute on function public.hub_analytics(timestamptz, timestamptz, text) to service_role;
+
+-- Storage's managed tables retain their grants. Restrictive policies constrain
+-- even pre-existing broad permissive policies, without changing other buckets.
+-- Public URL downloads of media bypass RLS; leave that bucket's public flag alone.
+alter table storage.objects enable row level security;
+drop policy if exists hardening_media_read on storage.objects;
+create policy hardening_media_read on storage.objects for select to anon
+  using (bucket_id = 'media');
+drop policy if exists hardening_anon_read_scope on storage.objects;
+create policy hardening_anon_read_scope on storage.objects as restrictive for select to anon
+  using (bucket_id <> 'youtube-queue');
+drop policy if exists hardening_authenticated_read_scope on storage.objects;
+create policy hardening_authenticated_read_scope on storage.objects as restrictive for select to authenticated
+  using (bucket_id not in ('media', 'youtube-queue'));
+drop policy if exists hardening_storage_insert on storage.objects;
+create policy hardening_storage_insert on storage.objects as restrictive for insert to anon, authenticated
+  with check (bucket_id not in ('media', 'youtube-queue'));
+drop policy if exists hardening_storage_update on storage.objects;
+create policy hardening_storage_update on storage.objects as restrictive for update to anon, authenticated
+  using (bucket_id not in ('media', 'youtube-queue'))
+  with check (bucket_id not in ('media', 'youtube-queue'));
+drop policy if exists hardening_storage_delete on storage.objects;
+create policy hardening_storage_delete on storage.objects as restrictive for delete to anon, authenticated
+  using (bucket_id not in ('media', 'youtube-queue'));
+-- A public bucket bypasses download RLS. Enforce private queue even if drifted.
+update storage.buckets set public = false where id = 'youtube-queue';
+commit;

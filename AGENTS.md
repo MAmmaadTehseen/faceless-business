@@ -47,13 +47,17 @@ one per channel), shorts (daily 09:30 UTC, all three channels), sync (6h), engag
 - YouTube's 2026 inauthentic-content rule: channels must stay distinct (voice, style, persona, schedule).
 
 - Each long video requests four distinct-angle Shorts (channel `shorts_per_long: 4`); each Short gets its own QA including vision on real footage.
-- YouTube upload quota is shared across channels: default `youtube_quota_units_per_day=10000`,
-  1600/upload + 50/thumbnail, with 1000 units reserved for sync/engage. Atomic UTC-day reservations
-  include failed/uncertain attempts. At 10k, only five uploads fit; subsequent uploads queue.
+- YouTube quotas are shared across channels in two independent UTC-day buckets:
+  `youtube_uploads_per_day=100` (one per videos.insert attempt, with 2 reserved for retries),
+  and `youtube_quota_units_per_day=10000` (50 per thumbnail/update/reply, with 1000 reserved
+  for sync/engage reads). Atomic reservations check both buckets and retain failed/uncertain
+  attempts; uploads do not consume general units. Uploads queue if either bucket is full.
   Sync drains each channel's queue oldest-first every 6h. Public Meta Reels still publish immediately.
   Queued files live in private Supabase Storage `youtube-queue`, so fresh runners can drain them.
-  Apply `supabase/migrations/004_quota.sql` before deploying (also required after a fresh schema install:
-  adds the reservation RPC and private storage bucket). Increase to 26000 only after Google approves.
+  Apply migration 004 then `supabase/migrations/010_quota_uploads.sql` before deploying;
+  migration 010 is required for existing databases as well.
+  The dashboard's `youtube_quota_units_per_day` field stays; `youtube_uploads_per_day` exists
+  as a setting. TODO for the next dashboard job: add its dashboard field.
 - `python -m pipeline.shorts_daily --channel <key>` produces one standalone Short daily using the
   channel persona/voice, 14-day topic avoidance, and CostGuard estimate $0.30; supports `--dry-run`,
   `--placeholder`, `--no-publish`, `--privacy`. `.github/workflows/shorts.yml` runs all channels at 09:30 UTC.
@@ -103,3 +107,4 @@ Blog writing rules live in `persona/blog-rules.md`; transferable video script wr
 
 ## Hub SEO
 Hub includes sitemap/robots, canonical and English alternate URLs, page metadata and Twitter cards, static shared OG artwork and dynamic article OG PNGs, Article/FAQ/Breadcrumb/Video JSON-LD, RSS (global and per channel), related and previous/next stories, next/image thumbnails and a tracked lite YouTube facade. URLs omit trailing slashes; `NEXT_PUBLIC_SITE_URL` defaults to https://hub.ammaad.online. Optional `GOOGLE_SITE_VERIFICATION` supports Search Console. Apply `supabase/migrations/009_hub_seo.sql` for sharing summaries and modification dates. New article slugs are at most 60 characters; existing URLs are preserved. Setup and verification instructions: `hub/README.md`.
+
