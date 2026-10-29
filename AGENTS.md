@@ -58,9 +58,12 @@ Open, in order:
    `META_*_<KEY>` values into `.env` -> GitHub secrets -> Vercel env. The old un-suffixed META values are invalid.
 3. YouTube API compliance audit + quota form for the Future Work channel (owner only). Demo login for
    Google's reviewer: user `reviewer`, password = `DASHBOARD_REVIEWER_PASSWORD`, at /login. Evidence in `docs/evidence/`.
-4. Hub: name "Plainsight Media", site at https://hub.ammaad.online (CNAME to Vercel like the dashboard),
-   one hub Facebook Page. Blog = static Next.js or Astro site that publishes one article per video
-   (script -> article via Claude, embeds the YouTube video, links all three channels). Not started.
+4. Hub: Plainsight Media implemented in `hub/` (Next.js 15, ISR, server-only Supabase reads),
+   with channel pages, Markdown articles, YouTube embeds, about/privacy pages. `pipeline/article.py`
+   converts long scripts via Claude after successful YouTube upload; dry runs create fixture articles without API calls.
+   Owner: run `supabase/migrations/003_articles.sql`, create a Vercel project with root `hub`,
+   add SUPABASE_URL + SUPABASE_SERVICE_KEY, and CNAME hub.ammaad.online to Vercel's supplied target.
+   Optional Facebook URL overrides are documented in `hub/README.md`; hub Facebook Page still needs creation.
 5. Phase 2: TikTok (funnel only, no payout in Pakistan). X skipped.
 
 ## Where things are

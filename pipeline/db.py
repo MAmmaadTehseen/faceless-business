@@ -46,6 +46,7 @@ class DB:
                   .replace("on conflict (key) do nothing", "")
                   .replace("insert into settings", "insert or ignore into settings"))
         sql = "\n".join(l for l in sql.splitlines() if not l.strip().startswith("alter table"))
+        # Includes articles from schema.sql; the same type coercion applies to its timestamps.
         self.conn.executescript(sql)
         for stmt in ("alter table content add column channel text not null default 'futurework'",
                      "alter table topic_queue add column channel text not null default 'futurework'",

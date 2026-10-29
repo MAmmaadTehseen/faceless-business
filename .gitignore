@@ -12,3 +12,7 @@ dashboard/.env*.local
 *.mp4
 *.wav
 !assets/music/*.mp3
+
+hub/node_modules/
+hub/.next/
+hub/.env*

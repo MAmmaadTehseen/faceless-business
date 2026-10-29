@@ -115,6 +115,15 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     if publish:
         from .publish import publish_all
         result["publications"] = publish_all(db, content_id, privacy or db.setting("publish_privacy", "private"), channel)
+    if dry_run or (publish and any(
+        p.get("platform") == "youtube" and p.get("content_id") == content_id
+        for p in result.get("publications", [])
+    )):
+        try:
+            from .article import write_article
+            write_article(db, content_id, claude=claude, dry_run=dry_run)
+        except Exception as e:
+            log.warning("article skipped for %s (%s)", content_id, type(e).__name__)
     write_json(out_dir / "result.json", result)
     return result
 
