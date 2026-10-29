@@ -3,6 +3,7 @@ export type Content = {
   channel: string;
   kind: "long" | "short";
   parent_id: string | null;
+  thumbnail_path?: string | null;
   topic: string;
   title: string;
   qa_status: string;
@@ -19,6 +20,7 @@ export type Publication = {
   url: string | null;
   privacy: string | null;
   status: string;
+  publish_at?: string | null;
   published_at: string | null;
   error: string | null;
 };
@@ -47,6 +49,8 @@ export type Comment = {
   flagged: boolean;
   flag_reason: string | null;
   draft_reply: string | null;
+  reply_text?: string | null;
+  reply_sent_at?: string | null;
   reply_status: string;
   liked: boolean;
 };

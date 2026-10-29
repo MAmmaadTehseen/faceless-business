@@ -1,22 +1,43 @@
 "use client";
+import { Section } from "./Section";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings } from "@/lib/types";
 import { CHANNELS, accentCss } from "@/lib/channels";
 
-const splitKeywords = (v: string) => v.split(/\r?\n|,/).map((x) => x.trim()).filter(Boolean);
+const splitKeywords = (v: string) =>
+  v
+    .split(/\r?\n|,/)
+    .map((x) => x.trim())
+    .filter(Boolean);
 
-export function SettingsForm({ initial }: { initial: Settings }) {
+export function SettingsForm({
+  initial,
+  readOnly = false,
+}: {
+  initial: Settings;
+  readOnly?: boolean;
+}) {
   const router = useRouter();
   const [s, setS] = useState<Settings>(initial);
-  const [keywords, setKeywords] = useState((initial.niche_keywords ?? []).join("\n"));
-  const [channelKeywords, setChannelKeywords] = useState<Record<string, string>>(() =>
-    Object.fromEntries(CHANNELS.map((c) => [c.key, (initial[`niche_keywords_${c.key}`] ?? []).join("\n")])),
+  const [keywords, setKeywords] = useState(
+    (initial.niche_keywords ?? []).join("\n"),
+  );
+  const [channelKeywords, setChannelKeywords] = useState<
+    Record<string, string>
+  >(() =>
+    Object.fromEntries(
+      CHANNELS.map((c) => [
+        c.key,
+        (initial[`niche_keywords_${c.key}`] ?? []).join("\n"),
+      ]),
+    ),
   );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof Settings>(k: K, v: Settings[K]) =>
+    setS((p) => ({ ...p, [k]: v }));
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -25,9 +46,15 @@ export function SettingsForm({ initial }: { initial: Settings }) {
     const payload: Settings = {
       ...s,
       niche_keywords: splitKeywords(keywords),
-      niche_keywords_futurework: splitKeywords(channelKeywords.futurework ?? ""),
-      niche_keywords_tradewinds: splitKeywords(channelKeywords.tradewinds ?? ""),
-      niche_keywords_escapevelocity: splitKeywords(channelKeywords.escapevelocity ?? ""),
+      niche_keywords_futurework: splitKeywords(
+        channelKeywords.futurework ?? "",
+      ),
+      niche_keywords_tradewinds: splitKeywords(
+        channelKeywords.tradewinds ?? "",
+      ),
+      niche_keywords_escapevelocity: splitKeywords(
+        channelKeywords.escapevelocity ?? "",
+      ),
     };
     const res = await fetch("/api/settings", {
       method: "PUT",
@@ -36,102 +63,213 @@ export function SettingsForm({ initial }: { initial: Settings }) {
     });
     setBusy(false);
     const json = await res.json().catch(() => ({}));
-    setMsg(res.ok ? "Saved." : json.error ?? "Save failed");
+    setMsg(res.ok ? "Saved." : (json.error ?? "Save failed"));
     if (res.ok) router.refresh();
   }
 
   return (
-    <form onSubmit={save} className="space-y-4">
-      <section className="card space-y-3">
-        <h2 className="section-title">Pipeline</h2>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={s.pipeline_paused} onChange={(e) => set("pipeline_paused", e.target.checked)} />
-          Pipeline paused
-        </label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Long videos per run">
-            <input type="number" min={0} value={s.long_videos_per_run} onChange={(e) => set("long_videos_per_run", Number(e.target.value))} className="w-full" />
-          </Field>
-          <Field label="Shorts per long">
-            <input type="number" min={0} value={s.shorts_per_long} onChange={(e) => set("shorts_per_long", Number(e.target.value))} className="w-full" />
-          </Field>
-          <Field label="YouTube quota units per day">
-            <input type="number" min={1000} step={1} value={s.youtube_quota_units_per_day ?? 10000} onChange={(e) => set("youtube_quota_units_per_day", Number(e.target.value))} className="w-full" />
-            <span className="text-xs text-muted">10,000 until Google approves the quota extension, then 26,000</span>
-          </Field>
-          <Field label="Publish privacy">
-            <select value={s.publish_privacy} onChange={(e) => set("publish_privacy", e.target.value as Settings["publish_privacy"])} className="w-full">
-              <option value="private">private</option>
-              <option value="public">public</option>
-            </select>
-          </Field>
-          <Field label="TTS voice">
-            <input value={s.tts_voice} onChange={(e) => set("tts_voice", e.target.value)} className="w-full" />
-          </Field>
-        </div>
-        <Field label="Niche keywords (one per line)">
-          <textarea rows={4} value={keywords} onChange={(e) => setKeywords(e.target.value)} className="w-full" />
-        </Field>
-      </section>
-
-      <section className="card space-y-3">
-        <h2 className="section-title">Per-channel keywords</h2>
-        <p className="text-xs text-muted">One per line. Leave a channel empty to use the defaults from its channel.json.</p>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {CHANNELS.map((c) => (
-            <Field key={c.key} label={
-              <span className="inline-flex items-center gap-1.5">
-                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: accentCss(c) }} />
-                {c.name}
-              </span>
-            }>
-              <textarea rows={6} value={channelKeywords[c.key] ?? ""} placeholder="(channel.json default)"
-                onChange={(e) => setChannelKeywords((p) => ({ ...p, [c.key]: e.target.value }))} className="w-full" />
-            </Field>
-          ))}
-        </div>
-      </section>
-
-      <section className="card space-y-3">
-        <h2 className="section-title">Engagement</h2>
-        <div className="flex flex-wrap gap-4 text-sm">
-          {(["youtube", "instagram", "facebook"] as const).map((p) => (
-            <label key={p} className="flex items-center gap-2">
-              <input type="checkbox" checked={!!s.auto_reply?.[p]}
-                onChange={(e) => set("auto_reply", { ...s.auto_reply, [p]: e.target.checked })} />
-              Auto-reply {p}
-            </label>
-          ))}
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={!!s.auto_like?.facebook}
-              onChange={(e) => set("auto_like", { facebook: e.target.checked })} />
-            Auto-like facebook
+    <form onSubmit={save}>
+      <fieldset disabled={readOnly} className="space-y-4">
+        <Section title="Pipeline">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={s.pipeline_paused}
+              onChange={(e) => set("pipeline_paused", e.target.checked)}
+            />
+            Pipeline paused
           </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Long videos per run">
+              <input
+                type="number"
+                min={0}
+                value={s.long_videos_per_run}
+                onChange={(e) =>
+                  set("long_videos_per_run", Number(e.target.value))
+                }
+                className="w-full"
+              />
+            </Field>
+            <Field label="Shorts per long">
+              <input
+                type="number"
+                min={0}
+                value={s.shorts_per_long}
+                onChange={(e) => set("shorts_per_long", Number(e.target.value))}
+                className="w-full"
+              />
+            </Field>
+            <Field label="YouTube quota units per day">
+              <input
+                type="number"
+                min={1000}
+                step={1}
+                value={s.youtube_quota_units_per_day ?? 10000}
+                onChange={(e) =>
+                  set("youtube_quota_units_per_day", Number(e.target.value))
+                }
+                className="w-full"
+              />
+              <span className="text-xs text-muted">
+                10,000 until Google approves the quota extension, then 26,000
+              </span>
+            </Field>
+            <Field label="Publish privacy">
+              <select
+                value={s.publish_privacy}
+                onChange={(e) =>
+                  set(
+                    "publish_privacy",
+                    e.target.value as Settings["publish_privacy"],
+                  )
+                }
+                className="w-full"
+              >
+                <option value="private">private</option>
+                <option value="public">public</option>
+              </select>
+            </Field>
+            <Field label="TTS voice">
+              <input
+                value={s.tts_voice}
+                onChange={(e) => set("tts_voice", e.target.value)}
+                className="w-full"
+              />
+            </Field>
+          </div>
+          <Field label="Niche keywords (one per line)">
+            <textarea
+              rows={4}
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              className="w-full"
+            />
+          </Field>
+        </Section>
+
+        <Section title="Per-channel keywords">
+          <p className="text-xs text-muted">
+            One per line. Leave a channel empty to use the defaults from its
+            channel.json.
+          </p>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {CHANNELS.map((c) => (
+              <Field
+                key={c.key}
+                label={
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      aria-hidden
+                      className="inline-block h-2 w-2 rounded-full"
+                      style={{ backgroundColor: accentCss(c) }}
+                    />
+                    {c.name}
+                  </span>
+                }
+              >
+                <textarea
+                  rows={6}
+                  value={channelKeywords[c.key] ?? ""}
+                  placeholder="(channel.json default)"
+                  onChange={(e) =>
+                    setChannelKeywords((p) => ({
+                      ...p,
+                      [c.key]: e.target.value,
+                    }))
+                  }
+                  className="w-full"
+                />
+              </Field>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="Engagement">
+          <p className="text-xs text-muted">
+            Apply these rules to new comments on the next engagement run.
+          </p>
+          <div className="flex flex-wrap gap-4 text-sm">
+            {(["youtube", "instagram", "facebook"] as const).map((p) => (
+              <label key={p} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!s.auto_reply?.[p]}
+                  onChange={(e) =>
+                    set("auto_reply", {
+                      ...s.auto_reply,
+                      [p]: e.target.checked,
+                    })
+                  }
+                />
+                Auto-reply {p}
+              </label>
+            ))}
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={!!s.auto_like?.facebook}
+                onChange={(e) =>
+                  set("auto_like", { facebook: e.target.checked })
+                }
+              />
+              Auto-like facebook
+            </label>
+          </div>
+          <Field label="Max replies per day">
+            <input
+              type="number"
+              min={0}
+              value={s.max_replies_per_day}
+              onChange={(e) =>
+                set("max_replies_per_day", Number(e.target.value))
+              }
+              className="w-full sm:w-48"
+            />
+          </Field>
+          <Field label="Reply tone notes">
+            <textarea
+              rows={3}
+              value={s.reply_tone_notes}
+              onChange={(e) => set("reply_tone_notes", e.target.value)}
+              className="w-full"
+            />
+          </Field>
+        </Section>
+
+        <Section title="Budget">
+          <Field label="Monthly budget (USD)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={s.monthly_budget_usd}
+              onChange={(e) =>
+                set("monthly_budget_usd", Number(e.target.value))
+              }
+              className="w-full sm:w-48"
+            />
+          </Field>
+        </Section>
+
+        <div className={`flex items-center gap-3 ${readOnly ? "hidden" : ""}`}>
+          <button className="btn btn-primary" disabled={busy}>
+            {busy ? "Saving..." : "Save settings"}
+          </button>
+          {msg && <span className="text-sm text-muted">{msg}</span>}
         </div>
-        <Field label="Max replies per day">
-          <input type="number" min={0} value={s.max_replies_per_day} onChange={(e) => set("max_replies_per_day", Number(e.target.value))} className="w-full sm:w-48" />
-        </Field>
-        <Field label="Reply tone notes">
-          <textarea rows={3} value={s.reply_tone_notes} onChange={(e) => set("reply_tone_notes", e.target.value)} className="w-full" />
-        </Field>
-      </section>
-
-      <section className="card space-y-3">
-        <h2 className="section-title">Budget</h2>
-        <Field label="Monthly budget (USD)">
-          <input type="number" min={0} step="0.01" value={s.monthly_budget_usd} onChange={(e) => set("monthly_budget_usd", Number(e.target.value))} className="w-full sm:w-48" />
-        </Field>
-      </section>
-
-      <div className="flex items-center gap-3">
-        <button className="btn btn-primary" disabled={busy}>{busy ? "Saving..." : "Save settings"}</button>
-        {msg && <span className="text-sm text-muted">{msg}</span>}
-      </div>
+      </fieldset>
     </form>
   );
 }
 
-function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block text-sm">
       <span className="mb-1 block text-muted">{label}</span>

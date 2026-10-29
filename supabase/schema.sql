@@ -63,6 +63,7 @@ create table if not exists comments (
   flagged boolean default false,             -- legal/medical/abuse: never auto-reply
   flag_reason text,
   draft_reply text,
+  reply_text text,
   reply_status text default 'new',           -- new | drafted | sent | skipped | failed
   reply_sent_at timestamptz,
   liked boolean default false,

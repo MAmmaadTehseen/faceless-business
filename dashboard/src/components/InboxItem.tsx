@@ -1,9 +1,23 @@
 "use client";
+import { PlatformIcon } from "./PlatformIcon";
+import { channelMeta } from "@/lib/channels";
 import { useState } from "react";
 import { Comment } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
 
-export function InboxItem({ comment, videoTitle }: { comment: Comment; videoTitle: string }) {
+export function InboxItem({
+  comment,
+  videoTitle,
+  owner,
+  channel,
+  url,
+}: {
+  comment: Comment;
+  videoTitle: string;
+  owner: boolean;
+  channel?: string | null;
+  url?: string;
+}) {
   const [text, setText] = useState(comment.draft_reply ?? "");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -30,34 +44,83 @@ export function InboxItem({ comment, videoTitle }: { comment: Comment; videoTitl
   return (
     <div className="card space-y-2">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-        <span className="badge">{comment.platform}</span>
-        <span className="truncate font-medium text-fg">{videoTitle || "(unknown video)"}</span>
+        <PlatformIcon platform={comment.platform} />
+        <span
+          className="w-2 h-2 rounded-full"
+          title={channelMeta(channel)?.name}
+          style={{ background: channelMeta(channel)?.brand.fg }}
+        />
+        <span className="truncate font-medium text-fg">
+          {videoTitle || "(unknown video)"}
+        </span>
         <span>{fmtDate(comment.posted_at)}</span>
         {comment.flagged && (
           <span className="badge badge-alert" title={comment.flag_reason ?? ""}>
             flagged{comment.flag_reason ? `: ${comment.flag_reason}` : ""}
           </span>
         )}
-        {liked && <span className="badge">liked</span>}
+        {url && (
+          <a
+            className="text-accent-fg"
+            href={
+              comment.platform === "youtube"
+                ? `${url}&lc=${encodeURIComponent(comment.platform_comment_id)}`
+                : url
+            }
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open on platform
+          </a>
+        )}
       </div>
-      <p className="text-sm"><b>{comment.author ?? "anon"}</b>: {comment.text}</p>
-      <textarea
-        className="w-full"
-        rows={3}
-        value={text}
-        placeholder="Reply..."
-        onChange={(e) => setText(e.target.value)}
-      />
-      {error && <p className="text-xs text-alert-fg">{error}</p>}
-      <div className="flex flex-wrap gap-2">
-        <button className="btn btn-primary" disabled={!!busy || !text.trim()} onClick={() => call("reply")}>
-          {busy === "reply" ? "Sending..." : "Send"}
-        </button>
-        <button className="btn" disabled={!!busy} onClick={() => call("skip")}>Skip</button>
-        <button className="btn" disabled={!!busy || comment.platform !== "facebook" || liked} onClick={() => call("like")}>
-          {busy === "like" ? "..." : liked ? "Liked" : "Like"}
-        </button>
-      </div>
+      <p className="text-sm">
+        <b>{comment.author ?? "anon"}</b>: {comment.text}
+      </p>
+      {comment.reply_status === "sent" ? (
+        <div className="border-l border-border pl-3 text-sm">
+          <p>{comment.reply_text ?? "replied automatically"}</p>
+          <span className="text-xs text-muted">
+            replied {fmtDate(comment.reply_sent_at ?? null)} ·{" "}
+            {comment.reply_text ? "owner" : "auto"}
+          </span>
+        </div>
+      ) : owner &&
+        ["new", "drafted", "failed"].includes(comment.reply_status) ? (
+        <>
+          <textarea
+            className="w-full"
+            rows={3}
+            value={text}
+            placeholder="Reply..."
+            onChange={(e) => setText(e.target.value)}
+          />
+          {error && <p className="text-xs text-alert-fg">{error}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="btn btn-primary"
+              disabled={!!busy || !text.trim()}
+              onClick={() => call("reply")}
+            >
+              {busy === "reply" ? "Sending..." : "Send"}
+            </button>
+            <button
+              className="btn"
+              disabled={!!busy}
+              onClick={() => call("skip")}
+            >
+              Skip
+            </button>
+            <button
+              className="btn"
+              disabled={!!busy || comment.platform !== "facebook" || liked}
+              onClick={() => call("like")}
+            >
+              {busy === "like" ? "..." : liked ? "Liked" : "Like"}
+            </button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
