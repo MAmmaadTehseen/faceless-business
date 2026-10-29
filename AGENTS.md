@@ -40,7 +40,7 @@ one per channel), shorts (daily 09:30 UTC, all three channels), sync (6h), engag
 - Uploads set `containsSyntheticMedia: true` and stay private + scheduled until Google's API compliance audit passes.
 - Titles: `BANNED_TITLE` regex in `pipeline/script.py` blocks income/medical/"while you sleep" claims. Keep it.
 - Two placeholder Shorts already on YouTube are intentionally kept (status `killed` in DB). Do not delete.
-- Budget guard stops at $95 month-to-date (`CostGuard` in `pipeline/common.py`). Every Claude call logs to `costs`.
+- Budget guard stops at the `monthly_budget_usd` setting (default $100, set on the Automation page) (`CostGuard` in `pipeline/common.py`). Every Claude call logs to `costs`.
 - Instagram uses the "Instagram API with Instagram Login" (graph.instagram.com, `IG_ACCESS_TOKEN_<KEY>` 60-day user token,
   refreshed by sync into the settings table as `ig_token_<key>`); Facebook Pages use graph.facebook.com with `META_ACCESS_TOKEN_<KEY>`.
   No Page-to-Instagram link is required. Reels publish only when publish_privacy is public.

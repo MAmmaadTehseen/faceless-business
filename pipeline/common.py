@@ -116,7 +116,7 @@ class CostGuard:
 
     def __init__(self, db):
         self.db = db
-        self.budget = min(95.0, float(db.setting("monthly_budget_usd", 95)))
+        self.budget = float(db.setting("monthly_budget_usd", 100))
 
     def mtd(self) -> float:
         return self.db.month_to_date_cost()
