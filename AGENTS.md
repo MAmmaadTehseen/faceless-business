@@ -41,7 +41,9 @@ one per channel), shorts (daily 09:30 UTC, all three channels), sync (6h), engag
 - Titles: `BANNED_TITLE` regex in `pipeline/script.py` blocks income/medical/"while you sleep" claims. Keep it.
 - Two placeholder Shorts already on YouTube are intentionally kept (status `killed` in DB). Do not delete.
 - Budget guard stops at $95 month-to-date (`CostGuard` in `pipeline/common.py`). Every Claude call logs to `costs`.
-- Each Instagram account needs its own Facebook Page; Meta env is `META_<NAME>_<CHANNELKEY>`.
+- Instagram uses the "Instagram API with Instagram Login" (graph.instagram.com, `IG_ACCESS_TOKEN_<KEY>` 60-day user token,
+  refreshed by sync into the settings table as `ig_token_<key>`); Facebook Pages use graph.facebook.com with `META_ACCESS_TOKEN_<KEY>`.
+  No Page-to-Instagram link is required. Reels publish only when publish_privacy is public.
 - YouTube's 2026 inauthentic-content rule: channels must stay distinct (voice, style, persona, schedule).
 
 - Each long video requests four distinct-angle Shorts (channel `shorts_per_long: 4`); each Short gets its own QA including vision on real footage.
@@ -65,9 +67,7 @@ all three, Instagram profiles branded, Meta app has all needed permissions.
 Open, in order:
 1. GitHub secrets still lack `YT_REFRESH_TOKEN_TRADEWINDS` and `YT_REFRESH_TOKEN_ESCAPEVELOCITY`
    (owner must run `gh secret set` from `.env`; agents are not allowed to). Until then only futurework can publish from the cloud.
-2. Meta: link each Instagram account to its Page (blocked by a temporary Facebook restriction on 2026-10-29),
-   then Graph API Explorer user token -> `python scripts/meta_token.py APP_ID APP_SECRET TOKEN` -> nine
-   `META_*_<KEY>` values into `.env` -> GitHub secrets -> Vercel env. The old un-suffixed META values are invalid.
+2. Meta: DONE 2026-10-29 via Instagram Login API. Owner must sync IG_ACCESS_TOKEN_<KEY> + META_IG_USER_ID_<KEY> + IG_APP_ID to GitHub secrets.
 3. YouTube API compliance audit + quota form SUBMITTED 2026-10-29 (project 6170817069, 10k general + 16k videos.insert/day;
    reviewer login `reviewer` / `DASHBOARD_REVIEWER_PASSWORD`). Awaiting Google's email reply. Evidence in `docs/evidence/`.
 4. Hub: Plainsight Media implemented in `hub/` (Next.js 15, ISR, server-only Supabase reads),
