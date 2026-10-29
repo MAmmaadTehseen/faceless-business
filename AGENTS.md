@@ -88,9 +88,12 @@ Open, in order:
 - Retry: failed YouTube uploads and failed replies get re-queued with an attempt counter, max 3 tries across syncs.
 - Hub: create the second Vercel project for hub.ammaad.online (root `hub`, include files outside root,
   SUPABASE_URL + SUPABASE_SERVICE_KEY) and the `hub` CNAME. Hub Facebook Page "Plainsight Media".
+- Hub SEO technicals: sitemap.xml, robots.txt, canonical URLs, Open Graph image per article, related-articles links,
+  Google Search Console verification + indexing API. Expect little organic traffic for 3-6 months on a new domain.
 - Instagram token refresh warned "grant type not supported" on day 1; re-check after 2026-11-05 (tokens expire 2026-12-28).
 
 ## Where things are
+Hub first-party analytics: `hub_events` (migration 008); dashboard `/analytics` Hub tab.
 `pipeline/` (common, db, ideate, script, tts, footage, render, thumbnail, shorts, qa, publish/{youtube,meta},
 run_all, sync, engage, optimize, review) · `dashboard/` (Next.js 15, root dir on Vercel = `dashboard`) ·
 `supabase/schema.sql` + `migrations/` · `scripts/` (youtube_auth, meta_token, brand) · `docs/setup/channel-setup-brief.md`
