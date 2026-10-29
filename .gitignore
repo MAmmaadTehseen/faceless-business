@@ -16,3 +16,5 @@ dashboard/.env*.local
 hub/node_modules/
 hub/.next/
 hub/.env*
+
+.claude/
