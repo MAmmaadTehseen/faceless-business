@@ -56,8 +56,8 @@ Open, in order:
 2. Meta: link each Instagram account to its Page (blocked by a temporary Facebook restriction on 2026-10-29),
    then Graph API Explorer user token -> `python scripts/meta_token.py APP_ID APP_SECRET TOKEN` -> nine
    `META_*_<KEY>` values into `.env` -> GitHub secrets -> Vercel env. The old un-suffixed META values are invalid.
-3. YouTube API compliance audit + quota form for the Future Work channel (owner only). Demo login for
-   Google's reviewer: user `reviewer`, password = `DASHBOARD_REVIEWER_PASSWORD`, at /login. Evidence in `docs/evidence/`.
+3. YouTube API compliance audit + quota form SUBMITTED 2026-10-29 (project 6170817069, 10k general + 16k videos.insert/day;
+   reviewer login `reviewer` / `DASHBOARD_REVIEWER_PASSWORD`). Awaiting Google's email reply. Evidence in `docs/evidence/`.
 4. Hub: Plainsight Media implemented in `hub/` (Next.js 15, ISR, server-only Supabase reads),
    with channel pages, Markdown articles, YouTube embeds, about/privacy pages. `pipeline/article.py`
    converts long scripts via Claude after successful YouTube upload; dry runs create fixture articles without API calls.
