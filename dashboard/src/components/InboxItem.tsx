@@ -34,7 +34,7 @@ export function InboxItem({ comment, videoTitle }: { comment: Comment; videoTitl
         <span className="truncate font-medium text-fg">{videoTitle || "(unknown video)"}</span>
         <span>{fmtDate(comment.posted_at)}</span>
         {comment.flagged && (
-          <span className="badge border-red-500/60 bg-red-500/10 text-red-500" title={comment.flag_reason ?? ""}>
+          <span className="badge badge-alert" title={comment.flag_reason ?? ""}>
             flagged{comment.flag_reason ? `: ${comment.flag_reason}` : ""}
           </span>
         )}
@@ -48,7 +48,7 @@ export function InboxItem({ comment, videoTitle }: { comment: Comment; videoTitl
         placeholder="Reply..."
         onChange={(e) => setText(e.target.value)}
       />
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-alert-fg">{error}</p>}
       <div className="flex flex-wrap gap-2">
         <button className="btn btn-primary" disabled={!!busy || !text.trim()} onClick={() => call("reply")}>
           {busy === "reply" ? "Sending..." : "Send"}

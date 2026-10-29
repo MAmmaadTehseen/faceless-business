@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase";
 import { Comment } from "@/lib/types";
 import { InboxItem } from "@/components/InboxItem";
 import { getChannelFilter } from "@/lib/channel-filter";
+import { PageHeader } from "@/components/PageHeader";
 
 const PLATFORMS = ["youtube", "instagram", "facebook"];
 
@@ -14,7 +15,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     .order("posted_at", { ascending: false, nullsFirst: false }).limit(channel === "all" ? 200 : 600);
   if (platform) q = q.eq("platform", platform);
   const { data, error } = await q;
-  if (error) return <p className="text-red-500">DB error: {error.message}</p>;
+  if (error) return <p className="text-alert-fg">DB error: {error.message}</p>;
   let comments = (data ?? []) as Comment[];
 
   // Resolve video titles and channels: publication -> content.
@@ -39,14 +40,16 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
 
   return (
     <div>
-      <h1 className="mb-3 text-xl font-semibold">Inbox <span className="text-sm font-normal text-muted">({comments.length})</span></h1>
-      <div className="mb-4 flex flex-wrap gap-1 text-sm">
-        <Link href="/inbox" className={`btn ${!platform ? "btn-primary" : ""}`}>All</Link>
-        {PLATFORMS.map((p) => (
-          <Link key={p} href={`/inbox?platform=${p}`} className={`btn ${platform === p ? "btn-primary" : ""}`}>{p}</Link>
-        ))}
-      </div>
-      {comments.length === 0 && <p className="text-muted">Inbox zero.</p>}
+      <PageHeader title="Inbox" count={comments.length} blurb="Comments waiting for a reply. Drafts are pre-written by Claude; edit, send or skip."
+        action={
+          <div className="flex flex-wrap gap-1 text-sm">
+            <Link href="/inbox" className={`btn ${!platform ? "btn-primary" : ""}`}>All</Link>
+            {PLATFORMS.map((p) => (
+              <Link key={p} href={`/inbox?platform=${p}`} className={`btn ${platform === p ? "btn-primary" : ""}`}>{p}</Link>
+            ))}
+          </div>
+        } />
+      {comments.length === 0 && <div className="card text-sm text-ok-fg">Inbox zero. Every comment has been answered or skipped.</div>}
       <div className="space-y-3">
         {comments.map((c) => (
           <InboxItem key={c.id} comment={c} videoTitle={c.publication_id != null ? titles.get(c.publication_id) ?? "" : ""} />

@@ -6,6 +6,7 @@ import { fmtDate, fmtUsd } from "@/lib/format";
 import { getChannelFilter } from "@/lib/channel-filter";
 import { CHANNELS, channelMeta } from "@/lib/channels";
 import { ChannelBadge, ChannelDot } from "@/components/ChannelBadge";
+import { PageHeader } from "@/components/PageHeader";
 
 export default async function CostsPage() {
   const now = new Date();
@@ -26,7 +27,7 @@ export default async function CostsPage() {
   const [settings, costsRes, contentRes, runsRes] = await Promise.all([
     getSettings().catch(() => null), costsQ, contentQ, runsQ,
   ]);
-  if (costsRes.error) return <p className="text-red-500">DB error: {costsRes.error.message}</p>;
+  if (costsRes.error) return <p className="text-alert-fg">DB error: {costsRes.error.message}</p>;
 
   const costs = (costsRes.data ?? []) as Cost[];
   const mtd = costs.reduce((a, c) => a + (c.usd ?? 0), 0);
@@ -67,28 +68,28 @@ export default async function CostsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold">
-        Costs {!all && <ChannelBadge channel={channel} />}
-      </h1>
+      <PageHeader title="Costs" blurb="Claude API spend logged by every pipeline step, plus the last runs and their logs.">
+        {!all && <ChannelBadge channel={channel} />}
+      </PageHeader>
 
-      <section className="card space-y-2">
-        <div className="grid grid-cols-3 gap-2 text-center">
+      <section className="card space-y-3">
+        <div className="grid grid-cols-3 gap-2 text-center sm:text-left">
           <Stat label="Month to date" value={fmtUsd(mtd)} />
           <Stat label="Projected" value={fmtUsd(projected)} warn={budget > 0 && projected > budget} />
           <Stat label="Budget" value={budget ? fmtUsd(budget) : "-"} />
         </div>
-        <div className="h-2 w-full overflow-hidden rounded bg-border">
-          <div className={`h-full ${pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-green-500"}`} style={{ width: `${pct}%` }} />
+        <div className="h-2 w-full overflow-hidden rounded-full bg-card-2">
+          <div className={`h-full rounded-full ${pct >= 90 ? "bg-alert shadow-[0_0_10px_var(--alert)]" : pct >= 70 ? "bg-warn" : "bg-accent"}`} style={{ width: `${pct}%` }} />
         </div>
         <p className="text-xs text-muted">
           {pct.toFixed(0)}% of budget used, day {daysElapsed} of {daysInMonth}.{" "}
-          <Link href="/automation" className="underline">Change budget</Link>
+          <Link href="/automation" className="text-accent-fg underline">Change budget</Link>
         </p>
       </section>
 
       {all && (
         <section className="card">
-          <h2 className="mb-2 font-medium">By channel (this month)</h2>
+          <h2 className="section-title mb-3">By channel (this month)</h2>
           <table className="w-full text-sm">
             <tbody>
               {channelRows.map((r) => (
@@ -114,7 +115,7 @@ export default async function CostsPage() {
       )}
 
       <section className="card">
-        <h2 className="mb-2 font-medium">By step (this month)</h2>
+        <h2 className="section-title mb-3">By step (this month)</h2>
         {steps.length === 0 && <p className="text-sm text-muted">No costs this month.</p>}
         <table className="w-full text-sm">
           <tbody>
@@ -130,7 +131,7 @@ export default async function CostsPage() {
       </section>
 
       <section className="card">
-        <h2 className="mb-2 font-medium">Per content (last 30)</h2>
+        <h2 className="section-title mb-3">Per content (last 30)</h2>
         {recent.length === 0 && <p className="text-sm text-muted">No content yet.</p>}
         <table className="w-full text-sm">
           <tbody>
@@ -150,13 +151,13 @@ export default async function CostsPage() {
       </section>
 
       <section className="card">
-        <h2 className="mb-2 font-medium">Last 20 runs</h2>
+        <h2 className="section-title mb-3">Last 20 runs</h2>
         {runs.length === 0 && <p className="text-sm text-muted">No runs yet.</p>}
         <ul className="divide-y divide-border text-sm">
           {runs.map((r) => (
             <li key={r.id} className="py-1.5">
               <div className="flex flex-wrap items-center gap-x-2">
-                <span className={`badge ${r.status === "failed" ? "border-red-500/60 text-red-500" : r.status === "ok" || r.status === "success" ? "text-green-600 dark:text-green-400" : ""}`}>{r.status ?? "?"}</span>
+                <span className={`badge ${r.status === "failed" ? "badge-alert" : r.status === "ok" || r.status === "success" ? "badge-ok" : ""}`}>{r.status ?? "?"}</span>
                 <span className="font-medium">{r.workflow ?? "run"}</span>
                 {all && <ChannelBadge channel={r.channel} />}
                 <span className="text-xs text-muted">{fmtDate(r.started_at)}{r.finished_at ? ` → ${fmtDate(r.finished_at)}` : ""}</span>
@@ -179,7 +180,7 @@ function Stat({ label, value, warn }: { label: string; value: string; warn?: boo
   return (
     <div>
       <div className="text-xs text-muted">{label}</div>
-      <div className={`text-lg font-semibold ${warn ? "text-red-500" : ""}`}>{value}</div>
+      <div className={`stat-value mt-1 ${warn ? "text-alert-fg" : ""}`}>{value}</div>
     </div>
   );
 }

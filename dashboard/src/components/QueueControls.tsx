@@ -27,12 +27,12 @@ export function AddTopicForm({ defaultChannel }: { defaultChannel?: ChannelKey }
 
   return (
     <form onSubmit={submit} className="flex flex-wrap gap-2">
-      <input className="min-w-0 flex-1" placeholder="New topic..." value={topic} onChange={(e) => setTopic(e.target.value)} />
+      <input className="min-w-0 flex-1 basis-full sm:basis-0" placeholder="New topic..." value={topic} onChange={(e) => setTopic(e.target.value)} />
       <select value={channel} onChange={(e) => setChannel(e.target.value as ChannelKey)} aria-label="Channel">
         {CHANNELS.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
       </select>
       <button className="btn btn-primary" disabled={busy || !topic.trim()}>Add</button>
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {error && <span className="text-xs text-alert-fg">{error}</span>}
     </form>
   );
 }
@@ -51,7 +51,7 @@ export function QueueRowActions({ id }: { id: number }) {
   return (
     <div className="flex gap-1">
       <button className="btn" disabled={busy} onClick={() => act("bump")}>+5</button>
-      <button className="btn text-red-500" disabled={busy} onClick={() => act("kill")}>Kill</button>
+      <button className="btn btn-danger" disabled={busy} onClick={() => act("kill")}>Kill</button>
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Nav } from "@/components/Nav";
+import { Shell } from "@/components/Nav";
 import { Banners } from "@/components/Banners";
 import { getChannelFilter } from "@/lib/channel-filter";
 
 export const metadata: Metadata = { title: "Faceless Dashboard" };
-export const viewport: Viewport = { width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0b1428" };
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,11 +13,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className="min-h-screen">
-        <Nav channel={channel} />
-        <main className="mx-auto max-w-5xl px-3 py-4 sm:px-6">
-          <Banners />
+        <Shell channel={channel} banners={<Banners />}>
           {children}
-        </main>
+        </Shell>
       </body>
     </html>
   );

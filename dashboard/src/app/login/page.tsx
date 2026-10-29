@@ -25,28 +25,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto mt-24 max-w-xs">
-      <h1 className="mb-1 text-xl font-semibold">Future Work Explained</h1>
-      <p className="mb-4 text-sm opacity-80">
-        Private publishing dashboard for the{" "}
-        <a href="https://www.youtube.com/@futurework.explained" className="underline">Future Work Explained YouTube channel</a>.
-        Uses YouTube API Services.
-      </p>
+    <div className="mx-auto mt-16 max-w-sm sm:mt-24">
+      <div className="mb-5">
+        <span aria-hidden className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-accent text-base font-bold text-white shadow-[0_0_24px_-4px_var(--accent)]">F</span>
+        <h1 className="text-xl font-semibold tracking-tight">Future Work Explained</h1>
+        <p className="mt-1 text-sm text-muted">
+          Private publishing dashboard for the{" "}
+          <a href="https://www.youtube.com/@futurework.explained" className="text-accent-fg underline">Future Work Explained YouTube channel</a>.
+          Uses YouTube API Services.
+        </p>
+      </div>
       <form onSubmit={submit} className="card space-y-3">
-        <input
-          type="password"
-          autoFocus
-          placeholder="Password"
-          className="w-full"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted">Password</span>
+          <input
+            type="password"
+            autoFocus
+            placeholder="Password"
+            className="w-full"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
+        {error && <p className="rounded-lg border border-alert/50 bg-alert-soft px-3 py-2 text-sm text-alert-fg">{error}</p>}
         <button className="btn btn-primary w-full" disabled={busy || !password}>
           {busy ? "..." : "Log in"}
         </button>
       </form>
-      <p className="mt-6 text-center text-xs opacity-80">
+      <p className="mt-6 text-center text-xs text-muted">
         <a href="/privacy" className="underline">Privacy Policy</a> · <a href="/terms" className="underline">Terms of Service</a> ·{" "}
         <a href="https://www.youtube.com/t/terms" className="underline">YouTube Terms</a> · <a href="https://policies.google.com/privacy" className="underline">Google Privacy Policy</a>
       </p>
