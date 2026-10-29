@@ -1,5 +1,8 @@
 "use client";
-import { useState } from "react";
+import { Fragment } from "react";
+import { metric } from "@/lib/content-filters";
+import { category } from "@/lib/categories";
+import { RelativeTime } from "./RelativeTime";
 import type { ContentItem } from "@/lib/content-data";
 import { channelMeta } from "@/lib/channels";
 import { PlatformIcon } from "./PlatformIcon";
@@ -10,19 +13,23 @@ export function views(c: ContentItem) {
 function Row({ c, compact = false }: { c: ContentItem; compact?: boolean }) {
   const m = channelMeta(c.channel);
   const ps = c.publications;
+  const scheduled = ps.find(
+    (p) =>
+      p.status === "scheduled" ||
+      p.privacy === "scheduled" ||
+      (p.publish_at && Date.parse(p.publish_at) > Date.now()),
+  );
   const abnormal =
     c.status === "failed" ||
     c.qa_status === "failed" ||
     ps.some((p) => p.status === "failed")
       ? "failed"
-      : ps.some(
-            (p) =>
-              p.privacy === "scheduled" ||
-              (p.publish_at && Date.parse(p.publish_at) > Date.now()),
-          )
-        ? `scheduled for ${fmtDate(ps.find((p) => p.publish_at)?.publish_at ?? null)}`
-        : c.status === "queued" || ps.some((p) => p.status === "queued")
-          ? "queued"
+      : c.status === "queued" || ps.some((p) => p.status === "queued")
+        ? "queued"
+        : scheduled
+          ? scheduled.publish_at
+            ? `scheduled for ${fmtDate(scheduled.publish_at)}`
+            : "scheduled"
           : !["published", "live", "rendered"].includes(c.status)
             ? c.status
             : "";
@@ -49,7 +56,8 @@ function Row({ c, compact = false }: { c: ContentItem; compact?: boolean }) {
           <span className="font-medium break-words">{c.title}</span>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted">
-          <span>{fmtDate(c.created_at)}</span>
+          <RelativeTime value={c.created_at} />
+          <span className="badge">{category(c)}</span>
           {["youtube", "instagram", "facebook"].map((platform) => {
             const p = ps.find((p) => p.platform === platform);
             return (
@@ -58,14 +66,31 @@ function Row({ c, compact = false }: { c: ContentItem; compact?: boolean }) {
                 platform={platform}
                 url={p?.url}
                 active={!!p?.url && ["published", "live"].includes(p.status)}
-                locked={!!p && p.privacy !== "public"}
+                locked={
+                  !!p &&
+                  (p.privacy !== "public" ||
+                    (!!p.publish_at && Date.parse(p.publish_at) > Date.now()))
+                }
               />
             );
           })}
           {abnormal && (
             <span
-              className={`badge ${abnormal === "failed" ? "badge-alert" : "badge-warn"}`}
+              className={`badge ${abnormal === "failed" ? "badge-alert" : abnormal.startsWith("scheduled") ? "badge-accent" : ""}`}
             >
+              {abnormal === "queued" && (
+                <svg
+                  aria-hidden
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <circle cx="8" cy="8" r="6" />
+                  <path d="M8 4v4l3 2" />
+                </svg>
+              )}
               {abnormal}
             </span>
           )}
@@ -86,7 +111,9 @@ function Row({ c, compact = false }: { c: ContentItem; compact?: boolean }) {
               <b>
                 {k === "ctr"
                   ? available.length
-                    ? `${(value / available.length).toFixed(1)}%`
+                    ? metric(c, "watch") >= 0
+                      ? `${metric(c, "watch").toFixed(1)}%`
+                      : "—"
                     : "—"
                   : fmtNum(value)}
               </b>
@@ -100,45 +127,40 @@ function Row({ c, compact = false }: { c: ContentItem; compact?: boolean }) {
     </div>
   );
 }
-function Group({ c, kids }: { c: ContentItem; kids: ContentItem[] }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-border last:border-0 py-3">
-      <Row c={c} />
-      {kids.length > 0 && (
-        <div className="mt-2 sm:ml-28">
-          <button
-            className="text-xs text-accent-fg"
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-          >
-            {open ? "▾" : "▸"} {kids.length} Shorts ·{" "}
-            {fmtNum(kids.reduce((n, k) => n + views(k), 0))} views
-          </button>
-          {open && kids.map((k) => <Row key={k.id} c={k} compact />)}
-        </div>
-      )}
-    </div>
-  );
-}
 export function ContentList({
   items,
-  limit = Number.POSITIVE_INFINITY,
+  limit = Infinity,
+  groupByDay = false,
 }: {
   items: ContentItem[];
   limit?: number;
+  groupByDay?: boolean;
 }) {
-  const ids = new Set(items.map((c) => c.id));
-  const roots = items.filter((c) => !c.parent_id || !ids.has(c.parent_id));
+  const shown = items.slice(0, limit);
+  const groups = new Map<string, ContentItem[]>();
+  for (const c of shown) {
+    const day = groupByDay ? c.created_at.slice(0, 10) : "";
+    groups.set(day, [...(groups.get(day) ?? []), c]);
+  }
   return (
     <div>
-      {!items.length && <p className="text-sm text-muted">No content.</p>}
-      {roots.slice(0, limit).map((c) => (
-        <Group
-          key={c.id}
-          c={c}
-          kids={items.filter((k) => k.parent_id === c.id)}
-        />
+      {!shown.length && (
+        <p className="text-sm text-muted">
+          No matching content. Clear filters or widen the date range.
+        </p>
+      )}
+      {[...groups].map(([day, rows]) => (
+        <Fragment key={day}>
+          {day && <h3 className="day-header">{day} UTC</h3>}
+          {rows.map((c) => (
+            <div
+              key={c.id}
+              className="border-b border-border py-3 last:border-0"
+            >
+              <Row c={c} />
+            </div>
+          ))}
+        </Fragment>
       ))}
     </div>
   );

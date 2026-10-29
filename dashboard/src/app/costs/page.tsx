@@ -146,7 +146,7 @@ export default async function CostsPage() {
 
       {all && (
         <Section title="By channel (this month)">
-          <table className="w-full text-sm">
+          <table className="responsive-table w-full text-sm">
             <tbody>
               {channelRows.map((r) => (
                 <tr key={r.key} className="border-t border-border">
@@ -156,14 +156,20 @@ export default async function CostsPage() {
                       {r.meta?.name ?? r.key}
                     </span>
                   </td>
-                  <td className="py-1 text-right text-muted">{r.n} calls</td>
-                  <td className="py-1 text-right">{fmtUsd(r.usd)}</td>
+                  <td data-label="Calls" className="py-1 text-right text-muted">
+                    {r.n} calls
+                  </td>
+                  <td data-label="Spend" className="py-1 text-right">
+                    {fmtUsd(r.usd)}
+                  </td>
                 </tr>
               ))}
               <tr className="border-t border-border font-medium">
                 <td className="py-1">Total</td>
                 <td />
-                <td className="py-1 text-right">{fmtUsd(mtd)}</td>
+                <td data-label="Spend" className="py-1 text-right">
+                  {fmtUsd(mtd)}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -174,13 +180,17 @@ export default async function CostsPage() {
         {steps.length === 0 && (
           <p className="text-sm text-muted">No costs this month.</p>
         )}
-        <table className="w-full text-sm">
+        <table className="responsive-table w-full text-sm">
           <tbody>
             {steps.map(([step, e]) => (
               <tr key={step} className="border-t border-border">
                 <td className="py-1">{step}</td>
-                <td className="py-1 text-right text-muted">{e.n} calls</td>
-                <td className="py-1 text-right">{fmtUsd(e.usd)}</td>
+                <td data-label="Calls" className="py-1 text-right text-muted">
+                  {e.n} calls
+                </td>
+                <td data-label="Spend" className="py-1 text-right">
+                  {fmtUsd(e.usd)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -191,7 +201,7 @@ export default async function CostsPage() {
         {recent.length === 0 && (
           <p className="text-sm text-muted">No content yet.</p>
         )}
-        <table className="w-full text-sm">
+        <table className="responsive-table w-full text-sm">
           <tbody>
             {recent.map((c) => (
               <tr key={c.id} className="border-t border-border">
@@ -207,7 +217,7 @@ export default async function CostsPage() {
                     {fmtDate(c.created_at)}
                   </span>
                 </td>
-                <td className="py-1 text-right align-top">
+                <td data-label="Spend" className="py-1 text-right align-top">
                   {fmtUsd(perContent.get(c.id) ?? c.claude_cost_usd ?? 0)}
                 </td>
               </tr>

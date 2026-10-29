@@ -51,6 +51,12 @@ export function PlatformIcon({
           <path d="M14 22v-9h3l1-4h-4V7c0-1 1-2 2-2h2V1h-3c-4 0-5 2-5 6v2H7v4h3v9z" />
         )}
       </svg>
+      {active && url && !locked && (
+        <span
+          aria-label="Live"
+          className="absolute -right-1 -bottom-1 h-1.5 w-1.5 rounded-full bg-ok"
+        />
+      )}
       {locked && (
         <svg
           aria-label="Private"

@@ -2,6 +2,8 @@ import "server-only";
 import { db } from "./supabase";
 import { getContent } from "./content-data";
 import { ChannelFilter } from "./channels";
+import { category } from "./categories";
+import { formatKind } from "./content-filters";
 import { Metric } from "./types";
 export type Totals = {
   views: number;
@@ -9,13 +11,19 @@ export type Totals = {
   comments: number;
   watch: number | null;
 };
-export async function getAnalytics(channel: ChannelFilter, days: number) {
+export async function getAnalytics(
+  channel: ChannelFilter,
+  days: number,
+  allTime = false,
+) {
   const items = await getContent(channel, false);
   const pubs = items.flatMap((c) =>
     c.publications.map((p) => ({
       ...p,
       channel: c.channel,
       kind: c.kind,
+      format: formatKind(c),
+      category: category(c),
       title: c.title,
     })),
   );
@@ -41,6 +49,18 @@ export async function getAnalytics(channel: ChannelFilter, days: number) {
     rows.push(m);
     byPub.set(m.publication_id, rows);
   }
+  if (allTime)
+    days = Math.max(
+      1,
+      Math.ceil(
+        (Date.now() -
+          Math.min(
+            Date.now(),
+            ...snapshots.map((m) => Date.parse(m.captured_at)),
+          )) /
+          86400000,
+      ) + 1,
+    );
   const end = Date.now(),
     start = end - days * 86400000,
     previous = start - days * 86400000;
@@ -75,6 +95,47 @@ export async function getAnalytics(channel: ChannelFilter, days: number) {
       watch: weight ? watchTotal / weight : null,
     };
   }
+  const groups = (
+    names: string[],
+    field: "channel" | "format" | "category" | "platform",
+  ) =>
+    names.map((name) => {
+      const selected = pubs.filter((p) => p[field] === name);
+      const count = items.filter((c) =>
+        field === "platform"
+          ? c.publications.some((p) => p.platform === name)
+          : field === "format"
+            ? formatKind(c) === name
+            : field === "category"
+              ? category(c) === name
+              : c.channel === name,
+      ).length;
+      return {
+        name,
+        count,
+        ...sum(selected, start, end),
+        previous: sum(selected, previous, start),
+        daily: Array.from(
+          { length: days },
+          (_, i) =>
+            sum(selected, start + i * 86400000, start + (i + 1) * 86400000)
+              .views,
+        ),
+      };
+    });
+  const videos = items.map((c) => ({
+    ...c,
+    ...sum(
+      pubs.filter((p) => p.content_id === c.id),
+      start,
+      end,
+    ),
+    previous: sum(
+      pubs.filter((p) => p.content_id === c.id),
+      previous,
+      start,
+    ),
+  }));
   const daily = Array.from({ length: days }, (_, i) => {
     const from = start + i * 86400000;
     return {
@@ -82,45 +143,14 @@ export async function getAnalytics(channel: ChannelFilter, days: number) {
       views: sum(pubs, from, from + 86400000).views,
     };
   });
-  const platform = [
-    {
-      name: "YouTube long",
-      ps: pubs.filter((p) => p.platform === "youtube" && p.kind === "long"),
-    },
-    {
-      name: "YouTube Shorts",
-      ps: pubs.filter((p) => p.platform === "youtube" && p.kind === "short"),
-    },
-    ...["instagram", "facebook"].map((platform) => ({
-      name: platform[0].toUpperCase() + platform.slice(1),
-      ps: pubs.filter((p) => p.platform === platform),
-    })),
-  ].map((g) => ({ name: g.name, ...sum(g.ps, start, end) }));
   return {
     total: sum(pubs, start, end),
     previous: sum(pubs, previous, start),
-    platform,
     daily,
-    channels: ["futurework", "tradewinds", "escapevelocity"].map((key) => ({
-      name: key,
-      ...sum(
-        pubs.filter((p) => p.channel === key),
-        start,
-        end,
-      ),
-    })),
-    top: items
-      .map((c) => ({
-        id: c.id,
-        title: c.title,
-        publications: c.publications,
-        ...sum(
-          pubs.filter((p) => p.content_id === c.id),
-          start,
-          end,
-        ),
-      }))
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 10),
+    channels: groups(["futurework", "tradewinds", "escapevelocity"], "channel"),
+    formats: groups(["long", "short", "daily"], "format"),
+    categories: groups([...new Set(items.map(category))].sort(), "category"),
+    platforms: groups(["youtube", "instagram", "facebook"], "platform"),
+    videos,
   };
 }

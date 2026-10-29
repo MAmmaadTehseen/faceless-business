@@ -4,6 +4,7 @@ export type Content = {
   kind: "long" | "short";
   parent_id: string | null;
   thumbnail_path?: string | null;
+  tags?: string[] | null;
   topic: string;
   title: string;
   qa_status: string;

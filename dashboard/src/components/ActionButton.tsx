@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "./Toast";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 export function ActionButton({
@@ -64,6 +65,11 @@ export function ActionButton({
       });
       const j = await r.json();
       setMessage(r.ok ? "Started, numbers refresh in ~3 min" : j.error);
+      toast(
+        r.ok
+          ? `${label}: workflow started`
+          : (j.error ?? "Could not start workflow"),
+      );
       if (r.ok) setSince(Date.now());
     } catch {
       setMessage("Could not start workflow");

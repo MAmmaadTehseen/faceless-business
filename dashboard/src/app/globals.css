@@ -289,3 +289,140 @@ th.text-right {
     gap: 0.6rem;
   }
 }
+
+/* Shared interaction and data presentation scale. */
+:root {
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+}
+:where(a, button, summary):focus-visible {
+  outline: 2px solid var(--accent-fg);
+  outline-offset: 3px;
+  border-radius: 0.25rem;
+}
+.card {
+  transition: border-color 150ms;
+}
+.card:hover {
+  border-color: var(--border-strong);
+}
+.content-row {
+  border-radius: 0.5rem;
+  transition: background 150ms;
+}
+.content-row:hover {
+  background: var(--card-2);
+}
+.filter-bar {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--bg-2);
+}
+.filter-bar input:not([type="hidden"]) {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.filter-bar select {
+  max-width: 180px;
+  font-size: 0.75rem;
+}
+.day-header {
+  padding: 0.5rem 0;
+  margin-top: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1rem;
+  z-index: 60;
+  max-width: calc(100vw - 2rem);
+  display: flex;
+  gap: 1rem;
+  background: var(--card-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 8px 30px #0008;
+  font-size: 0.875rem;
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--card), var(--card-2), var(--card));
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.75rem;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+@media (max-width: 767px) {
+  .filter-bar {
+    top: 9rem;
+  }
+}
+@media (max-width: 640px) {
+  .filter-bar select {
+    flex: 1 1 40%;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .filter-bar input:not([type="hidden"]) {
+    flex-basis: 100%;
+  }
+  .responsive-table thead {
+    display: none;
+  }
+  .responsive-table,
+  .responsive-table tbody,
+  .responsive-table tr,
+  .responsive-table td {
+    display: block;
+    width: 100%;
+  }
+  .responsive-table tr {
+    padding: 0.5rem 0;
+  }
+  .responsive-table td {
+    padding: 0.35rem 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    text-align: right;
+    white-space: normal;
+  }
+  .responsive-table td:first-child {
+    font-weight: 600;
+    text-align: left;
+  }
+  .responsive-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    text-align: left;
+  }
+  .responsive-table td > div {
+    margin-left: auto;
+  }
+}

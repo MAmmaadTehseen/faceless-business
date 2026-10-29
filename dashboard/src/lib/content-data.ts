@@ -8,14 +8,18 @@ export type ContentItem = Content & {
 export async function getContent(
   channel: ChannelFilter,
   includeMetrics = true,
+  days?: string,
 ): Promise<ContentItem[]> {
   let q = db()
     .from("content")
-    .select(
-      "id,channel,kind,parent_id,topic,title,thumbnail_path,qa_status,status,claude_cost_usd,created_at",
-    )
+    .select("*")
     .order("created_at", { ascending: false });
   if (channel !== "all") q = q.eq("channel", channel);
+  if ([7, 28, 90].includes(Number(days)))
+    q = q.gte(
+      "created_at",
+      new Date(Date.now() - Number(days) * 86400000).toISOString(),
+    );
   const rows: Content[] = [];
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await q.range(offset, offset + 499);

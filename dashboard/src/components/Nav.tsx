@@ -206,7 +206,13 @@ function ChannelSwitcher({
       body: JSON.stringify({ channel: next }),
     });
     if (!res.ok) return setSelected(prev);
-    startTransition(() => router.refresh());
+    startTransition(() => {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("channel")) {
+        url.searchParams.set("channel", next);
+        router.replace(url.pathname + url.search);
+      } else router.refresh();
+    });
   }
 
   const pills: { key: ChannelFilter; label: string; color?: string }[] = [

@@ -1,4 +1,6 @@
 "use client";
+import { toast } from "./Toast";
+import { RelativeTime } from "./RelativeTime";
 import { PlatformIcon } from "./PlatformIcon";
 import { channelMeta } from "@/lib/channels";
 import { useState } from "react";
@@ -27,16 +29,30 @@ export function InboxItem({
   async function call(action: "reply" | "skip" | "like") {
     setBusy(action);
     setError("");
-    const res = await fetch(`/api/comments/${comment.id}/${action}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: action === "reply" ? JSON.stringify({ text }) : undefined,
-    });
-    setBusy(null);
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) return setError(json.error ?? `Failed (${res.status})`);
-    if (action === "like") setLiked(true);
-    else setDone(action === "reply" ? "sent" : "skipped");
+    try {
+      const res = await fetch(`/api/comments/${comment.id}/${action}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: action === "reply" ? JSON.stringify({ text }) : undefined,
+      });
+      setBusy(null);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) return setError(json.error ?? `Failed (${res.status})`);
+      toast(
+        action === "reply"
+          ? "Reply sent"
+          : action === "skip"
+            ? "Comment skipped"
+            : "Comment liked",
+      );
+      if (action === "like") setLiked(true);
+      else setDone(action === "reply" ? "sent" : "skipped");
+    } catch {
+      setError("Could not reach the server. Try again.");
+      toast("Action failed. Try again.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   if (done) return null;
@@ -53,7 +69,7 @@ export function InboxItem({
         <span className="truncate font-medium text-fg">
           {videoTitle || "(unknown video)"}
         </span>
-        <span>{fmtDate(comment.posted_at)}</span>
+        <RelativeTime value={comment.posted_at} />
         {comment.flagged && (
           <span className="badge badge-alert" title={comment.flag_reason ?? ""}>
             flagged{comment.flag_reason ? `: ${comment.flag_reason}` : ""}

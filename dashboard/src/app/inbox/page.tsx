@@ -99,7 +99,9 @@ export default async function InboxPage({
         <button className="btn">Apply</button>
       </form>
       {comments.length === 0 && (
-        <div className="card text-sm text-ok-fg">No comments in this tab.</div>
+        <div className="card text-sm text-ok-fg">
+          No comments in this tab. Try another tab or platform.
+        </div>
       )}
       <div className="space-y-3">
         {comments.map((c) => (

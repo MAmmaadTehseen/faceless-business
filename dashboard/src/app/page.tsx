@@ -1,3 +1,6 @@
+import { ContentFilters } from "@/components/ContentFilters";
+import { filterContent } from "@/lib/content-filters";
+import { parseChannelFilter } from "@/lib/channels";
 import Link from "next/link";
 import { getOverview } from "@/lib/data";
 import { getContent } from "@/lib/content-data";
@@ -9,11 +12,18 @@ import { ContentList } from "@/components/ContentList";
 import { PageHeader } from "@/components/PageHeader";
 import { Section } from "@/components/Section";
 import { ActionButton } from "@/components/ActionButton";
-export default async function Home() {
-  const channel = await getChannelFilter();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const sp = await searchParams;
+  const channel = sp.channel
+    ? parseChannelFilter(sp.channel)
+    : await getChannelFilter();
   const [ov, items, owner] = await Promise.all([
     getOverview(channel),
-    getContent(channel),
+    getContent(channel, true, sp.days),
     isOwner(),
   ]);
   const configured = !!process.env.GITHUB_TOKEN;
@@ -41,13 +51,18 @@ export default async function Home() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           ["Uploads this week", ov.publishedWeek],
-          ["Queue", ov.queue.count],
+          ["Queued uploads", ov.queuedUploads.length],
           ["Pending replies", ov.pending.length],
           ["Month spend", fmtUsd(ov.costs.mtd)],
         ].map(([label, value]) => (
           <div className="card" key={label}>
             <div className="text-xs text-muted">{label}</div>
             <div className="stat-value text-right mt-2">{value}</div>
+            {label === "Queued uploads" && (
+              <p className="text-xs text-muted mt-2">
+                Waiting for upload quota · {ov.queue.count} topics ready
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -80,6 +95,19 @@ export default async function Home() {
           )}
         </Section>
       )}
+      <Section title="Pipeline queue">
+        {!ov.queuedUploads.length && (
+          <p className="text-sm text-muted">
+            No queued uploads. Uploads awaiting quota will appear here.
+          </p>
+        )}
+        {ov.queuedUploads.map((p) => (
+          <p key={p.id} className="text-sm text-muted">
+            {p.title} · {p.platform} · Queued
+            {p.error ? ` (last attempt: ${p.error.slice(0, 120)})` : ""}
+          </p>
+        ))}
+      </Section>
       <Section title="Channels">
         <div className="divide-y divide-border">
           {CHANNELS.filter((c) => channel === "all" || channel === c.key).map(
@@ -142,7 +170,8 @@ export default async function Home() {
           </Link>
         }
       >
-        <ContentList items={items} limit={12} />
+        <ContentFilters sp={sp} channel={channel} path="/" />
+        <ContentList items={filterContent(items, sp)} limit={12} />
       </Section>
     </div>
   );
