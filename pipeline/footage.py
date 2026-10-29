@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -17,7 +18,8 @@ API = "https://api.pexels.com"
 
 
 class Footage:
-    def __init__(self, placeholder: bool = False):
+    def __init__(self, placeholder: bool = False, providers: list[str] | None = None):
+        self.providers = providers or ["pixabay", "pexels"]
         self.key = os.getenv("PEXELS_API_KEY")
         self.pb_key = os.getenv("PIXABAY_API_KEY")
         self.placeholder = placeholder or not (self.key or self.pb_key)
@@ -40,6 +42,13 @@ class Footage:
         """Return a local video file at least min_sec long (or a photo-based clip)."""
         if self.placeholder:
             return self._placeholder(query, min_sec, orientation)
+        if "nasa" in self.providers:
+            try:
+                path = self._nasa_video(query, min_sec, orientation)
+                if path:
+                    return path
+            except Exception as e:
+                log.warning("nasa video failed for %r: %s", query, e)
         if self.pb_key:
             try:
                 path = self._pixabay_video(query, min_sec, orientation)
@@ -82,6 +91,31 @@ class Footage:
             except Exception as e:
                 log.warning("pexels photo search failed for %r: %s", query, e)
         return self._placeholder(query, min_sec, orientation)
+
+    # ---------- NASA Image and Video Library (public domain) ----------
+    def _nasa_video(self, query: str, min_sec: float, orientation: str) -> Path | None:
+        r = requests.get("https://images-api.nasa.gov/search", params={"q": query, "media_type": "video", "page_size": 20}, timeout=30)
+        r.raise_for_status()
+        items = r.json().get("collection", {}).get("items", [])
+        for it in items:
+            data = (it.get("data") or [{}])[0]
+            nid = data.get("nasa_id")
+            if not nid or f"nasa{nid}" in self.used:
+                continue
+            try:
+                assets = requests.get(f"https://images-api.nasa.gov/asset/{nid}", timeout=30).json().get("collection", {}).get("items", [])
+            except Exception:
+                continue
+            urls = [a["href"] for a in assets if a.get("href", "").endswith(".mp4")]
+            pick = next((u for u in urls if "~medium" in u), None) or next((u for u in urls if "~small" in u), None) or (urls[0] if urls else None)
+            if not pick:
+                continue
+            self.used.add(f"nasa{nid}")
+            path = self._download(pick, f"nasa_{re.sub(r'[^A-Za-z0-9]+', '_', nid)[:60]}.mp4")
+            if path.stat().st_size < 50_000:
+                continue
+            return path
+        return None
 
     # ---------- Pixabay ----------
     def _pb(self, path: str, **params) -> dict:

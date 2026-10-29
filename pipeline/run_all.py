@@ -15,7 +15,7 @@ import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .common import OUT_DIR, ROOT, Claude, CostGuard, log, now_iso, slugify, write_json
+from .common import OUT_DIR, ROOT, Channel, Claude, CostGuard, log, now_iso, slugify, write_json
 from .db import DB
 from .footage import Footage
 from .ideate import choose_topic
@@ -29,9 +29,12 @@ from .tts import synthesize
 FIXTURE = ROOT / "data" / "fixture_script.json"
 
 
-def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None) -> dict:
-    voice = db.setting("tts_voice", "en-US-AndrewMultilingualNeural")
-    shorts_per_long = int(db.setting("shorts_per_long", 2))
+def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None, channel: Channel | None = None) -> dict:
+    channel = channel or (claude.channel if claude else Channel())
+    voice = channel.voice or db.setting("tts_voice", "en-US-AndrewMultilingualNeural")
+    shorts_per_long = channel.shorts_per_long
+    style = channel.style
+    accent = tuple(style.get("accent", (255, 214, 0)))
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     if resume:
@@ -45,14 +48,14 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         data = json.loads(FIXTURE.read_text())
         topic = {"topic": data["topic"], "angle": "", "source_url": None, "source_headline": None, "queue_id": None}
     else:
-        topic = choose_topic(db, claude)
+        topic = choose_topic(db, claude, channel)
         if not topic:
             raise RuntimeError("No topic available")
     if not resume:
-        content_id = f"{today}-{slugify(topic['topic'])}"
+        content_id = f"{channel.key}-{today}-{slugify(topic['topic'], 40)}"
         out_dir = OUT_DIR / content_id
         out_dir.mkdir(parents=True, exist_ok=True)
-        db.upsert("content", {"id": content_id, "kind": "long", "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
+        db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "long", "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
         if topic.get("queue_id"):
             db.update("topic_queue", {"id": topic["queue_id"]}, {"status": "used"})
         data = data if dry_run else write_script(claude, topic, content_id)
@@ -67,8 +70,8 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     else:
         tts = synthesize(data["script"], out_dir, voice=voice)
         segs = segments_from_timings(tts["timings"], data["shot_list"])
-        video = render(segs, tts["audio"], tts["srt"], video, "landscape", footage)
-    thumb = make_thumbnail(video, data["thumbnail_text"], out_dir / f"{content_id}.jpg")
+        video = render(segs, tts["audio"], tts["srt"], video, "landscape", footage, style=style)
+    thumb = make_thumbnail(video, data["thumbnail_text"], out_dir / f"{content_id}.jpg", accent=accent)
 
     chapters = []
     for ch in data.get("chapters", []):
@@ -99,11 +102,11 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     for i, s in enumerate(data.get("shorts", [])[:shorts_per_long]):
         sid = f"{content_id}-short-{i+1}"
         try:
-            res = make_short(s, out_dir, voice, footage, name=sid)
+            res = make_short(s, out_dir, voice, footage, name=sid, style=style)
         except Exception as e:
             log.error("short %s failed: %s", sid, e)
             continue
-        db.upsert("content", {"id": sid, "kind": "short", "parent_id": content_id, "topic": topic["topic"], "title": res["title"],
+        db.upsert("content", {"id": sid, "channel": channel.key, "kind": "short", "parent_id": content_id, "topic": topic["topic"], "title": res["title"],
                               "description": f"{res['title']}\n\nFull video: {{LONG_URL}}\n#shorts", "script": res["script"],
                               "duration_sec": res["duration"], "file_path": str(res["file"]), "status": "rendered", "qa_status": "passed"}, on="id")
         shorts.append({"id": sid, **res})
@@ -111,7 +114,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     result = {"content_id": content_id, "video": str(video), "thumbnail": str(thumb), "shorts": [str(s["file"]) for s in shorts], "title": data["title"]}
     if publish:
         from .publish import publish_all
-        result["publications"] = publish_all(db, content_id, privacy or db.setting("publish_privacy", "private"))
+        result["publications"] = publish_all(db, content_id, privacy or db.setting("publish_privacy", "private"), channel)
     write_json(out_dir / "result.json", result)
     return result
 
@@ -125,24 +128,31 @@ def main():
     ap.add_argument("--privacy", choices=["private", "public", "unlisted"])
     ap.add_argument("--count", type=int, default=None, help="long videos this run (default from settings)")
     ap.add_argument("--resume", help="content id in out/ to continue from its rendered video (thumbnail, QA, shorts, publish)")
+    ap.add_argument("--channel", default=None, help="channel key (folder in channels/). Default: futurework, or inferred from --resume id")
     args = ap.parse_args()
 
     db = DB()
-    run = db.insert("runs", {"workflow": "produce", "status": "running"})
+    ckey = args.channel or (args.resume.split("-20")[0] if args.resume and not args.resume.startswith("20") else None) or "futurework"
+    channel = Channel(ckey)
+    log.info("channel: %s (%s)", channel.key, channel.name)
+    run = db.insert("runs", {"workflow": "produce", "channel": channel.key, "status": "running"})
     if db.setting("pipeline_paused", False) and not args.dry_run:
         log.warning("pipeline paused from dashboard; exiting")
         db.update("runs", {"id": run["id"]}, {"status": "skipped", "finished_at": now_iso(), "log": "paused"})
         return
-    claude = None if args.dry_run else Claude(db)
+    claude = None if args.dry_run else Claude(db, channel=channel)
     guard = None if args.dry_run else CostGuard(db)
-    footage = Footage(placeholder=args.dry_run or args.placeholder)
+    footage = Footage(placeholder=args.dry_run or args.placeholder, providers=channel.footage.get("providers"))
+    if args.publish and footage.placeholder:
+        log.error("refusing to publish with placeholder footage (no footage API key)")
+        raise SystemExit(2)
     count = 1 if args.resume else (args.count or int(db.setting("long_videos_per_run", 1)))
     if guard and not guard.check("produce", est_usd=1.0):
         count = min(count, 1)
     results, errors = [], []
     for _ in range(count):
         try:
-            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume))
+            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume, channel=channel))
         except Exception as e:
             errors.append(f"{e}\n{traceback.format_exc()}")
             log.error("produce failed: %s", e)

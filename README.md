@@ -6,7 +6,8 @@ Instagram/Facebook Reels, and a dashboard shows every piece of content across pl
 Monthly cost: Claude API only (budget guard defaults to $95). Everything else is free tier.
 
 ```
-persona/     the clone: beliefs.md (fill this in), style.md, formulas.md, examples/
+channels/    one folder per channel: channel.json (name, keywords, voice, style, schedule), beliefs.md, style.md, examples/
+persona/     shared formulas.md
 pipeline/    ideate -> script -> tts -> footage -> render -> thumbnail -> qa -> shorts -> publish ; sync, engage, optimize, review
 dashboard/   Next.js app (Vercel free tier) over the Supabase database
 supabase/    schema.sql

@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from .common import Claude, CostGuard, log, now_iso
+from .common import Channel, Claude, CostGuard, log, now_iso
 from .db import DB
 from .publish import meta, youtube
 
@@ -17,9 +17,20 @@ REPLY_SCHEMA = {
 
 def main():
     db = DB()
-    claude = Claude(db)
     if not CostGuard(db).check("engage", 0.3):
         return
+    for key in Channel.keys():
+        try:
+            engage_channel(db, Channel(key))
+        except Exception as e:
+            log.error("engage %s failed: %s", key, e)
+
+
+def engage_channel(db, channel):
+    claude = Claude(db, channel=channel)
+    youtube.use_channel(channel); meta.use_channel(channel)
+    ids = {c["id"] for c in db.select("content", {"channel": channel.key})}
+    pub_ids = {p["id"] for p in db.select("publications") if p["content_id"] in ids}
     auto = db.setting("auto_reply", {})
     auto_like = db.setting("auto_like", {})
     max_per_day = int(db.setting("max_replies_per_day", 40))
@@ -27,9 +38,9 @@ def main():
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     sent_today = len(db.select("comments", {"reply_status": "sent"}, gte={"reply_sent_at": today}))
 
-    new = db.select("comments", {"reply_status": "new"}, order="posted_at", desc=True, limit=60)
+    new = [c for c in db.select("comments", {"reply_status": "new"}, order="posted_at", desc=True, limit=200) if c["publication_id"] in pub_ids][:60]
     if not new:
-        log.info("engage: nothing new")
+        log.info("engage[%s]: nothing new", channel.key)
         return
     # Draft in one batch, grouped with the video title for context.
     ctx = []

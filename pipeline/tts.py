@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from pathlib import Path
 
@@ -31,14 +32,69 @@ async def _synth(text: str, voice: str, out_mp3: Path, rate: str = "+4%") -> lis
     return words
 
 
-def synthesize(paragraphs: list[str], out_dir: Path, voice: str = DEFAULT_VOICE, name: str = "voice") -> dict:
-    """Synthesize paragraph by paragraph so we get exact paragraph boundaries, then concat."""
+_KOKORO = {}
+
+
+def _kokoro_available() -> bool:
+    try:
+        import kokoro  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def _kokoro_synth(text: str, voice: str, out_mp3: Path, speed: float = 1.0) -> list[dict]:
+    """Offline Kokoro-82M. Returns word timings like the edge path."""
+    import numpy as np
+    import soundfile as sf
+    from kokoro import KPipeline
+    lang = "b" if voice.startswith(("bm_", "bf_")) else "a"
+    if lang not in _KOKORO:
+        _KOKORO[lang] = KPipeline(lang_code=lang, repo_id="hexgrad/Kokoro-82M")
+    pipe = _KOKORO[lang]
+    chunks, words, offset = [], [], 0.0
+    for res in pipe(text, voice=voice, speed=speed, split_pattern=r"\n+"):
+        audio = res.audio.numpy() if hasattr(res.audio, "numpy") else np.asarray(res.audio)
+        for t in (res.tokens or []):
+            if t.start_ts is None or t.end_ts is None or not t.text.strip():
+                continue
+            words.append({"text": t.text, "start": offset + float(t.start_ts), "end": offset + float(t.end_ts)})
+        chunks.append(audio)
+        offset += len(audio) / 24000
+    wav = out_mp3.with_suffix(".wav")
+    sf.write(wav, np.concatenate(chunks) if chunks else np.zeros(2400), 24000)
+    import subprocess
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(wav), "-c:a", "libmp3lame", "-q:a", "2", str(out_mp3)], check=True)
+    wav.unlink(missing_ok=True)
+    return words
+
+
+def backend() -> str:
+    """TTS_BACKEND=kokoro|edge|auto. Auto prefers kokoro (works on CI; edge is blocked from datacenter IPs)."""
+    b = os.getenv("TTS_BACKEND", "auto")
+    if b == "auto":
+        return "kokoro" if _kokoro_available() else "edge"
+    return b
+
+
+def synthesize(paragraphs: list[str], out_dir: Path, voice=DEFAULT_VOICE, name: str = "voice") -> dict:
+    """Synthesize paragraph by paragraph so we get exact paragraph boundaries, then concat.
+    `voice` is either an edge voice name (str) or a channel voice dict {kokoro, edge, rate}."""
     out_dir.mkdir(parents=True, exist_ok=True)
+    be = backend()
+    if isinstance(voice, dict):
+        v_edge, v_kok, rate = voice.get("edge", DEFAULT_VOICE), voice.get("kokoro", "am_michael"), voice.get("rate", "+0%")
+    else:
+        v_edge, v_kok, rate = voice, "am_michael", "+4%"
+    speed = 1.0 + int(rate.replace("%", "").replace("+", "") or 0) / 100.0
     parts, timings, offset = [], [], 0.0
     gap = 0.35  # seconds of silence between paragraphs
     for i, para in enumerate(paragraphs):
         mp3 = out_dir / f"{name}_{i:03d}.mp3"
-        words = asyncio.run(_synth(_spoken(para), voice, mp3))
+        if be == "kokoro":
+            words = _kokoro_synth(_spoken(para), v_kok, mp3, speed)
+        else:
+            words = asyncio.run(_synth(_spoken(para), v_edge, mp3, rate))
         dur = _mp3_duration(mp3)
         if not words:
             raise RuntimeError("edge-tts returned no word boundaries; check network or voice name")
@@ -56,7 +112,7 @@ def synthesize(paragraphs: list[str], out_dir: Path, voice: str = DEFAULT_VOICE,
     srt = out_dir / f"{name}.srt"
     srt.write_text(words_to_srt(all_words))
     (out_dir / f"{name}_timings.json").write_text(json.dumps(timings))
-    log.info("tts: %d paragraphs, %.1fs, %d words", len(paragraphs), total, len(all_words))
+    log.info("tts[%s]: %d paragraphs, %.1fs, %d words", be, len(paragraphs), total, len(all_words))
     return {"audio": final, "srt": srt, "timings": timings, "duration": total, "words": all_words}
 
 

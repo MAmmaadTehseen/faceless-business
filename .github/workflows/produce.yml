@@ -1,10 +1,15 @@
 name: produce
 on:
   schedule:
-    - cron: "0 6 * * *"    # 06:00 UTC = 11:00 PKT
-    - cron: "0 18 * * *"   # 18:00 UTC = 23:00 PKT
+    - cron: "0 6 * * 1,3,5"     # futurework: Mon/Wed/Fri 06:00 UTC (11:00 PKT)
+    - cron: "0 11 * * 2,4,6"    # tradewinds: Tue/Thu/Sat 11:00 UTC (16:00 PKT)
+    - cron: "0 16 * * 1,4,0"    # escapevelocity: Mon/Thu/Sun 16:00 UTC (21:00 PKT)
   workflow_dispatch:
     inputs:
+      channel:
+        description: "futurework | tradewinds | escapevelocity"
+        required: true
+        default: "futurework"
       privacy:
         description: "private | public | unlisted (default: dashboard setting)"
         required: false
@@ -12,11 +17,13 @@ on:
         description: "long videos this run"
         required: false
         default: "1"
-concurrency: produce
+concurrency:
+  group: produce-${{ github.event.inputs.channel || github.event.schedule }}
+  cancel-in-progress: false
 jobs:
   produce:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -26,26 +33,56 @@ jobs:
       YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
       YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
       YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
-      META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-      META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
-      META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+      YT_REFRESH_TOKEN_TRADEWINDS: ${{ secrets.YT_REFRESH_TOKEN_TRADEWINDS }}
+      YT_REFRESH_TOKEN_ESCAPEVELOCITY: ${{ secrets.YT_REFRESH_TOKEN_ESCAPEVELOCITY }}
+      META_ACCESS_TOKEN_FUTUREWORK: ${{ secrets.META_ACCESS_TOKEN_FUTUREWORK }}
+      META_PAGE_ID_FUTUREWORK: ${{ secrets.META_PAGE_ID_FUTUREWORK }}
+      META_IG_USER_ID_FUTUREWORK: ${{ secrets.META_IG_USER_ID_FUTUREWORK }}
+      META_ACCESS_TOKEN_TRADEWINDS: ${{ secrets.META_ACCESS_TOKEN_TRADEWINDS }}
+      META_PAGE_ID_TRADEWINDS: ${{ secrets.META_PAGE_ID_TRADEWINDS }}
+      META_IG_USER_ID_TRADEWINDS: ${{ secrets.META_IG_USER_ID_TRADEWINDS }}
+      META_ACCESS_TOKEN_ESCAPEVELOCITY: ${{ secrets.META_ACCESS_TOKEN_ESCAPEVELOCITY }}
+      META_PAGE_ID_ESCAPEVELOCITY: ${{ secrets.META_PAGE_ID_ESCAPEVELOCITY }}
+      META_IG_USER_ID_ESCAPEVELOCITY: ${{ secrets.META_IG_USER_ID_ESCAPEVELOCITY }}
       GH_TOKEN: ${{ github.token }}
+      TTS_BACKEND: kokoro
+      HF_HOME: ${{ github.workspace }}/.hf
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
-      - run: pip install -r requirements.txt
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core espeak-ng
+      - name: Install dependencies (CPU torch, then Kokoro)
+        run: |
+          pip install -r requirements.txt
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install kokoro soundfile
+      - name: Cache Kokoro model
+        uses: actions/cache@v4
+        with:
+          path: .hf
+          key: kokoro-82m-v1
+      - name: Pick channel
+        id: pick
+        run: |
+          case "${{ github.event.schedule }}" in
+            "0 6 * * 1,3,5")  CH=futurework ;;
+            "0 11 * * 2,4,6") CH=tradewinds ;;
+            "0 16 * * 1,4,0") CH=escapevelocity ;;
+            *) CH="${{ github.event.inputs.channel || 'futurework' }}" ;;
+          esac
+          echo "channel=$CH" >> "$GITHUB_OUTPUT"
+          echo "channel: $CH"
       - name: Produce and publish
         run: |
-          ARGS="--publish --count ${{ github.event.inputs.count || '1' }}"
+          ARGS="--publish --channel ${{ steps.pick.outputs.channel }} --count ${{ github.event.inputs.count || '1' }}"
           if [ -n "${{ github.event.inputs.privacy }}" ]; then ARGS="$ARGS --privacy ${{ github.event.inputs.privacy }}"; fi
           python -m pipeline.run_all $ARGS
       - name: Keep the rendered files for 3 days
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: videos-${{ github.run_id }}
+          name: videos-${{ steps.pick.outputs.channel }}-${{ github.run_id }}
           path: |
             out/**/*.mp4
             out/**/*.jpg
@@ -57,5 +94,5 @@ jobs:
         if: always()
         run: |
           git config user.name "pipeline-bot" && git config user.email "bot@users.noreply.github.com"
-          git add persona || true
-          git diff --cached --quiet || (git commit -m "persona: automated update" && git push)
+          git add channels || true
+          git diff --cached --quiet || (git commit -m "persona: automated update" && git pull --rebase && git push)

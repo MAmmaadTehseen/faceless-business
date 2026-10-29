@@ -2,6 +2,7 @@
 
 create table if not exists content (
   id text primary key,                       -- slug: 2026-10-27-ai-agents-2027
+  channel text not null default 'futurework',
   kind text not null,                        -- long | short
   parent_id text references content(id),     -- shorts point at their long video
   topic text not null,
@@ -67,6 +68,7 @@ create table if not exists comments (
 
 create table if not exists topic_queue (
   id bigserial primary key,
+  channel text not null default 'futurework',
   topic text not null,
   source_url text,
   source_headline text,
@@ -80,6 +82,7 @@ create table if not exists costs (
   id bigserial primary key,
   at timestamptz default now(),
   step text not null,                        -- ideate | script | qa | engage | optimize | review | niche
+  channel text,
   content_id text,
   model text,
   input_tokens int,
@@ -112,6 +115,7 @@ create table if not exists runs (
   started_at timestamptz default now(),
   finished_at timestamptz,
   workflow text,
+  channel text,
   status text,
   log text
 );

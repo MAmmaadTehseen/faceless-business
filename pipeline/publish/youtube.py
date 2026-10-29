@@ -15,8 +15,24 @@ SCOPES = ["https://www.googleapis.com/auth/youtube", "https://www.googleapis.com
           "https://www.googleapis.com/auth/yt-analytics.readonly"]
 
 
+from ..common import Channel
+
+_current = Channel()
+
+
+def use_channel(channel: Channel) -> None:
+    """Select which channel's refresh token subsequent calls use."""
+    global _current, _channel_cache
+    _current = channel
+    _channel_cache = {}
+
+
+def _token() -> str | None:
+    return _current.env("YT_REFRESH_TOKEN")
+
+
 def _creds() -> Credentials:
-    return Credentials(None, refresh_token=os.environ["YT_REFRESH_TOKEN"], token_uri="https://oauth2.googleapis.com/token",
+    return Credentials(None, refresh_token=_token(), token_uri="https://oauth2.googleapis.com/token",
                        client_id=os.environ["YT_CLIENT_ID"], client_secret=os.environ["YT_CLIENT_SECRET"], scopes=SCOPES)
 
 
@@ -29,13 +45,13 @@ def yt_analytics():
 
 
 def configured() -> bool:
-    return all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN"))
+    return bool(os.getenv("YT_CLIENT_ID") and os.getenv("YT_CLIENT_SECRET") and _token())
 
 
 def upload(video: Path, title: str, description: str, tags: list[str], privacy: str = "private",
-           publish_at: datetime | None = None, thumbnail: Path | None = None, is_short: bool = False) -> dict:
+           publish_at: datetime | None = None, thumbnail: Path | None = None, is_short: bool = False, category_id: str = "28") -> dict:
     body = {
-        "snippet": {"title": title[:100], "description": description[:4900], "tags": tags[:15], "categoryId": "28",
+        "snippet": {"title": title[:100], "description": description[:4900], "tags": tags[:15], "categoryId": category_id,
                     "defaultLanguage": "en", "defaultAudioLanguage": "en"},
         "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False, "containsSyntheticMedia": True},
     }

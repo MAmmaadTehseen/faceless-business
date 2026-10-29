@@ -9,7 +9,7 @@ from .render import render, segments_from_timings
 from .tts import synthesize
 
 
-def make_short(short: dict, out_dir: Path, voice: str, footage: Footage, name: str) -> dict:
+def make_short(short: dict, out_dir: Path, voice, footage: Footage, name: str, style: dict | None = None) -> dict:
     paragraphs = [p.strip() for p in short["script"].replace("\n\n", "\n").split("\n") if p.strip()]
     if len(paragraphs) == 1:
         # split into sentence groups for shot variety
@@ -20,6 +20,6 @@ def make_short(short: dict, out_dir: Path, voice: str, footage: Footage, name: s
     shots = [{"paragraph_index": i, "query": short["query"], "mood": "bright"} for i in range(len(paragraphs))]
     segs = segments_from_timings(tts["timings"], shots, min_shot=3.0, max_shot=5.0)
     out = out_dir / f"{name}.mp4"
-    render(segs, tts["audio"], tts["srt"], out, orientation="portrait", footage=footage, music_db=-20.0)
+    render(segs, tts["audio"], tts["srt"], out, orientation="portrait", footage=footage, music_db=-20.0, style=style)
     log.info("short: %s (%.1fs)", out, tts["duration"])
     return {"file": out, "duration": tts["duration"], "title": short["hook_title"], "script": short["script"]}

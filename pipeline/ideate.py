@@ -44,17 +44,18 @@ def fetch_news(keywords: list[str], per_kw: int = 12, hours: int = 48) -> list[d
     return items
 
 
-def choose_topic(db, claude: Claude) -> dict | None:
+def choose_topic(db, claude: Claude, channel=None) -> dict | None:
     """Returns {topic, angle, source_url, source_headline, queue_id}."""
-    queued = db.select("topic_queue", {"status": "queued"}, order="priority", desc=True, limit=1)
+    channel = channel or claude.channel
+    queued = db.select("topic_queue", {"status": "queued", "channel": channel.key}, order="priority", desc=True, limit=1)
     user_items = [q for q in queued if q.get("added_by") == "user"]
     if user_items:
         q = user_items[0]
         log.info("topic from user queue: %s", q["topic"])
         return {"topic": q["topic"], "angle": "", "source_url": q.get("source_url"), "source_headline": q.get("source_headline"), "queue_id": q["id"]}
 
-    keywords = db.setting("niche_keywords", ["artificial intelligence", "AI business"])
-    recent = db.select("content", {"kind": "long"}, order="created_at", desc=True, limit=60)
+    keywords = db.setting(f"niche_keywords_{channel.key}") or channel.keywords
+    recent = db.select("content", {"kind": "long", "channel": channel.key}, order="created_at", desc=True, limit=60)
     recent_titles = [r["topic"] for r in recent]
     news = fetch_news(keywords)
     if not news and queued:
@@ -76,7 +77,7 @@ def choose_topic(db, claude: Claude) -> dict | None:
     pick, _ = claude.run("ideate", prompt, schema=PICK_SCHEMA, effort="medium", max_tokens=3000)
     for idx in pick.get("runner_ups", [])[:3]:
         if 0 <= idx < len(news):
-            db.insert("topic_queue", {"topic": news[idx]["headline"], "source_url": news[idx]["url"],
+            db.insert("topic_queue", {"channel": channel.key, "topic": news[idx]["headline"], "source_url": news[idx]["url"],
                                       "source_headline": news[idx]["headline"], "priority": 1, "added_by": "claude"})
     i = pick["chosen_index"]
     if i < 0 or i >= len(news):

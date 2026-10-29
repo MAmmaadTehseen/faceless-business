@@ -20,7 +20,7 @@ class DB:
     def __init__(self):
         url = os.getenv("SUPABASE_URL")
         key = os.getenv("SUPABASE_SERVICE_KEY")
-        if url and key:
+        if url and key and os.getenv("DB_BACKEND", "auto") != "sqlite":
             from supabase import create_client
             self.sb = create_client(url, key)
             self.kind = "supabase"
@@ -47,6 +47,13 @@ class DB:
                   .replace("insert into settings", "insert or ignore into settings"))
         sql = "\n".join(l for l in sql.splitlines() if not l.strip().startswith("alter table"))
         self.conn.executescript(sql)
+        for stmt in ("alter table content add column channel text not null default 'futurework'",
+                     "alter table topic_queue add column channel text not null default 'futurework'",
+                     "alter table costs add column channel text", "alter table runs add column channel text"):
+            try:
+                self.conn.execute(stmt)
+            except sqlite3.OperationalError:
+                pass
         self.conn.commit()
 
     # ---------- generic ops ----------

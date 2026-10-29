@@ -1,0 +1,14 @@
+{
+  "key": "futurework",
+  "name": "Future Work Explained",
+  "handle": "futurework.explained",
+  "tagline": "How technology changes your job, your money and your safety.",
+  "niche_keywords": ["AI jobs", "layoffs automation", "future of work", "data breach", "cybersecurity scam", "AI company earnings", "remote work policy", "ransomware", "wages AI", "tech regulation"],
+  "voice": {"kokoro": "am_michael", "edge": "en-US-AndrewMultilingualNeural", "rate": "+4%"},
+  "style": {"accent": [251, 191, 36], "bg": [15, 23, 42], "caption_colour": "&H00FFFFFF", "caption_outline": "&H80000000", "font_size_long": 20, "font_size_short": 26},
+  "footage": {"providers": ["pixabay", "pexels"], "nasa": false},
+  "schedule": {"days": ["Mon", "Wed", "Fri"], "utc_hour": 6},
+  "shorts_per_long": 2,
+  "category_id": "28",
+  "description_footer": "Sources are listed above. Narration is AI-generated. New videos three times a week: subscribe."
+}

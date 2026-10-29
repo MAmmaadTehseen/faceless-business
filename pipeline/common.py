@@ -19,7 +19,9 @@ load_dotenv(ROOT / ".env")
 
 OUT_DIR = Path(os.getenv("OUT_DIR", ROOT / "out")).resolve()
 DATA_DIR = ROOT / "data"
-PERSONA_DIR = ROOT / "persona"
+PERSONA_DIR = ROOT / "persona"          # shared: formulas.md
+CHANNELS_DIR = ROOT / "channels"        # one folder per channel: channel.json, beliefs.md, style.md, examples/
+DEFAULT_CHANNEL = "futurework"
 ASSETS_DIR = ROOT / "assets"
 MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
@@ -50,14 +52,55 @@ def slugify(text: str, max_len: int = 48) -> str:
     return s[:max_len].rstrip("-") or "item"
 
 
-def load_persona() -> str:
+class Channel:
+    """A channel = config + persona. Loaded from channels/<key>/."""
+
+    def __init__(self, key: str = DEFAULT_CHANNEL):
+        self.key = key
+        self.dir = CHANNELS_DIR / key
+        if not (self.dir / "channel.json").exists():
+            raise ValueError(f"unknown channel {key!r}; expected {self.dir}/channel.json")
+        self.cfg = json.loads((self.dir / "channel.json").read_text())
+        self.name = self.cfg["name"]
+        self.handle = self.cfg["handle"]
+        self.voice = self.cfg.get("voice", {})
+        self.style = self.cfg.get("style", {})
+        self.keywords = self.cfg.get("niche_keywords", [])
+        self.shorts_per_long = int(self.cfg.get("shorts_per_long", 2))
+        self.footage = self.cfg.get("footage", {"providers": ["pixabay", "pexels"]})
+
+    @staticmethod
+    def keys() -> list[str]:
+        return sorted(p.parent.name for p in CHANNELS_DIR.glob("*/channel.json"))
+
+    def env(self, base: str, default: str | None = None) -> str | None:
+        """Per-channel secret: BASE_<KEY>, falling back to BASE for the default channel."""
+        v = os.getenv(f"{base}_{self.key.upper()}")
+        if v:
+            return v
+        if self.key == DEFAULT_CHANNEL:
+            return os.getenv(base, default)
+        return default
+
+    def persona(self) -> str:
+        return load_persona(self)
+
+    def __repr__(self):
+        return f"Channel({self.key})"
+
+
+def load_persona(channel: "Channel | None" = None) -> str:
     """Concatenate persona files into one stable system prompt (cached by the API)."""
+    channel = channel or Channel()
     parts = []
-    for name in ("beliefs.md", "style.md", "formulas.md"):
-        p = PERSONA_DIR / name
+    for name in ("beliefs.md", "style.md"):
+        p = channel.dir / name
         if p.exists():
             parts.append(f"<{name[:-3]}>\n{p.read_text().strip()}\n</{name[:-3]}>")
-    examples = sorted((PERSONA_DIR / "examples").glob("*.md"))
+    shared = PERSONA_DIR / "formulas.md"
+    if shared.exists():
+        parts.append(f"<formulas>\n{shared.read_text().strip()}\n</formulas>")
+    examples = sorted((channel.dir / "examples").glob("*.md"))
     if examples:
         ex = "\n\n".join(f"<example name=\"{e.stem}\">\n{e.read_text().strip()}\n</example>" for e in examples[:8])
         parts.append(f"<reference_scripts>\n{ex}\n</reference_scripts>")
@@ -89,11 +132,12 @@ class CostGuard:
 class Claude:
     """Thin wrapper: structured output, persona caching, fallbacks, usage logging."""
 
-    def __init__(self, db=None, model: str = MODEL):
+    def __init__(self, db=None, model: str = MODEL, channel: "Channel | None" = None):
         self.client = anthropic.Anthropic()
         self.db = db
         self.model = model
-        self.persona = load_persona()
+        self.channel = channel or Channel()
+        self.persona = load_persona(self.channel)
 
     def _usage_usd(self, usage, model: str, searches: int = 0) -> float:
         p = PRICES.get(model, PRICES["claude-opus-5-5"])
@@ -108,7 +152,7 @@ class Claude:
         usd = self._usage_usd(resp.usage, resp.model, searches)
         if self.db:
             self.db.insert("costs", {
-                "step": step, "content_id": content_id, "model": resp.model,
+                "step": step, "content_id": content_id, "model": resp.model, "channel": self.channel.key,
                 "input_tokens": getattr(resp.usage, "input_tokens", 0),
                 "cache_read_tokens": getattr(resp.usage, "cache_read_input_tokens", 0),
                 "output_tokens": getattr(resp.usage, "output_tokens", 0),

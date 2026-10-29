@@ -15,12 +15,22 @@ from ..common import log
 G = "https://graph.facebook.com/v21.0"
 
 
+from ..common import Channel
+
+_current = Channel()
+
+
+def use_channel(channel: Channel) -> None:
+    global _current
+    _current = channel
+
+
 def configured() -> bool:
-    return all(os.getenv(k) for k in ("META_ACCESS_TOKEN", "META_PAGE_ID", "META_IG_USER_ID"))
+    return all(_current.env(k) for k in ("META_ACCESS_TOKEN", "META_PAGE_ID", "META_IG_USER_ID"))
 
 
 def _tok() -> str:
-    return os.environ["META_ACCESS_TOKEN"]
+    return _current.env("META_ACCESS_TOKEN")
 
 
 def public_url_for(video: Path, tag: str) -> str:
@@ -69,7 +79,7 @@ def _wait_container(container_id: str, timeout: int = 600) -> None:
 
 
 def publish_instagram_reel(video_url: str, caption: str, thumb_offset_ms: int = 2000) -> dict:
-    ig = os.environ["META_IG_USER_ID"]
+    ig = _current.env("META_IG_USER_ID")
     r = requests.post(f"{G}/{ig}/media", data={"media_type": "REELS", "video_url": video_url, "caption": caption[:2200],
                                               "share_to_feed": "true", "thumb_offset": thumb_offset_ms, "access_token": _tok()}, timeout=60).json()
     if "id" not in r:
@@ -84,7 +94,7 @@ def publish_instagram_reel(video_url: str, caption: str, thumb_offset_ms: int = 
 
 
 def publish_facebook_reel(video_path: Path, description: str) -> dict:
-    page = os.environ["META_PAGE_ID"]
+    page = _current.env("META_PAGE_ID")
     s = requests.post(f"{G}/{page}/video_reels", data={"upload_phase": "start", "access_token": _tok()}, timeout=60).json()
     if "video_id" not in s:
         raise RuntimeError(f"facebook reel start failed: {s}")

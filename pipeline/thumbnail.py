@@ -40,7 +40,7 @@ def candidate_frames(video: Path) -> list[Path]:
     return found
 
 
-def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, frame: Path | None = None) -> Path:
+def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, frame: Path | None = None, accent: tuple | None = None) -> Path:
     clean = frame or video.with_suffix(".clean.jpg")
     if clean.exists():
         frame = clean
@@ -61,7 +61,7 @@ def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, fram
     font = _font(size)
     y = 720 - 60 - size * len(words) * 0.95
     for i, w in enumerate(words):
-        color = (255, 214, 0) if i == len(words) - 1 else (255, 255, 255)
+        color = tuple(accent or (255, 214, 0)) if i == len(words) - 1 else (255, 255, 255)
         yy = y + i * size * 0.95
         for dx, dy in ((-4, -4), (4, -4), (-4, 4), (4, 4), (0, 6)):
             draw.text((60 + dx, yy + dy), w, font=font, fill=(0, 0, 0))

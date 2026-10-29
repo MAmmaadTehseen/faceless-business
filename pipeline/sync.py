@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-from .common import log, now_iso
+from .common import Channel, log, now_iso
 from .db import DB
 from .publish import meta, youtube
 
@@ -21,7 +21,19 @@ def flag_reason(text: str) -> str | None:
 
 def main():
     db = DB()
-    pubs = db.select("publications", {"status": "live"})
+    for key in Channel.keys():
+        try:
+            sync_channel(db, Channel(key))
+        except Exception as e:
+            log.error("sync %s failed: %s", key, e)
+
+
+def sync_channel(db, channel):
+    youtube.use_channel(channel); meta.use_channel(channel)
+    ids = {c["id"] for c in db.select("content", {"channel": channel.key})}
+    pubs = [p for p in db.select("publications", {"status": "live"}) if p["content_id"] in ids]
+    if not pubs:
+        return
     yt_pubs = [p for p in pubs if p["platform"] == "youtube" and p.get("platform_id")]
     if yt_pubs and youtube.configured():
         ids = [p["platform_id"] for p in yt_pubs]
@@ -59,7 +71,7 @@ def main():
                         _store_comment(db, p, "facebook", c)
                 except Exception as e:
                     log.warning("fb sync failed %s: %s", p["platform_id"], e)
-    log.info("sync: %d publications", len(pubs))
+    log.info("sync[%s]: %d publications", channel.key, len(pubs))
 
 
 def _store_comment(db, pub, platform, c):

@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from .common import Claude, CostGuard, log
+from .common import Channel, Claude, CostGuard, log
 from .db import DB
 from .publish import youtube
 from .thumbnail import make_thumbnail
@@ -17,17 +17,28 @@ PICK = {"type": "object", "additionalProperties": False, "required": ["title", "
 
 def main():
     db = DB()
-    if not youtube.configured():
-        log.info("optimize: youtube not configured")
-        return
-    claude = Claude(db)
     if not CostGuard(db).check("optimize", 0.3):
         return
+    for key in Channel.keys():
+        try:
+            optimize_channel(db, Channel(key))
+        except Exception as e:
+            log.error("optimize %s failed: %s", key, e)
+
+
+def optimize_channel(db, channel):
+    youtube.use_channel(channel)
+    if not youtube.configured():
+        log.info("optimize[%s]: youtube not configured", channel.key)
+        return
+    claude = Claude(db, channel=channel)
     now = datetime.now(timezone.utc)
     pubs = db.select("publications", {"platform": "youtube", "status": "live"})
     rows = []
     for p in pubs:
         c = db.one("content", {"id": p["content_id"]})
+        if not c or c.get("channel", "futurework") != channel.key:
+            continue
         if not c or c["kind"] != "long" or not p.get("published_at"):
             continue
         age = now - datetime.fromisoformat(p["published_at"].replace("Z", "+00:00"))
@@ -55,7 +66,7 @@ def main():
             pick, _ = claude.run("optimize", prompt, schema=PICK, effort="medium", max_tokens=1500, content_id=c["id"])
             youtube.update_title(p["platform_id"], pick["title"])
             if c.get("file_path") and Path(c["file_path"]).exists():
-                thumb = make_thumbnail(Path(c["file_path"]), pick["thumbnail_text"], Path(c["file_path"]).with_suffix(".v2.jpg"))
+                thumb = make_thumbnail(Path(c["file_path"]), pick["thumbnail_text"], Path(c["file_path"]).with_suffix(".v2.jpg"), accent=tuple(channel.style.get("accent", (255, 214, 0))))
                 youtube.set_thumbnail(p["platform_id"], thumb)
             new_variants = [f"[swapped] {c['title']} -> {pick['title']} @views/day {ctr:.1f}"] + [v for v in variants if v != pick["title"]]
             db.update("content", {"id": c["id"]}, {"title": pick["title"], "title_variants": new_variants})

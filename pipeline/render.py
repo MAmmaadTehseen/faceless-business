@@ -23,12 +23,14 @@ def _music() -> Path | None:
     return random.choice(tracks) if tracks else None
 
 
-def _caption_style(orientation: str) -> str:
+def _caption_style(orientation: str, style: dict | None = None) -> str:
+    style = style or {}
     font = _font()
     fontname = Path(font).stem if font else "DejaVu Sans"
+    colour = style.get("caption_colour", "&H00FFFFFF"); outline = style.get("caption_outline", "&H80000000")
     if orientation == "landscape":
-        return f"FontName={fontname},FontSize=20,Bold=1,PrimaryColour=&H00FFFFFF,OutlineColour=&H80000000,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=48"
-    return f"FontName={fontname},FontSize=26,Bold=1,PrimaryColour=&H00FFFFFF,OutlineColour=&H80000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=110"
+        return f"FontName={fontname},FontSize={style.get('font_size_long', 20)},Bold=1,PrimaryColour={colour},OutlineColour={outline},BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=48"
+    return f"FontName={fontname},FontSize={style.get('font_size_short', 26)},Bold=1,PrimaryColour={colour},OutlineColour={outline},BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=110"
 
 
 def _fit_clip(src: Path, sec: float, orientation: str, out: Path) -> Path:
@@ -41,7 +43,7 @@ def _fit_clip(src: Path, sec: float, orientation: str, out: Path) -> Path:
 
 
 def render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation: str = "landscape",
-           footage: Footage | None = None, music_db: float = -22.0) -> Path:
+           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None) -> Path:
     """segments: [{query, mood, start, end}] in order, covering the narration."""
     footage = footage or Footage()
     work = out.parent / f"{out.stem}_work"
@@ -64,7 +66,7 @@ def render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation:
 
     srt_path = str(srt.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     fontsdir = f":fontsdir={FONT_DIR}" if _font() else ""
-    vf = f"subtitles='{srt_path}':force_style='{_caption_style(orientation)}'{fontsdir}"
+    vf = f"subtitles='{srt_path}':force_style='{_caption_style(orientation, style)}'{fontsdir}"
     cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(visual), "-i", str(audio)]
     music = _music()
     if music:

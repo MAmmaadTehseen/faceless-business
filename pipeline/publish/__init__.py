@@ -4,31 +4,38 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from ..common import log, now_iso
+from ..common import Channel, log, now_iso
 from . import meta, youtube
 
 
-def _next_slot(db, kind: str) -> datetime:
-    """Stagger: long videos 12h apart starting 1h from now; shorts 2h after their parent."""
+def _next_slot(db, kind: str, channel: Channel | None = None) -> datetime:
+    """Stagger: long videos 12h apart starting 1h from now; shorts 2h after their parent. Per channel."""
     now = datetime.now(timezone.utc)
-    rows = db.select("publications", {"platform": "youtube"}, order="publish_at", desc=True, limit=20)
+    rows = db.select("publications", {"platform": "youtube"}, order="publish_at", desc=True, limit=60)
+    if channel:
+        ids = {c["id"] for c in db.select("content", {"channel": channel.key, "kind": "long"})}
+        rows = [r for r in rows if r["content_id"] in ids]
     future = [datetime.fromisoformat(r["publish_at"].replace("Z", "+00:00")) for r in rows if r.get("publish_at")]
     future = [t for t in future if t > now]
     base = max(future) + timedelta(hours=12) if future else now + timedelta(hours=1)
     return base
 
 
-def publish_all(db, content_id: str, privacy: str = "private") -> list[dict]:
+def publish_all(db, content_id: str, privacy: str = "private", channel: Channel | None = None) -> list[dict]:
     long = db.one("content", {"id": content_id})
+    channel = channel or Channel(long.get("channel") or "futurework")
+    youtube.use_channel(channel); meta.use_channel(channel)
+    category = channel.cfg.get("category_id", "28")
     shorts = db.select("content", {"parent_id": content_id, "kind": "short"})
     results = []
     long_url = None
 
     if youtube.configured():
-        slot = _next_slot(db, "long")
+        slot = _next_slot(db, "long", channel)
         try:
             r = youtube.upload(Path(long["file_path"]), long["title"], long["description"] or "", long.get("tags") or [],
-                               privacy=privacy, publish_at=slot if privacy == "private" else None, thumbnail=Path(long["thumbnail_path"]) if long.get("thumbnail_path") else None)
+                               privacy=privacy, publish_at=slot if privacy == "private" else None, thumbnail=Path(long["thumbnail_path"]) if long.get("thumbnail_path") else None,
+                               category_id=category)
             long_url = r["url"]
             db.upsert("publications", {"content_id": content_id, "platform": "youtube", "platform_id": r["id"], "url": r["url"], "privacy": privacy,
                                        "publish_at": slot.isoformat(), "status": "live", "published_at": now_iso()}, on="content_id,platform")
@@ -45,7 +52,7 @@ def publish_all(db, content_id: str, privacy: str = "private") -> list[dict]:
         if youtube.configured():
             try:
                 r = youtube.upload(Path(s["file_path"]), s["title"], desc, long.get("tags") or [], privacy=privacy,
-                                   publish_at=(slot + timedelta(hours=2 * (i + 1))) if privacy == "private" else None, is_short=True)
+                                   publish_at=(slot + timedelta(hours=2 * (i + 1))) if privacy == "private" else None, is_short=True, category_id=category)
                 db.upsert("publications", {"content_id": s["id"], "platform": "youtube", "platform_id": r["id"], "url": r["url"], "privacy": privacy,
                                            "publish_at": (slot + timedelta(hours=2 * (i + 1))).isoformat(), "status": "live", "published_at": now_iso()}, on="content_id,platform")
                 results.append({"platform": "youtube", "content_id": s["id"], **r})
