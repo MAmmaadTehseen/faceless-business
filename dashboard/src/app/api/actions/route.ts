@@ -54,12 +54,16 @@ export async function POST(req: Request) {
       method: "POST",
       body: JSON.stringify({ ref: "main", inputs }),
     });
-    return res.ok
-      ? NextResponse.json({ ok: true, startedAt: new Date().toISOString() })
-      : NextResponse.json(
-          { error: `GitHub rejected dispatch (${res.status})` },
-          { status: 502 },
-        );
+    if (res.ok)
+      return NextResponse.json({ ok: true, startedAt: new Date().toISOString() });
+    const detail = await res
+      .json()
+      .then((j) => (typeof j?.message === "string" ? j.message : ""))
+      .catch(() => "");
+    return NextResponse.json(
+      { error: `GitHub rejected dispatch (${res.status})${detail ? ": " + detail : ""}` },
+      { status: 502 },
+    );
   } catch {
     return NextResponse.json({ error: "GitHub unavailable" }, { status: 502 });
   }
