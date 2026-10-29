@@ -5,6 +5,7 @@ import { Settings } from "@/lib/types";
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const num = (v: unknown, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const int = (v: unknown, d = 0) => Math.max(0, Math.round(num(v, d)));
+const strList = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean) : []);
 
 export async function PUT(req: Request) {
   const b = (await req.json().catch(() => null)) as Partial<Settings> | null;
@@ -24,8 +25,11 @@ export async function PUT(req: Request) {
     reply_tone_notes: str(b.reply_tone_notes),
     monthly_budget_usd: Math.max(0, num(b.monthly_budget_usd, 0)),
     publish_privacy: b.publish_privacy === "public" ? "public" : "private",
-    niche_keywords: Array.isArray(b.niche_keywords) ? b.niche_keywords.map(String).filter(Boolean) : [],
+    niche_keywords: strList(b.niche_keywords),
     tts_voice: str(b.tts_voice),
+    niche_keywords_futurework: strList(b.niche_keywords_futurework),
+    niche_keywords_tradewinds: strList(b.niche_keywords_tradewinds),
+    niche_keywords_escapevelocity: strList(b.niche_keywords_escapevelocity),
   };
 
   // Values are jsonb; supabase-js serialises each JS value as JSON.

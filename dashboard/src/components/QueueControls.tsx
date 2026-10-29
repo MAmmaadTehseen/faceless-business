@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CHANNELS, ChannelKey, DEFAULT_CHANNEL } from "@/lib/channels";
 
-export function AddTopicForm() {
+export function AddTopicForm({ defaultChannel }: { defaultChannel?: ChannelKey }) {
   const router = useRouter();
   const [topic, setTopic] = useState("");
+  const [channel, setChannel] = useState<ChannelKey>(defaultChannel ?? DEFAULT_CHANNEL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -15,7 +17,7 @@ export function AddTopicForm() {
     const res = await fetch("/api/queue/add", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ topic }),
+      body: JSON.stringify({ topic, channel }),
     });
     setBusy(false);
     if (!res.ok) return setError((await res.json().catch(() => ({}))).error ?? "Failed");
@@ -24,8 +26,11 @@ export function AddTopicForm() {
   }
 
   return (
-    <form onSubmit={submit} className="flex gap-2">
+    <form onSubmit={submit} className="flex flex-wrap gap-2">
       <input className="min-w-0 flex-1" placeholder="New topic..." value={topic} onChange={(e) => setTopic(e.target.value)} />
+      <select value={channel} onChange={(e) => setChannel(e.target.value as ChannelKey)} aria-label="Channel">
+        {CHANNELS.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
+      </select>
       <button className="btn btn-primary" disabled={busy || !topic.trim()}>Add</button>
       {error && <span className="text-xs text-red-500">{error}</span>}
     </form>

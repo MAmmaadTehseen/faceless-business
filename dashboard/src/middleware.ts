@@ -7,7 +7,8 @@ export async function middleware(req: NextRequest) {
   const role = await verifySessionToken(req.cookies.get(COOKIE_NAME)?.value);
   if (role) {
     // Reviewer accounts are read-only: any mutating API call is refused.
-    if (role === "reviewer" && pathname.startsWith("/api/") && req.method !== "GET" && pathname !== "/api/logout") {
+    if (role === "reviewer" && pathname.startsWith("/api/") && req.method !== "GET" && pathname !== "/api/logout" && pathname !== "/api/channel") {
+      // /api/channel only sets a display-filter cookie, so reviewers may use it.
       return NextResponse.json({ error: "read-only reviewer account" }, { status: 403 });
     }
     const headers = new Headers(req.headers);

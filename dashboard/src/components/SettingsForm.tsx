@@ -2,11 +2,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings } from "@/lib/types";
+import { CHANNELS, accentCss } from "@/lib/channels";
+
+const splitKeywords = (v: string) => v.split(/\r?\n|,/).map((x) => x.trim()).filter(Boolean);
 
 export function SettingsForm({ initial }: { initial: Settings }) {
   const router = useRouter();
   const [s, setS] = useState<Settings>(initial);
   const [keywords, setKeywords] = useState((initial.niche_keywords ?? []).join("\n"));
+  const [channelKeywords, setChannelKeywords] = useState<Record<string, string>>(() =>
+    Object.fromEntries(CHANNELS.map((c) => [c.key, (initial[`niche_keywords_${c.key}`] ?? []).join("\n")])),
+  );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -18,7 +24,10 @@ export function SettingsForm({ initial }: { initial: Settings }) {
     setMsg("");
     const payload: Settings = {
       ...s,
-      niche_keywords: keywords.split(/\r?\n|,/).map((x) => x.trim()).filter(Boolean),
+      niche_keywords: splitKeywords(keywords),
+      niche_keywords_futurework: splitKeywords(channelKeywords.futurework ?? ""),
+      niche_keywords_tradewinds: splitKeywords(channelKeywords.tradewinds ?? ""),
+      niche_keywords_escapevelocity: splitKeywords(channelKeywords.escapevelocity ?? ""),
     };
     const res = await fetch("/api/settings", {
       method: "PUT",
@@ -62,6 +71,24 @@ export function SettingsForm({ initial }: { initial: Settings }) {
       </section>
 
       <section className="card space-y-3">
+        <h2 className="font-medium">Per-channel keywords</h2>
+        <p className="text-xs text-muted">One per line. Leave a channel empty to use the defaults from its channel.json.</p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {CHANNELS.map((c) => (
+            <Field key={c.key} label={
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: accentCss(c) }} />
+                {c.name}
+              </span>
+            }>
+              <textarea rows={6} value={channelKeywords[c.key] ?? ""} placeholder="(channel.json default)"
+                onChange={(e) => setChannelKeywords((p) => ({ ...p, [c.key]: e.target.value }))} className="w-full" />
+            </Field>
+          ))}
+        </div>
+      </section>
+
+      <section className="card space-y-3">
         <h2 className="font-medium">Engagement</h2>
         <div className="flex flex-wrap gap-4 text-sm">
           {(["youtube", "instagram", "facebook"] as const).map((p) => (
@@ -100,7 +127,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="block text-sm">
       <span className="mb-1 block text-muted">{label}</span>

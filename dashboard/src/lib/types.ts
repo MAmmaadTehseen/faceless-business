@@ -1,5 +1,6 @@
 export type Content = {
   id: string;
+  channel: string;
   kind: "long" | "short";
   parent_id: string | null;
   topic: string;
@@ -52,6 +53,7 @@ export type Comment = {
 
 export type TopicQueueRow = {
   id: number;
+  channel: string;
   topic: string;
   source_url: string | null;
   source_headline: string | null;
@@ -65,6 +67,7 @@ export type Cost = {
   id: number;
   at: string;
   step: string;
+  channel: string | null;
   content_id: string | null;
   model: string | null;
   usd: number | null;
@@ -75,6 +78,7 @@ export type Run = {
   started_at: string;
   finished_at: string | null;
   workflow: string | null;
+  channel: string | null;
   status: string | null;
   log: string | null;
 };
@@ -91,7 +95,17 @@ export type Settings = {
   publish_privacy: "private" | "public";
   niche_keywords: string[];
   tts_voice: string;
+  // Per-channel keyword overrides. Empty array = use the channel.json default.
+  niche_keywords_futurework: string[];
+  niche_keywords_tradewinds: string[];
+  niche_keywords_escapevelocity: string[];
 };
+
+export const CHANNEL_KEYWORD_KEYS = [
+  "niche_keywords_futurework",
+  "niche_keywords_tradewinds",
+  "niche_keywords_escapevelocity",
+] as const satisfies readonly (keyof Settings)[];
 
 export const DEFAULT_SETTINGS: Settings = {
   pipeline_paused: false,
@@ -105,4 +119,7 @@ export const DEFAULT_SETTINGS: Settings = {
   publish_privacy: "private",
   niche_keywords: [],
   tts_voice: "",
+  niche_keywords_futurework: [],
+  niche_keywords_tradewinds: [],
+  niche_keywords_escapevelocity: [],
 };

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { db } from "@/lib/supabase";
 import { Content, Metric, Publication } from "@/lib/types";
 import { fmtDate, fmtNum, fmtSec } from "@/lib/format";
+import { getChannelFilter } from "@/lib/channel-filter";
+import { ChannelBadge } from "@/components/ChannelBadge";
 
 type Search = { kind?: string; platform?: string; days?: string };
 
@@ -12,9 +14,12 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
   const kind = sp.kind ?? "";
   const platform = sp.platform ?? "";
   const days = sp.days ?? "";
+  const channel = await getChannelFilter();
+  const showChannel = channel === "all";
 
-  let q = db().from("content").select("id,kind,parent_id,topic,title,qa_status,status,claude_cost_usd,created_at")
+  let q = db().from("content").select("id,channel,kind,parent_id,topic,title,qa_status,status,claude_cost_usd,created_at")
     .order("created_at", { ascending: false }).limit(300);
+  if (channel !== "all") q = q.eq("channel", channel);
   if (days) q = q.gte("created_at", new Date(Date.now() - Number(days) * 86400_000).toISOString());
   const { data: contentRows, error } = await q;
   if (error) return <p className="text-red-500">DB error: {error.message}</p>;
@@ -85,19 +90,19 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
         {rows.map((c) => (
           <ContentCard key={c.id} c={c} pubs={pubsByContent} latest={latest}
             kids={(children.get(c.id) ?? []).filter(matchesKind).filter(visible)}
-            dim={!(matchesKind(c) && visible(c))} />
+            dim={!(matchesKind(c) && visible(c))} showChannel={showChannel} />
         ))}
       </div>
     </div>
   );
 }
 
-function ContentCard({ c, pubs, latest, kids, dim }: {
-  c: Content; pubs: Map<string, Publication[]>; latest: Map<number, Metric>; kids: Content[]; dim: boolean;
+function ContentCard({ c, pubs, latest, kids, dim, showChannel }: {
+  c: Content; pubs: Map<string, Publication[]>; latest: Map<number, Metric>; kids: Content[]; dim: boolean; showChannel: boolean;
 }) {
   return (
     <div className="card">
-      <ContentRow c={c} pubs={pubs.get(c.id) ?? []} latest={latest} dim={dim} />
+      <ContentRow c={c} pubs={pubs.get(c.id) ?? []} latest={latest} dim={dim} showChannel={showChannel} />
       {kids.length > 0 && (
         <div className="mt-2 space-y-2 border-l-2 border-border pl-3">
           {kids.map((k) => <ContentRow key={k.id} c={k} pubs={pubs.get(k.id) ?? []} latest={latest} dim={false} />)}
@@ -113,10 +118,13 @@ function statusColor(s: string) {
   return "text-muted";
 }
 
-function ContentRow({ c, pubs, latest, dim }: { c: Content; pubs: Publication[]; latest: Map<number, Metric>; dim: boolean }) {
+function ContentRow({ c, pubs, latest, dim, showChannel = false }: {
+  c: Content; pubs: Publication[]; latest: Map<number, Metric>; dim: boolean; showChannel?: boolean;
+}) {
   return (
     <div className={dim ? "opacity-50" : ""}>
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        {showChannel && <ChannelBadge channel={c.channel} />}
         <span className="badge uppercase">{c.kind}</span>
         <span className="font-medium">{c.title}</span>
       </div>

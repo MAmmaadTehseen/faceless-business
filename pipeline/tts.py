@@ -183,6 +183,13 @@ def words_to_srt(words: list[dict], max_words: int = 5, max_dur: float = 2.5) ->
     while i < len(words):
         chunk = [words[i]]
         j = i + 1
+        if re.search(r"[.!?]$", words[i]["text"]):
+            j = i + 1  # a sentence that is one word long gets its own caption
+            text = words[i]["text"]
+            end = min(words[i]["end"] + 0.15, words[j]["start"]) if j < len(words) else words[i]["end"]
+            out.append(f"{n}\n{_ts(words[i]['start'])} --> {_ts(end)}\n{text}\n")
+            n += 1; i = j
+            continue
         while j < len(words) and len(chunk) < max_words and words[j]["end"] - chunk[0]["start"] <= max_dur:
             chunk.append(words[j])
             if re.search(r"[.!?]$", words[j]["text"]):
