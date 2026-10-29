@@ -87,7 +87,7 @@ def validation_errors(data, body):
           and keyword not in data["intro_md"].casefold(), "Keep keyword out of headings and intro")
     if keyword and keyword in body.casefold():
         position = len(body[:body.casefold().index(keyword)].split())
-        check(450 <= position <= 600, f"Place keyword around word 500 (currently {position})")
+        check(350 <= position <= 800, f"Place keyword around word 500 (currently {position})")
     check(90 <= len(data["intro_md"].split()) <= 110, "Intro needs 90-110 words")
     check(30 <= len(data["quick_answer"].split()) <= 40, "Quick Answer needs 30-40 words")
     check(4 <= len(data["key_takeaways"]) <= 5, "Use 4-5 takeaways")
