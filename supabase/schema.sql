@@ -283,8 +283,8 @@ grant execute on function reserve_youtube_quota(int, int, int, int) to service_r
 insert into storage.buckets (id, name, public) values ('youtube-queue', 'youtube-queue', false)
 on conflict (id) do nothing;
 
--- Mirror migration 010: keep this block synchronized with that migration.
--- Apply as postgres after migrations 002-009. Atomic and safe to re-run.
+-- Mirror migration 011: keep this block synchronized with that migration.
+-- Apply as postgres after migrations 002-010. Atomic and safe to re-run.
 begin;
 
 -- service_role has BYPASSRLS; FORCE ROW LEVEL SECURITY is unnecessary and
@@ -340,7 +340,7 @@ alter default privileges for role postgres in schema public
 -- A schema-local REVOKE cannot undo the global default EXECUTE for PUBLIC.
 alter default privileges for role postgres revoke execute on functions from public;
 
--- Support both the original quota RPC and the concurrent upload-count migration.
+-- Harden every installed quota RPC overload, including any legacy signature.
 -- Harden every installed overload instead of assuming one argument signature.
 do $$
 declare obj record;

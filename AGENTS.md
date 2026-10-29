@@ -108,3 +108,16 @@ Blog writing rules live in `persona/blog-rules.md`; transferable video script wr
 ## Hub SEO
 Hub includes sitemap/robots, canonical and English alternate URLs, page metadata and Twitter cards, static shared OG artwork and dynamic article OG PNGs, Article/FAQ/Breadcrumb/Video JSON-LD, RSS (global and per channel), related and previous/next stories, next/image thumbnails and a tracked lite YouTube facade. URLs omit trailing slashes; `NEXT_PUBLIC_SITE_URL` defaults to https://hub.ammaad.online. Optional `GOOGLE_SITE_VERIFICATION` supports Search Console. Apply `supabase/migrations/009_hub_seo.sql` for sharing summaries and modification dates. New article slugs are at most 60 characters; existing URLs are preserved. Setup and verification instructions: `hub/README.md`.
 
+
+## RLS regression check
+Apply `supabase/migrations/011_rls_hardening.sql` as postgres after migrations 002–010.
+Run `python3 scripts/check_rls.py` after **every migration**, with `SUPABASE_URL` and
+owner-supplied `SUPABASE_ANON_KEY` exported in your shell. The script never reads `.env`
+or uses a service key. Missing configuration exits 2; failed or unverified checks exit 1.
+Set `RLS_MEDIA_OBJECT` to an existing bucket-relative media path (e.g. `channel/video.mp4`)
+if automatic root listing cannot find a file, so the credential-free public GET is tested.
+Only unique probe rows/objects are mutated; if access is unexpectedly allowed, check for
+leftover `rls-probe-` data. Empty Storage lists/deletes can be successful HTTP responses
+under RLS and are accepted only when they return no objects; this does not prove grants
+are absent. Review database ACLs/policies as well. The anon check does not test the
+`authenticated` role or discover live-only tables; the migration handles all public objects.
