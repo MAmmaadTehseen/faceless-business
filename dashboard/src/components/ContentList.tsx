@@ -1,4 +1,6 @@
 "use client";
+import { RebuildButton } from "./RebuildButton";
+import { recoveryAction } from "@/lib/recovery";
 import { RetryButton } from "./RetryButton";
 import { useSearchParams } from "next/navigation";
 import { contentHref } from "@/lib/content-link";
@@ -56,7 +58,7 @@ export function ContentList({
       ]}
       rows={shown.map((c) => ({
         id: c.id,
-        actions: owner ? <span className="flex gap-2">{c.publications.filter(p => ["failed", "queued"].includes(p.status)).map(p => <RetryButton key={p.id} publications={[p]} label={`Retry ${p.platform}`}/>)}</span> : undefined,
+        actions: owner ? <span className="flex gap-2">{recoveryAction(c, c.publications) !== "retry" ? <RebuildButton id={c.id}/> : c.publications.filter(p => ["failed", "queued"].includes(p.status)).map(p => <RetryButton key={p.id} publications={[p]} label={`Retry ${p.platform}`}/>)}</span> : undefined,
         title: c.title,
         status: c.status === "killed" ? "killed" :
           c.status === "failed" ||

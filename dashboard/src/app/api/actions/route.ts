@@ -1,9 +1,14 @@
+import { db } from "@/lib/supabase";
+import { rebuildArtifact } from "@/lib/rebuild";
+import { recoveryAction } from "@/lib/recovery";
 import { NextResponse } from "next/server";
 import { isOwner } from "@/lib/role";
 import { isChannelKey } from "@/lib/channels";
 const workflows: Record<string, string> = {
   sync: "sync.yml",
   retry: "retry.yml",
+  rebuild: "produce.yml",
+  reproduce: "produce.yml",
   engage: "engage.yml",
   produce: "produce.yml",
   shorts: "shorts.yml",
@@ -36,7 +41,39 @@ export async function POST(req: Request) {
   if (!file)
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   const inputs: Record<string, string> = {};
-  const requestId = b.action === "retry" ? crypto.randomUUID() : undefined;
+  const requestId = ["retry", "rebuild", "reproduce"].includes(b.action) ? crypto.randomUUID() : undefined;
+  if (["rebuild", "reproduce"].includes(b.action)) {
+    const {data: content, error} = await db().from("content").select("*").eq("id", b.content_id).single();
+    if (error || !content || content.status === "killed" || content.placeholder)
+      return NextResponse.json({error:"Content unavailable"}, {status:400});
+    const {data: pubs, error: pubError} = await db().from("publications").select("*").eq("content_id", content.id);
+    if (pubError || recoveryAction(content, pubs || []) === "retry")
+      return NextResponse.json({error:"Content does not require rebuilding"}, {status:400});
+    try {
+      const artifact = await rebuildArtifact(content);
+      inputs.channel = content.channel;
+      const {data: setting, error: settingError} = await db().from("settings").select("value").eq("key", "publish_privacy").maybeSingle();
+      if (settingError) throw settingError;
+      inputs.privacy = setting?.value || "private";
+      inputs.request_id = requestId!;
+      if (b.action === "rebuild") {
+        if (!artifact) return NextResponse.json({error:"Artifact expired; re-produce from topic"}, {status:409});
+        inputs.resume_id = content.id;
+        inputs.artifact_run_id = artifact.runId;
+        inputs.artifact_name = artifact.name;
+        inputs.rerender = "true";
+      } else {
+        if (artifact) return NextResponse.json({error:"Artifact available; use Rebuild"}, {status:409});
+        const {data: top, error: topError} = await db().from("topic_queue").select("priority").eq("channel",content.channel).order("priority",{ascending:false}).limit(1);
+        if (topError) throw topError;
+        const {error: queueError} = await db().from("topic_queue").insert({channel:content.channel,topic:content.topic,priority:(top?.[0]?.priority || 0)+100,status:"queued",added_by:"user"});
+        if (queueError) throw queueError;
+        inputs.count = "1";
+      }
+    } catch {
+      return NextResponse.json({error:"Cannot prepare rebuild; artifact or database lookup failed"}, {status:502});
+    }
+  }
   if (["produce", "shorts"].includes(b.action)) {
     if (!isChannelKey(b.channel))
       return NextResponse.json({ error: "Invalid channel" }, { status: 400 });
@@ -89,6 +126,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Owner only" }, { status: 403 });
   if (!process.env.GITHUB_TOKEN)
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
+  const artifactId = new URL(req.url).searchParams.get("artifact");
+  if (artifactId) {
+    try {
+      const {data, error} = await db().from("content").select("*").eq("id", artifactId).single();
+      if (error || !data) return NextResponse.json({error:"Content unavailable"},{status:404});
+      return NextResponse.json({available:!!(await rebuildArtifact(data))});
+    } catch { return NextResponse.json({error:"Cannot check artifact availability"},{status:502}); }
+  }
   const key = new URL(req.url).searchParams.get("status") ?? "";
   const file = Object.hasOwn(workflows, key) ? workflows[key] : null;
   if (!file)
@@ -104,7 +149,7 @@ export async function GET(req: Request) {
       );
     const j = await res.json();
     const requestId = new URL(req.url).searchParams.get("request_id");
-    const run = requestId ? j.workflow_runs?.find((r: {display_title: string}) => r.display_title === `retry ${requestId}`) : j.workflow_runs?.[0];
+    const run = requestId ? j.workflow_runs?.find((r: {display_title: string}) => r.display_title === `${key === "retry" ? "retry" : "produce"} ${requestId}`) : j.workflow_runs?.[0];
     return NextResponse.json(
       run
         ? {

@@ -73,14 +73,16 @@ def restore(db, row, pub):
     row = dict(row)
     if row.get("file_path") and Path(row["file_path"]).is_file():
         return row
-    tried = []
+    tried = [f"local file: {row.get('file_path') or 'not recorded'} (not found)"]
     if row.get("media_url"):
-        tried.append("content.media_url")
+        tried.append("content.media_url download")
         try:
             row["file_path"] = str(_local_file(db, row))
             return row
-        except Exception:
-            pass
+        except Exception as exc:
+            tried.append(f"failed: {type(exc).__name__}: {str(exc)[:300]}")
+    else:
+        tried.append("content.media_url: not recorded")
     tried.append("youtube-queue/release media_key")
     queue_pub = dict(db.one("publications", {"content_id": row["id"], "platform": "youtube"}) or {})
     queue_pub.update({k: v for k, v in pub.items() if v is not None})
@@ -88,8 +90,9 @@ def restore(db, row, pub):
         row = _restore_queue(db, row, queue_pub)
         if row.get("file_path") and Path(row["file_path"]).is_file():
             return row
-    except Exception:
-        pass
+    except Exception as exc:
+        tried.append(f"failed: {type(exc).__name__}: {str(exc)[:300]}")
+    tried.append("youtube-queue: no local file restored")
     info = {**_json(row.get("qa_notes")), **_json(pub.get("error"))}
     run_id = pub.get("artifact_run_id") or row.get("artifact_run_id") or info.get("artifact_run_id")
     artifact = pub.get("artifact_name") or row.get("artifact_name") or info.get("artifact_name")
@@ -99,8 +102,9 @@ def restore(db, row, pub):
             path = _artifact_file(row, run_id, artifact)
             if path:
                 return {**row, "file_path": path}
-        except Exception:
-            pass
+        except Exception as exc:
+            tried.append(f"failed: {type(exc).__name__}: {str(exc)[:300]}")
+    tried.append("producing GitHub artifact: missing provenance or no matching uploadable file")
     tried.append("recent produce.yml/shorts.yml artifacts")
     for workflow in ("produce.yml", "shorts.yml"):
         try:
@@ -110,10 +114,12 @@ def restore(db, row, pub):
                     path = _artifact_file(row, run["id"])
                     if path:
                         return {**row, "file_path": path}
-                except Exception:
+                    tried.append(f"{workflow} run {run['id']}: no matching file")
+                except Exception as exc:
+                    tried.append(f"{workflow} run {run['id']}: {type(exc).__name__}: {str(exc)[:300]}")
                     continue
-        except Exception:
-            pass
+        except Exception as exc:
+            tried.append(f"failed: {type(exc).__name__}: {str(exc)[:300]}")
     if pub.get("platform") in {"instagram", "facebook"}:
         yt = db.one("publications", {"content_id": row["id"], "platform": "youtube"}) or {}
         if yt.get("status") == "live" and db.sb:
@@ -126,9 +132,20 @@ def restore(db, row, pub):
                 row["media_url"] = url
                 db.update("content", {"id": row["id"]}, {"media_url": url})
                 return row
-            except Exception:
-                pass
-    raise FileNotFoundError("media not recoverable: " + ", ".join(tried))
+            except Exception as exc:
+                tried.append(f"public media bucket: {type(exc).__name__}: {str(exc)[:300]}")
+    tried.append("no uploadable file returned by the locations above")
+    raise FileNotFoundError("No uploadable file found. Checked: " + "; ".join(tried))
+
+
+def retry_error_details(exc):
+    details = youtube.error_details(exc)
+    details["error"] = type(exc).__name__
+    details["message"] = str(exc)[:300]
+    if isinstance(exc, FileNotFoundError):
+        details["reason"] = "media_not_recoverable"
+        details["message"] = str(exc)
+    return details
 
 
 def retry_one(db, pub, force=False):
@@ -163,9 +180,7 @@ def retry_one(db, pub, force=False):
         db.update("content", {"id": row["id"]}, {"status": "published"})
         return True
     except Exception as exc:
-        details = youtube.error_details(exc)
-        if isinstance(exc, FileNotFoundError):
-            details["message"] = str(exc)
+        details = retry_error_details(exc)
         db.update("publications", {"id": pub["id"]}, {"status": "failed", "error": json.dumps(details)})
         print(f"Publication {pub['id']} failed: {json.dumps(details)}")
         return False

@@ -69,7 +69,7 @@ def error_details(exc):
         error = {}
     reasons = [e.get("reason") for e in error.get("errors", []) if isinstance(e, dict) and e.get("reason")]
     reason = ",".join(reasons) or error.get("type") or error.get("status") or type(exc).__name__
-    details = {"error": type(exc).__name__, "http_status": status, "reason": reason}
+    details = {"error": type(exc).__name__, "http_status": status, "reason": reason, "message": str(exc)[:300]}
     if error.get("code") is not None:
         details["code"] = error["code"]
     if error.get("error_subcode") is not None:

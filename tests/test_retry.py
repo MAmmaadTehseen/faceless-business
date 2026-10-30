@@ -10,7 +10,7 @@ def test_response_reason():
     exc = Exception()
     exc.resp = Mock(status=403)
     exc.content = b'{"error":{"errors":[{"reason":"uploadLimitExceeded"}]}}'
-    assert error_details(exc) == {"error": "Exception", "http_status": 403, "reason": "uploadLimitExceeded"}
+    assert error_details(exc) == {"error": "Exception", "http_status": 403, "reason": "uploadLimitExceeded", "message": ""}
 
 
 def test_force_bypasses_both_buckets(tmp_path, monkeypatch):
@@ -200,7 +200,7 @@ def test_restore_unrecoverable_is_clear(monkeypatch):
     import pipeline.retry as retry
     monkeypatch.setattr(retry, '_restore_queue', lambda db, row, pub: row)
     monkeypatch.setattr(retry, '_api', Mock(side_effect=OSError()))
-    with pytest.raises(FileNotFoundError, match='media not recoverable: .*youtube-queue.*GitHub artifact'):
+    with pytest.raises(FileNotFoundError, match='No uploadable file found. Checked: .*youtube-queue.*GitHub artifact'):
         retry.restore(Mock(one=Mock(return_value=None)), {'id': 'v'}, {'platform': 'youtube'})
 
 
@@ -258,3 +258,34 @@ def test_production_notes_preserves_issues_and_provenance(monkeypatch):
     for workflow, prefix in [('produce', 'videos'), ('shorts', 'shorts')]:
         notes = json.loads(production_notes(['finding'], Channel('tradewinds'), workflow))
         assert notes == {'issues': ['finding'], 'artifact_run_id': '123', 'artifact_name': f'{prefix}-tradewinds-123'}
+
+
+def test_retry_error_messages():
+    from pipeline.retry import retry_error_details
+    details = retry_error_details(RuntimeError("useful failure " * 40))
+    assert details["error"] == "RuntimeError"
+    assert details["message"] == ("useful failure " * 40)[:300]
+    message = "No uploadable file found. Checked: local (missing); queue (empty)"
+    details = retry_error_details(FileNotFoundError(message))
+    assert details["reason"] == "media_not_recoverable"
+    assert details["message"] == message
+
+
+def test_dashboard_recovery_decisions():
+    import subprocess
+    script = r"""
+const ts = require('./dashboard/node_modules/typescript');
+const fs = require('fs');
+const code = ts.transpile(fs.readFileSync('dashboard/src/lib/recovery.ts', 'utf8'), {module:ts.ModuleKind.CommonJS});
+const mod = {exports:{}};
+new Function('exports', code)(mod.exports);
+const f = mod.exports.recoveryAction;
+const assert = require('assert');
+const passed = {status:'rendered',qa_status:'passed'};
+assert.equal(f(passed,[{status:'failed',error:'{"reason":"quotaExceeded"}'}]),'retry');
+assert.equal(f(passed,[{status:'failed',error:'{"reason":"media_not_recoverable"}'}]),'rebuild');
+assert.equal(f({status:'qa_failed',qa_status:'failed'},[]),'rebuild');
+assert.equal(f({status:'rendered',qa_status:'pending'},[],false),'reproduce');
+assert.equal(f(passed,[{status:'failed',error:'invalid'}]),'retry');
+"""
+    subprocess.run(['node', '-e', script], check=True)
