@@ -8,10 +8,15 @@ on:
     inputs:
       channel:
         description: "futurework | tradewinds | escapevelocity"
-        required: true
-        default: "futurework"
+        required: false
       privacy:
         description: "private | public | unlisted (default: dashboard setting)"
+        required: false
+      resume_id:
+        description: "Content id of the blocked render"
+        required: false
+      artifact_run_id:
+        description: "Run id holding videos-<channel>-<run_id> (required for resume)"
         required: false
       count:
         description: "long videos this run"
@@ -70,20 +75,57 @@ jobs:
           key: kokoro-82m-v1
       - name: Pick channel
         id: pick
+        env:
+          INPUT_CHANNEL: ${{ github.event.inputs.channel }}
+          RESUME_ID: ${{ github.event.inputs.resume_id }}
         run: |
           case "${{ github.event.schedule }}" in
             "0 6 * * 1,3,5")  CH=futurework ;;
             "0 11 * * 2,4,6") CH=tradewinds ;;
             "0 16 * * 1,4,0") CH=escapevelocity ;;
-            *) CH="${{ github.event.inputs.channel || 'futurework' }}" ;;
+            *) CH="$INPUT_CHANNEL"
+               if [ -z "$CH" ] && [ -n "$RESUME_ID" ]; then CH="${RESUME_ID%%-*}"; fi
+               CH="${CH:-futurework}" ;;
           esac
+          case "$CH" in
+            futurework|tradewinds|escapevelocity) ;;
+            *) echo "Unknown channel: $CH" >&2; exit 1 ;;
+          esac
+          if [ -n "$RESUME_ID" ] && [[ "$RESUME_ID" != "$CH-"* ]]; then
+            echo "resume_id must start with $CH-" >&2; exit 1
+          fi
           echo "channel=$CH" >> "$GITHUB_OUTPUT"
           echo "channel: $CH"
-      - name: Produce and publish
+      - name: Restore rendered files
+        if: github.event.inputs.resume_id != ''
+        env:
+          RESUME_ID: ${{ github.event.inputs.resume_id }}
+          ARTIFACT_RUN_ID: ${{ github.event.inputs.artifact_run_id }}
+          CHANNEL: ${{ steps.pick.outputs.channel }}
         run: |
-          ARGS="--publish --channel ${{ steps.pick.outputs.channel }} --count ${{ github.event.inputs.count || '1' }}"
-          if [ -n "${{ github.event.inputs.privacy }}" ]; then ARGS="$ARGS --privacy ${{ github.event.inputs.privacy }}"; fi
-          python -m pipeline.run_all $ARGS
+          [[ "$RESUME_ID" =~ ^[a-z]+-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$ ]] || { echo "Invalid resume_id" >&2; exit 1; }
+          [[ "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]] || { echo "artifact_run_id is required and must be numeric for resume" >&2; exit 1; }
+          gh run download "$ARTIFACT_RUN_ID" -n "videos-$CHANNEL-$ARTIFACT_RUN_ID" -D .
+          # upload-artifact strips the common out/ prefix.
+          if [ ! -d "out/$RESUME_ID" ] && [ -d "$RESUME_ID" ]; then
+            mkdir -p out
+            mv -- "$RESUME_ID" "out/$RESUME_ID"
+          fi
+      - name: Produce and publish
+        env:
+          RESUME_ID: ${{ github.event.inputs.resume_id }}
+          CHANNEL: ${{ steps.pick.outputs.channel }}
+          COUNT: ${{ github.event.inputs.count || '1' }}
+          PRIVACY: ${{ github.event.inputs.privacy }}
+        run: |
+          ARGS=(--publish --channel "$CHANNEL")
+          if [ -n "$RESUME_ID" ]; then
+            ARGS+=(--resume "$RESUME_ID")
+          else
+            ARGS+=(--count "$COUNT")
+          fi
+          if [ -n "$PRIVACY" ]; then ARGS+=(--privacy "$PRIVACY"); fi
+          python -m pipeline.run_all "${ARGS[@]}"
       - name: Keep the rendered files for 3 days
         if: always()
         uses: actions/upload-artifact@v4

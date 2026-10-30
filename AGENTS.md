@@ -30,6 +30,14 @@ Publishing refuses placeholder footage. Content ids are `<channel>-<date>-<slug>
 Cloud: `gh workflow run produce.yml -f channel=<key> -f privacy=private`. Workflows: produce (3 crons,
 one per channel), shorts (daily 09:30 UTC, all three channels), sync (6h), engage (6h), optimize (daily), review (weekly).
 
+Resume a QA-blocked cloud render within its artifact's 3-day retention. QA runs again before
+publishing; the channel is inferred from the content id and the long video is not re-rendered:
+```bash
+RESUME_ID='<content-id>' ARTIFACT_RUN_ID='<original-github-run-id>'
+gh workflow run produce.yml -f resume_id="$RESUME_ID" -f artifact_run_id="$ARTIFACT_RUN_ID" -f privacy=private
+```
+
+
 ## Hard rules (do not break)
 - Secrets only in local `.env`, GitHub Actions secrets, Vercel env. Never print them, never commit them.
 - TTS on GitHub runners must be Kokoro (`TTS_BACKEND=kokoro`); edge-tts is blocked from datacenter IPs.

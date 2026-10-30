@@ -40,6 +40,10 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     if resume:
         content_id = resume
         out_dir = OUT_DIR / content_id
+        # Resume must reuse the retained long render, never silently regenerate it.
+        for required in (out_dir / "script.json", out_dir / f"{content_id}.mp4"):
+            if not required.is_file():
+                raise FileNotFoundError(f"Cannot resume {content_id}: missing required artifact file: {required}")
         data = json.loads((out_dir / "script.json").read_text())
         row = db.one("content", {"id": content_id}) or {}
         topic = {"topic": row.get("topic") or data.get("title"), "angle": "", "source_url": None, "source_headline": None, "queue_id": None}
