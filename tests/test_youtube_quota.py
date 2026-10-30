@@ -2,7 +2,11 @@
 from scripts.check_youtube_queue import main
 
 
-def test_youtube_queue():
+def test_youtube_queue(tmp_path, monkeypatch):
+    from functools import partial
+    from tempfile import TemporaryDirectory
+    monkeypatch.setattr('scripts.check_youtube_queue.TemporaryDirectory',
+                        partial(TemporaryDirectory, dir=tmp_path))
     main()
 
 

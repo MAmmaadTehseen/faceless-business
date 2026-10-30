@@ -11,7 +11,20 @@ from pipeline.qa import black_segments, probe
 
 
 @pytest.fixture(autouse=True)
-def small_frames(monkeypatch):
+def small_frames(monkeypatch, tmp_path):
+    # Bound indirect renderer/QA subprocesses as well as fixture encodes.
+    real_run = subprocess.run
+
+    def bounded_run(command, **kwargs):
+        command = list(command)
+        if Path(command[0]).name == 'ffmpeg' and not any(
+                flag in command for flag in ('-t', '-frames:v', '-vframes')):
+            command[-1:-1] = ['-t', '5']
+        kwargs['timeout'] = min(kwargs.get('timeout', 30), 30)
+        return real_run(command, **kwargs)
+
+    monkeypatch.setattr(subprocess, 'run', bounded_run)
+    monkeypatch.setattr('pipeline.footage.CACHE', tmp_path)
     monkeypatch.setattr(render, '_dims', lambda orientation: (160, 90))
     monkeypatch.setattr(Footage, '_dims', staticmethod(lambda orientation: (160, 90)))
 
@@ -20,7 +33,7 @@ def colour(tmp_path, colour='red', duration=0.1):
     src = tmp_path / f'{colour}.mp4'
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
                     f'color=c={colour}:s=160x90:r=30:d={duration}',
-                    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(src)], check=True)
+                    '-t', str(duration), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(src)], check=True, timeout=30)
     return src
 
 
@@ -77,7 +90,7 @@ def test_embedded_black_frames_removed(tmp_path):
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
                     'color=black:s=160x90:r=30:d=0.1', '-f', 'lavfi', '-i',
                     'color=red:s=160x90:r=30:d=0.1', '-filter_complex',
-                    '[0:v][1:v]concat=n=2:v=1:a=0', '-c:v', 'libx264', str(src)], check=True)
+                    '[0:v][1:v]concat=n=2:v=1:a=0', '-t', '0.2', '-c:v', 'libx264', str(src)], check=True, timeout=30)
     out = render._fit_clip(src, 0.3, 'landscape', tmp_path / 'slot.mp4')
     assert probe(out)['duration'] == pytest.approx(0.3, abs=0.034)
     assert black_segments(out, 0.03) == []
@@ -145,7 +158,7 @@ def test_almost_black_source_uses_card(tmp_path):
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
                     'color=0x141414:s=160x90:r=30:d=0.2', '-vf',
                     'drawbox=x=10:y=10:w=18:h=12:color=white:t=fill',
-                    '-c:v', 'libx264', str(src)], check=True)
+                    '-t', '0.2', '-c:v', 'libx264', str(src)], check=True, timeout=30)
     footage = Mock()
     footage.clip.return_value = src
     out = render._fill_slot({'query': 'space'}, 0.2, 'landscape', tmp_path / 'slot.mp4', footage)

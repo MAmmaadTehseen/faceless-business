@@ -59,8 +59,15 @@ Add `-f rerender=true` to rebuild the long video and Shorts from saved scripts/s
   `youtube_uploads_per_day=100` (one per videos.insert attempt, with 2 reserved for retries),
   and `youtube_quota_units_per_day=10000` (50 per thumbnail/update/reply, with 1000 reserved
   for sync/engage reads). Atomic reservations check both buckets and retain failed/uncertain
-  attempts; uploads do not consume general units. Uploads queue if either bucket is full.
-  Sync drains each channel's queue oldest-first every 6h. Public Meta Reels still publish immediately.
+  attempts; uploads do not consume general units. Queueing is quota-only: uploads proceed
+  immediately when both buckets have room, even with other queued or recent publications;
+  the calendar controls publish_at, not when files upload. Uploads queue only when a bucket
+  cannot reserve capacity. Sync drains each channel oldest-first every 6h and stops on quota
+  exhaustion. Unrestorable media or other raised drain errors increment drain_attempts in
+  the publication error JSON; the row stays queued until its third failure, then becomes
+  failed. Drain continues past these rows so later uploads are not starved.
+  Run `python -m pipeline.sync --drain-only --channel <key>` to drain without other sync work.
+  Public Meta Reels still publish immediately.
   Queued files live in private Supabase Storage `youtube-queue`, so fresh runners can drain them.
   Apply migration 004 then `supabase/migrations/010_quota_uploads.sql` before deploying;
   migration 010 is required for existing databases as well.
@@ -69,6 +76,17 @@ Add `-f rerender=true` to rebuild the long video and Shorts from saved scripts/s
 - `python -m pipeline.shorts_daily --channel <key>` produces one standalone Short daily using the
   channel persona/voice, 14-day topic avoidance, and CostGuard estimate $0.30; supports `--dry-run`,
   `--placeholder`, `--no-publish`, `--privacy`. `.github/workflows/shorts.yml` runs all channels at 09:30 UTC.
+
+**Publish schedule.** All slots are UTC and at least one hour after scheduling time.
+Long videos take the next available channel cron slot shown in the table above, skipping
+occupied long-video days. Four child Shorts run on the four following days, one per day
+at `channel.json` key `shorts_hour_utc` (defaults: futurework 13, tradewinds 15,
+escapevelocity 18). Standalone Shorts use `daily_short_hour_utc` (default 20 for every
+channel). `shorts_per_long` is set to 4 in all three channel configs (Channel fallback: 2). Taken slots are skipped and a maximum of three
+YouTube publications per channel per UTC day pushes overflow forward; long videos still
+use their next cron day. Live and queued publications occupy slots; failed rows do not.
+The cron days/hours are fixed by channel in the scheduler and match `schedule.days` and
+`schedule.utc_hour` in channel.json; those schedule fields are not scheduler overrides.
 
 ## Current state (2026-10-29)
 Done: pipeline end to end (one private long video + 2 Shorts on Future Work), Supabase schema + channel

@@ -35,7 +35,7 @@ def _next_slot(db, kind: str, channel: Channel | None = None, *, now=None,
             day = max(day, after + timedelta(days=1))
         candidate = day.replace(hour=int(hour), minute=0, second=0, microsecond=0)
     while True:
-        slot = max(candidate, earliest) if kind == "long" and candidate <= now < candidate + timedelta(hours=1) else candidate
+        slot = candidate
         day_count = sum(t.date() == slot.date() for t, _ in occupied)
         taken = any(t == slot or (kind == "long" and k == "long" and t.date() == slot.date()) for t, k in occupied)
         if slot >= earliest and (kind != "long" or candidate.weekday() in weekdays) and not taken and day_count < 3:
