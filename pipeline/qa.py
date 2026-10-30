@@ -137,7 +137,7 @@ def freeze_segments(video: Path, min_duration: float = 4.0) -> list[tuple[float,
     duration = probe(video)["duration"]
     result = subprocess.run([
         "ffmpeg", "-hide_banner", "-nostats", "-v", "info", "-i", str(video),
-        "-t", str(duration), "-vf", f"freezedetect=n=-60dB:d={min_duration}",
+        "-t", str(duration), "-vf", "freezedetect=n=-60dB:d=0.1",
         "-an", "-f", "null", "-",
     ], capture_output=True, text=True, check=True, timeout=max(60, duration*3))
     spans = []
@@ -150,7 +150,15 @@ def freeze_segments(video: Path, min_duration: float = 4.0) -> list[tuple[float,
             start = None
     if start is not None:
         spans.append((start, duration))
-    return [(a, b) for a, b in spans if b-a >= min_duration]
+    # QA merges touching short events: d controls the reference frame used by
+    # ffmpeg, so scanning with d=4 can miss a chain QA treats as one freeze.
+    merged = []
+    for a, b in spans:
+        if merged and a <= merged[-1][1] + 0.001:
+            merged[-1] = (merged[-1][0], max(b, merged[-1][1]))
+        else:
+            merged.append((a, b))
+    return [(a, b) for a, b in merged if b-a >= min_duration]
 
 
 def temporal_findings(video: Path, duration: float | None = None) -> list[dict]:

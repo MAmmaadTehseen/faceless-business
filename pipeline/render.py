@@ -182,21 +182,36 @@ def _render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation
     subprocess.run(cmd, check=True)
     _check_black(out)
     from .qa import freeze_segments
-    freezes = freeze_segments(out)
-    if freezes:
+    # Scan the final encode with QA's detector settings. A new candidate may also
+    # be static, so each slot has its own bounded retry budget.
+    attempts = [0] * len(parts)
+    cards = set()
+    while freezes := freeze_segments(out):
+        from .qa import probe
         offset = 0.0
         for i, seg in enumerate(segments):
             sec = max(seg["end"] - seg["start"], 1.0)
-            if any(start < offset + sec and end > offset for start, end in freezes):
-                log.warning("render self-check: freeze overlaps slot %d (%.3f-%.3fs); retrying next candidate once",
-                            i, offset, offset + sec)
-                _fill_slot(dict(seg, _retry=True), sec, orientation, parts[i], footage, style)
-            offset += sec
+            # Encodes round to frames; accumulated rounding shifts later slots.
+            end_offset = offset + probe(parts[i])["duration"]
+            if any(start < end_offset and end > offset for start, end in freezes):
+                if i in cards:
+                    raise RuntimeError(f"render self-check: moving card still frozen in slot {i}")
+                if attempts[i] < 3:
+                    attempts[i] += 1
+                    log.warning("render self-check: freeze overlaps slot %d (%.3f-%.3fs); replacement attempt %d/3",
+                                i, offset, end_offset, attempts[i])
+                    _fill_slot(dict(seg, _retry=True), sec, orientation, parts[i], footage, style)
+                else:
+                    log.warning("render self-check: slot %d frozen after 3 replacements; using moving branded caption card", i)
+                    _background_card(seg.get("caption") or seg.get("text") or seg["query"],
+                                     sec, orientation, parts[i], style)
+                    cards.add(i)
+            offset = end_offset
+        if not any(start < offset and end > 0 for start, end in freezes):
+            raise RuntimeError("render self-check: freeze outside rendered slots")
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0",
                         "-i", str(lst), "-c", "copy", str(visual)], check=True)
         subprocess.run(cmd, check=True)
-        for start, end in freeze_segments(out):
-            log.warning("render self-check: freeze persists after one repair %.3f-%.3fs; handing to QA", start, end)
     shutil.rmtree(work, ignore_errors=True)
     log.info("render: %s", out)
     return out

@@ -224,14 +224,18 @@ def test_retry_starts_with_next_candidate(tmp_path):
     assert footage.clip.call_args.args[0] == 'second'
 
 
-def test_post_render_repairs_only_overlapping_slot_once(tmp_path, monkeypatch, caplog):
+@pytest.mark.parametrize('failures', [1, 2, 3, 4])
+def test_post_render_retry_loop_and_fallback(tmp_path, monkeypatch, caplog, failures):
     caplog.set_level('INFO')
     fill = Mock(side_effect=lambda seg, sec, orientation, out, *args: out)
     monkeypatch.setattr(render, '_fill_slot', fill)
     monkeypatch.setattr(render, '_check_black', Mock())
     monkeypatch.setattr(render, '_music', lambda: None)
     monkeypatch.setattr(render, '_font', lambda: None)
-    scan = Mock(side_effect=[[(6, 10.1)], [(6, 10.1)]])
+    scan = Mock(side_effect=[[(6, 10.1)]] * failures + [[]])
+    card = Mock()
+    monkeypatch.setattr(render, '_background_card', card)
+    monkeypatch.setattr('pipeline.qa.probe', lambda path: {'duration': 6})
     monkeypatch.setattr('pipeline.qa.freeze_segments', scan)
     runner = Mock()
     monkeypatch.setattr(subprocess, 'run', runner)
@@ -240,11 +244,14 @@ def test_post_render_repairs_only_overlapping_slot_once(tmp_path, monkeypatch, c
     out = tmp_path / 'final.mp4'
     render.render(segments, tmp_path / 'voice.wav', tmp_path / 'captions.srt', out,
                   footage=Mock())
-    assert fill.call_count == 3
+    assert fill.call_count == 2 + min(failures, 3)
     assert fill.call_args.args[0] == dict(segments[1], _retry=True)
-    assert scan.call_count == 2
-    assert 'retrying next candidate once' in caplog.text
-    assert 'freeze persists after one repair' in caplog.text
+    assert scan.call_count == failures + 1
+    assert card.call_count == (1 if failures == 4 else 0)
+    if failures == 4:
+        assert card.call_args.args[0] == 'second'
+        assert card.call_args.args[3].name == 'seg_001.mp4'
+    assert 'replacement attempt 1/3' in caplog.text
     assert not (tmp_path / 'final_work').exists()
 
 
@@ -260,3 +267,29 @@ def test_black_stripping_loops_cleaned_motion(tmp_path):
     assert probe(out)['duration'] == pytest.approx(4.5, abs=0.034)
     assert black_segments(out, 0.03) == []
     assert freeze_segments(out, 0.5) == []
+
+
+def test_renderer_detector_merges_qa_short_events(monkeypatch, tmp_path):
+    from pipeline.qa import freeze_segments
+    monkeypatch.setattr('pipeline.qa.probe', lambda path: {'duration': 12})
+    events = '\n'.join(f'freeze_start: {i}\nfreeze_duration: 1\nfreeze_end: {i+1}'
+                       for i in range(3, 8))
+    runner = Mock(return_value=Mock(stderr=events))
+    monkeypatch.setattr(subprocess, 'run', runner)
+    assert freeze_segments(tmp_path / 'video.mp4') == [(3, 8)]
+    assert 'freezedetect=n=-60dB:d=0.1' in runner.call_args.args[0]
+
+
+def test_frozen_card_fails_closed_and_cleans_work(monkeypatch, tmp_path):
+    monkeypatch.setattr(render, '_fill_slot', lambda seg, sec, orientation, out, *args: out)
+    monkeypatch.setattr(render, '_background_card', Mock())
+    monkeypatch.setattr(render, '_check_black', Mock())
+    monkeypatch.setattr(render, '_music', lambda: None)
+    monkeypatch.setattr(render, '_font', lambda: None)
+    monkeypatch.setattr('pipeline.qa.probe', lambda path: {'duration': 6})
+    monkeypatch.setattr('pipeline.qa.freeze_segments', lambda path: [(0, 6)])
+    monkeypatch.setattr(subprocess, 'run', Mock())
+    with pytest.raises(RuntimeError, match='moving card still frozen'):
+        render.render([{'query': 'static', 'start': 0, 'end': 6}],
+                      tmp_path / 'audio', tmp_path / 'srt', tmp_path / 'final.mp4', footage=Mock())
+    assert not (tmp_path / 'final_work').exists()
