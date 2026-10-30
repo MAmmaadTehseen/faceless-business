@@ -15,7 +15,7 @@ export async function getContent(
     .select("*")
     .order("created_at", { ascending: false });
   if (channel !== "all") q = q.eq("channel", channel);
-  if ([7, 28, 90].includes(Number(days)))
+  if ([1, 7, 28, 30, 90].includes(Number(days)))
     q = q.gte(
       "created_at",
       new Date(Date.now() - Number(days) * 86400000).toISOString(),
@@ -68,4 +68,25 @@ export async function getContent(
       .filter((p) => p.content_id === c.id)
       .map((p) => ({ ...p, metric: latest.get(p.id) ?? null })),
   }));
+}
+
+/** Hub articles are publications in the articles table, rather than social uploads. */
+export async function getPlatformContent(channel: ChannelFilter, days?: string, platform?: string): Promise<ContentItem[]> {
+  const items = await getContent(channel, true, days);
+  if (platform !== "hub") return items;
+  let query = db().from("articles").select("id,content_id,slug,published_at").not("published_at", "is", null);
+  if (channel !== "all") query = query.eq("channel", channel);
+  const { data, error } = await query;
+  if (error) throw error;
+  const { getHubAnalytics } = await import("./hub-analytics");
+  const analytics = await getHubAnalytics(channel, [1,7,28,30,90].includes(Number(days)) ? Number(days) : 28, days === "all");
+  const base = (process.env.NEXT_PUBLIC_HUB_URL ?? "https://hub.ammaad.online").replace(/\/$/, "");
+  return items.flatMap(c => {
+    const articles = (data ?? []).filter(a => a.content_id === c.id);
+    if (!articles.length) return [];
+    return [{ ...c, publications: articles.map((a, i) => {
+      const stat = analytics?.articles.find(r => r.slug === a.slug);
+      return { id: -(i + 1), content_id: c.id, platform: "hub", platform_id: a.id, url: `${base}/a/${encodeURIComponent(a.slug)}`, privacy: "public", status: "published", published_at: a.published_at, error: null, metric: stat ? { id: 0, publication_id: -(i + 1), captured_at: new Date().toISOString(), views: stat.views, likes: 0, comments: 0, shares: 0, ctr: null, avg_view_duration_sec: null, impressions: null } : null };
+    }) }];
+  });
 }

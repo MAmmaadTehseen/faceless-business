@@ -1,5 +1,7 @@
+import { AutoFilters } from "@/components/AutoFilters";
+import { CHANNELS, parseChannelFilter } from "@/lib/channels";
 import { FilterSheet } from "@/components/FilterSheet";
-import Link from "next/link";
+import { ReplaceLink as Link } from "@/components/ReplaceLink";
 import { db } from "@/lib/supabase";
 import { isOwner } from "@/lib/role";
 import { Comment } from "@/lib/types";
@@ -12,10 +14,11 @@ const PLATFORMS = ["youtube", "instagram", "facebook"];
 export default async function InboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ platform?: string; tab?: string }>;
+  searchParams: Promise<Record<string, string>>;
 }) {
-  const { platform = "", tab = "pending" } = await searchParams;
-  const channel = await getChannelFilter();
+  const sp = await searchParams;
+  const { platform = "", tab = "pending", days = "all" } = sp;
+  const channel = parseChannelFilter(sp.channel);
   // Channel lives on content, two joins away; over-fetch when filtering and trim in code.
   let q = db()
     .from("comments")
@@ -25,6 +28,7 @@ export default async function InboxPage({
   if (tab === "pending") q = q.in("reply_status", ["new", "drafted"]);
   if (tab === "replied") q = q.eq("reply_status", "sent");
   if (tab === "flagged") q = q.eq("flagged", true);
+  if ([1, 7, 30].includes(Number(days))) q = q.gte("posted_at", new Date(Date.now() - Number(days) * 86400000).toISOString());
   const owner = await isOwner();
   const urls = new Map<number, string>();
   if (platform) q = q.eq("platform", platform);
@@ -70,6 +74,7 @@ export default async function InboxPage({
       .slice(0, 200);
   }
 
+  if (sp.q?.trim()) comments = comments.filter(c => `${c.author ?? ""} ${c.text} ${titles.get(c.publication_id ?? 0) ?? ""}`.toLowerCase().includes(sp.q.trim().toLowerCase()));
   return (
     <div>
       <PageHeader
@@ -81,7 +86,8 @@ export default async function InboxPage({
               <Link
                 className={`btn ${tab === t ? "btn-primary" : ""}`}
                 key={t}
-                href={`/inbox?tab=${t}${platform ? `&platform=${platform}` : ""}`}
+                scroll={false}
+                href={`?${new URLSearchParams({ ...sp, tab: t })}`}
               >
                 {t[0].toUpperCase() + t.slice(1)}
               </Link>
@@ -89,16 +95,13 @@ export default async function InboxPage({
           </div>
         }
       />
-      <FilterSheet count={Number(!!platform)}><form className="filter-bar mb-4">
-        <input type="hidden" name="tab" value={tab} />
-        <select name="platform" aria-label="Platform" defaultValue={platform}>
-          <option value="">All platforms</option>
-          {PLATFORMS.map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </select>
-        <button className="btn">Apply</button>
-      </form></FilterSheet>
+      <FilterSheet count={[platform, sp.q, days !== "all", channel !== "all"].filter(Boolean).length}><AutoFilters key={JSON.stringify({ ...sp, q: undefined })} className="filter-bar mb-4">
+        <select name="channel" aria-label="Channel" defaultValue={channel}><option value="all">All channels</option>{CHANNELS.map(c => <option key={c.key} value={c.key}>{c.short}</option>)}</select>
+        <input name="q" aria-label="Search comments" placeholder="Search comments…" defaultValue={sp.q ?? ""} />
+        <select name="platform" aria-label="Platform" defaultValue={platform}><option value="">All platforms</option>{PLATFORMS.map(p => <option key={p}>{p}</option>)}</select>
+        <select name="days" aria-label="Date range" defaultValue={days}>{[["1", "Last 24 hours"], ["7", "7 days"], ["30", "30 days"], ["all", "All time"]].map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select>
+        <span className="badge">{[platform, sp.q, days !== "all", channel !== "all"].filter(Boolean).length} active</span><Link className="badge" scroll={false} href={`/inbox?channel=all&tab=${tab}`}>Clear</Link>
+      </AutoFilters></FilterSheet>
       {comments.length === 0 && (
         <div className="card text-sm text-ok-fg">
           No comments in this tab. Try another tab or platform.

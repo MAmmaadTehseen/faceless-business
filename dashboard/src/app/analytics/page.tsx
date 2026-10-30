@@ -1,7 +1,7 @@
 import { SeriesReport, type ReportColumn } from "@/components/SeriesReport";
 import { getHubAnalytics } from "@/lib/hub-analytics";
 import { HubAnalytics, HubChannels } from "@/components/HubAnalytics";
-import Link from "next/link";
+import { ReplaceLink as Link } from "@/components/ReplaceLink";
 import { getAnalytics, Totals } from "@/lib/analytics";
 import { getChannelFilter } from "@/lib/channel-filter";
 import { channelMeta, parseChannelFilter } from "@/lib/channels";
@@ -105,14 +105,14 @@ export default async function Analytics({
     "categories",
     "engagement",
   ];
-  const tab = tabs.includes(sp.tab) ? sp.tab : "overview";
+  const tab = sp.platform === "hub" ? "hub" : tabs.includes(sp.tab) ? sp.tab : "overview";
   // All-time uses the full stored history, rounded up to whole days.
-  const days = [7, 28, 90].includes(Number(sp.days)) ? Number(sp.days) : 28;
+  const days = [1, 7, 28, 30, 90].includes(Number(sp.days)) ? Number(sp.days) : 28;
   const hub =
-    tab === "hub" || tab === "channels"
+    (tab === "hub" || tab === "channels") && (!sp.platform || sp.platform === "hub")
       ? await getHubAnalytics(channel, days, sp.days === "all")
       : null;
-  const a = await getAnalytics(channel, days, sp.days === "all");
+  const a = await getAnalytics(channel, days, sp.days === "all", sp.platform);
   const periodItems = a.videos.map((c) => ({
     ...c,
     publications: c.publications.map((p, i) => ({
@@ -158,7 +158,7 @@ export default async function Analytics({
         title="Analytics"
         action={
           <div className="flex gap-2">
-            {["7", "28", "90", "all"].map((d) => {
+            {["1", "7", "28", "30", "90", "all"].map((d) => {
               const q = new URLSearchParams(sp);
               q.set("days", d);
               return (
@@ -167,13 +167,14 @@ export default async function Analytics({
                   className={`btn ${(sp.days ?? "28") === d ? "btn-primary" : ""}`}
                   href={`?${q}`}
                 >
-                  {d === "all" ? "All time" : `${d} days`}
+                  {d === "1" ? "Last 24 hours" : d === "all" ? "All time" : `${d} days`}
                 </Link>
               );
             })}
           </div>
         }
       />
+      {tab !== "hub" && <div className="flex flex-wrap gap-3 text-sm text-muted"><span>Reels: {a.videos.filter(v => v.kind === "short" && v.publications.some(p => ["instagram", "facebook"].includes(p.platform) && p.published_at && Date.parse(p.published_at) >= a.start && Date.parse(p.published_at) <= a.end)).length}</span><span>Posting cadence: {(a.videos.flatMap(v => v.publications).filter(p => p.published_at && (Date.parse(p.published_at) >= a.start && Date.parse(p.published_at) <= a.end)).length / a.periodDays).toFixed(1)} posts/day</span><span>Followers / subscribers: unavailable in stored metrics</span></div>}
       {tab !== "hub" && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -242,6 +243,7 @@ export default async function Analytics({
       </div>
       {tab === "hub" && <HubAnalytics data={hub} />}
       {tab === "channels" && <HubChannels data={hub} />}
+      {tab !== "hub" && tab !== "overview" && <ContentFilters sp={sp} channel={channel} path="/analytics" defaultSort="views" analytics />}
       {tab === "overview" && (
         <>
           <ContentFilters

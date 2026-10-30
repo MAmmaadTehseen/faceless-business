@@ -1,3 +1,5 @@
+import { AutoFilters } from "@/components/AutoFilters";
+import { parseChannelFilter } from "@/lib/channels";
 import { SeriesReport } from "@/components/SeriesReport";
 import { Section } from "@/components/Section";
 import Link from "next/link";
@@ -10,7 +12,9 @@ import { CHANNELS, channelMeta } from "@/lib/channels";
 import { ChannelBadge } from "@/components/ChannelBadge";
 import { PageHeader } from "@/components/PageHeader";
 
-export default async function CostsPage() {
+export default async function CostsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
+  const sp = await searchParams;
+  const days = sp.days ?? "month";
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const daysInMonth = new Date(
@@ -19,13 +23,13 @@ export default async function CostsPage() {
     0,
   ).getDate();
   const daysElapsed = now.getDate();
-  const channel = await getChannelFilter();
+  const channel = parseChannelFilter(sp.channel);
   const all = channel === "all";
 
   let costsQ = db()
     .from("costs")
     .select("id,at,step,channel,content_id,model,usd")
-    .gte("at", monthStart.toISOString())
+
     .limit(5000);
   let contentQ = db()
     .from("content")
@@ -37,6 +41,8 @@ export default async function CostsPage() {
     .select("*")
     .order("started_at", { ascending: false })
     .limit(20);
+  const cutoff = days === "all" ? null : days === "month" ? monthStart.toISOString() : new Date(Date.now() - ([1,7,30].includes(Number(days)) ? Number(days) : 30) * 86400000).toISOString();
+  if (cutoff) { costsQ = costsQ.gte("at", cutoff); contentQ = contentQ.gte("created_at", cutoff); runsQ = runsQ.gte("started_at", cutoff); }
   if (!all) {
     costsQ = costsQ.eq("channel", channel);
     contentQ = contentQ.eq("channel", channel);
@@ -53,9 +59,10 @@ export default async function CostsPage() {
 
   const costs = (costsRes.data ?? []) as Cost[];
   const mtd = costs.reduce((a, c) => a + (c.usd ?? 0), 0);
-  const projected = daysElapsed > 0 ? (mtd / daysElapsed) * daysInMonth : 0;
+  const monthly = days === "month" ? mtd : (await db().from("costs").select("usd,channel").gte("at", monthStart.toISOString())).data?.filter(c => all || c.channel === channel).reduce((n,c) => n + (c.usd ?? 0), 0) ?? 0;
+  const projected = daysElapsed > 0 ? (monthly / daysElapsed) * daysInMonth : 0;
   const budget = settings?.monthly_budget_usd ?? 0;
-  const pct = budget > 0 ? Math.min(100, (mtd / budget) * 100) : 0;
+  const pct = budget > 0 ? Math.min(100, (monthly / budget) * 100) : 0;
 
   const bySteps = new Map<string, { usd: number; n: number }>();
   for (const c of costs) {
@@ -98,11 +105,13 @@ export default async function CostsPage() {
   const ids = recent.map((c) => c.id);
   const perContent = new Map<string, number>();
   if (ids.length) {
-    const { data } = await db()
+    let detailQuery = db()
       .from("costs")
       .select("content_id,usd")
       .in("content_id", ids)
       .limit(10000);
+    if (cutoff) detailQuery = detailQuery.gte("at", cutoff);
+    const { data } = await detailQuery;
     for (const r of data ?? [])
       if (r.content_id)
         perContent.set(
@@ -121,9 +130,10 @@ export default async function CostsPage() {
         {!all && <ChannelBadge channel={channel} />}
       </PageHeader>
 
+      <AutoFilters><select name="days" aria-label="Date range" defaultValue={days}>{[["1","Last 24 hours"],["7","7 days"],["30","30 days"],["all","All time"],["month","This month"]].map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></AutoFilters>
       <section className="card space-y-3">
         <div className="grid grid-cols-3 gap-2 text-center sm:text-left">
-          <Stat label="Month to date" value={fmtUsd(mtd)} />
+          <Stat label={days === "month" ? "Month to date" : "Selected period"} value={fmtUsd(mtd)} />
           <Stat
             label="Projected"
             value={fmtUsd(projected)}
@@ -146,7 +156,7 @@ export default async function CostsPage() {
       </section>
 
       {all && (
-        <Section title="By channel (this month)">
+        <Section title="By channel (selected period)">
           <SeriesReport
             name="costs-by-channel"
             chart={false}
@@ -163,7 +173,7 @@ export default async function CostsPage() {
         </Section>
       )}
 
-      <Section title="By step (this month)">
+      <Section title="By step (selected period)">
         <SeriesReport
           name="costs-by-step"
           chart={false}

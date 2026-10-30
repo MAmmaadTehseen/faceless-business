@@ -65,15 +65,18 @@ export type PendingComment = Comment & {
 export async function getPendingComments(
   channel: ChannelFilter,
   limit = 200,
+  platform = "",
 ): Promise<PendingComment[]> {
-  const { data, error } = await db()
+  let query = db()
     .from("comments")
     .select("*")
     .in("reply_status", PENDING_REPLY)
     .order("posted_at", { ascending: false, nullsFirst: false })
     .limit(channel === "all" ? limit : limit * 3);
+  if (platform) query = query.eq("platform", platform);
+  const { data, error } = await query;
   if (error) throw error;
-  const comments = (data ?? []) as Comment[];
+  const comments = ((data ?? []) as Comment[]).filter(c => !platform || c.platform === platform);
   const pubIds = [
     ...new Set(
       comments
@@ -115,6 +118,7 @@ export async function getPendingComments(
 export async function getPublishedCount(
   channel: ChannelFilter,
   days = 7,
+  platform = "",
 ): Promise<number> {
   const since = new Date(Date.now() - days * 86400_000).toISOString();
   let q = db()
@@ -123,6 +127,7 @@ export async function getPublishedCount(
     .in("status", LIVE)
     .gte("published_at", since);
   if (channel !== "all") q = q.eq("content.channel", channel);
+  if (platform) q = q.eq("platform", platform);
   const { count, error } = await q;
   if (error) throw error;
   return count ?? 0;
@@ -297,7 +302,7 @@ export async function getFailedContent(
 }
 
 /** Everything the home page needs, each query isolated so one failure does not blank the page. */
-export async function getOverview(channel: ChannelFilter) {
+export async function getOverview(channel: ChannelFilter, platform = "") {
   const [
     publishedWeek,
     queue,
@@ -309,9 +314,9 @@ export async function getOverview(channel: ChannelFilter) {
     queuedUploads,
     banner,
   ] = await Promise.all([
-    safe(getPublishedCount(channel), 0),
+    safe(getPublishedCount(channel, 7, platform), 0),
     safe(getQueue(channel), { count: 0, top: [] as TopicQueueRow[] }),
-    safe(getPendingComments(channel, 50), [] as PendingComment[]),
+    safe(getPendingComments(channel, 50, platform), [] as PendingComment[]),
     safe(getCostSummary(channel), {
       mtd: 0,
       projected: 0,
@@ -332,9 +337,9 @@ export async function getOverview(channel: ChannelFilter) {
     pending,
     costs,
     health,
-    failedPubs,
-    failedContent,
-    queuedUploads,
+    failedPubs: failedPubs.filter(p => !platform || p.platform === platform),
+    failedContent: platform ? [] : failedContent,
+    queuedUploads: queuedUploads.filter(p => !platform || p.platform === platform),
     ...banner,
   };
 }

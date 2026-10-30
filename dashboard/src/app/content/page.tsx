@@ -1,5 +1,5 @@
 import { getAnalytics } from "@/lib/analytics";
-import { getContent } from "@/lib/content-data";
+import { getPlatformContent } from "@/lib/content-data";
 import { getChannelFilter } from "@/lib/channel-filter";
 import { parseChannelFilter } from "@/lib/channels";
 import { filterContent } from "@/lib/content-filters";
@@ -16,11 +16,12 @@ export default async function ContentPage({
   const channel = sp.channel
     ? parseChannelFilter(sp.channel)
     : await getChannelFilter();
-  const items = filterContent(await getContent(channel, true, sp.days), sp);
+  const items = filterContent(await getPlatformContent(channel, sp.days, sp.platform), sp);
   const analytics = await getAnalytics(
     channel,
-    [7, 28, 90].includes(Number(sp.days)) ? Number(sp.days) : 28,
+    [1, 7, 28, 30, 90].includes(Number(sp.days)) ? Number(sp.days) : 28,
     sp.days === "all",
+    sp.platform,
   );
   return (
     <div className="space-y-5">
@@ -29,7 +30,7 @@ export default async function ContentPage({
       <Section title="Videos">
         <p className="text-xs text-muted mb-4">
           Table metrics are latest cumulative totals. Chart shows daily view
-          growth for the selected period (28 days by default), in UTC.
+          growth for the selected period (28 days by default), in UTC. Hub article views use the selected period; likes and comments are not collected for Hub.
         </p>
         <ContentList
           items={items}

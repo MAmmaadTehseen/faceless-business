@@ -15,8 +15,9 @@ export async function getAnalytics(
   channel: ChannelFilter,
   days: number,
   allTime = false,
+  platform = "",
 ) {
-  const items = await getContent(channel, false);
+  const items = (await getContent(channel, false)).map(c => ({ ...c, publications: c.publications.filter(p => !platform || p.platform === platform) })).filter(c => !platform || c.publications.length > 0);
   const pubs = items.flatMap((c) =>
     c.publications.map((p) => ({
       ...p,
@@ -153,13 +154,16 @@ export async function getAnalytics(
     };
   });
   return {
+    periodDays: days,
+    start,
+    end,
     total: sum(pubs, start, end),
     previous: sum(pubs, previous, start),
     daily,
     channels: groups(["futurework", "tradewinds", "escapevelocity"], "channel"),
     formats: groups(["long", "short", "daily"], "format"),
     categories: groups([...new Set(items.map(category))].sort(), "category"),
-    platforms: groups(["youtube", "instagram", "facebook"], "platform"),
+    platforms: groups(platform ? [platform] : ["youtube", "instagram", "facebook"], "platform"),
     videos,
   };
 }

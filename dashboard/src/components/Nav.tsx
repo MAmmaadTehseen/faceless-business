@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
-import { CHANNELS, ChannelFilter, accentCss } from "@/lib/channels";
+import { CHANNELS, ChannelFilter, accentCss, parseChannelFilter } from "@/lib/channels";
 
 const links = [
   ["/", "Overview", "M3 12 12 4l9 8M5 10v10h5v-6h4v6h5V10"],
@@ -75,6 +75,10 @@ export function Shell({
   children: React.ReactNode;
 }) {
   const path = usePathname();
+  const params = useSearchParams();
+  channel = parseChannelFilter(params.get("channel") ?? "all");
+  const platform = params.get("platform") ?? "";
+  const scopedHref = (href: string) => { const q = new URLSearchParams(); q.set("channel", channel); if (platform) q.set("platform", platform); return `${href}?${q}`; };
   const [more, setMore] = useState(false);
   const router = useRouter();
   const isPublic = PUBLIC.has(path);
@@ -121,7 +125,7 @@ export function Shell({
     return (
       <Link
         key={href}
-        href={href}
+        href={scopedHref(href)}
         aria-current={active ? "page" : undefined}
         className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition ${
           active
@@ -139,7 +143,7 @@ export function Shell({
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-20 hidden ${SIDEBAR} flex-col border-r border-border bg-bg-2 md:flex`}
+        className={`fixed inset-y-0 left-0 z-20 hidden ${SIDEBAR} overflow-y-auto flex-col border-r border-border bg-bg-2 md:flex`}
       >
         <div className="px-5 pb-4 pt-5">
           <Brand />
@@ -165,13 +169,14 @@ export function Shell({
         <div className="overflow-x-auto"><ChannelSwitcher key={channel} current={channel} layout="pills" /></div>
       </header>
       <nav className="mobile-tabs md:hidden" aria-label="Main navigation">
-        {[links[0], links[1], links[3], links[2]].map(([href, label, d]) => <Link key={href} href={href} onClick={() => setMore(false)} aria-current={path === href ? "page" : undefined}><Icon d={d} />{href === "/" ? "Home" : label}</Link>)}
+        {[links[0], links[1], links[3], links[2]].map(([href, label, d]) => <Link key={href} href={scopedHref(href)} onClick={() => setMore(false)} aria-current={path === href ? "page" : undefined}><Icon d={d} />{href === "/" ? "Home" : label}</Link>)}
         <button onClick={() => setMore(!more)} aria-expanded={more} aria-controls="more-menu"><Icon d="M4 12h16M4 6h16M4 18h16" />More</button>
       </nav>
-      {more && <div className="sheet-backdrop md:hidden" onClick={() => setMore(false)}><section id="more-menu" className="mobile-sheet" role="dialog" aria-modal="true" aria-label="More navigation" onClick={e => e.stopPropagation()}><button className="btn float-right" autoFocus onClick={() => setMore(false)}>Close</button><h2>More</h2>{[links[4], links[6], links[5]].map(([href, label]) => <Link className="sheet-link" key={href} href={href} onClick={() => setMore(false)}>{label}</Link>)}<button className="sheet-link" onClick={logout}>Log out</button></section></div>}
+      {more && <div className="sheet-backdrop md:hidden" onClick={() => setMore(false)}><section id="more-menu" className="mobile-sheet" role="dialog" aria-modal="true" aria-label="More navigation" onClick={e => e.stopPropagation()}><button className="btn float-right" autoFocus onClick={() => setMore(false)}>Close</button><h2>More</h2>{[links[4], links[6], links[5]].map(([href, label]) => <Link className="sheet-link" key={href} href={scopedHref(href)} onClick={() => setMore(false)}>{label}</Link>)}<button className="sheet-link" onClick={logout}>Log out</button></section></div>}
 
       <main className="md:pl-60">
         <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8">
+          {platform && <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"} / <span className="capitalize">{platform}</span><button className="badge" onClick={() => { const q = new URLSearchParams(params); q.delete("platform"); router.replace(`${path}?${q}`, { scroll: false }); }}>Clear platform ×</button></div>}
           {banners}
           {children}
         </div>
@@ -188,25 +193,18 @@ function ChannelSwitcher({
   layout: "list" | "pills";
 }) {
   const router = useRouter();
+  const search = useSearchParams();
   const [selected, setSelected] = useState<ChannelFilter>(current);
   const [pending, startTransition] = useTransition();
 
-  async function choose(next: ChannelFilter) {
-    if (next === selected) return;
-    const prev = selected;
+  function choose(next: ChannelFilter, platform = "") {
     setSelected(next);
-    const res = await fetch("/api/channel", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ channel: next }),
-    });
-    if (!res.ok) return setSelected(prev);
     startTransition(() => {
       const url = new URL(window.location.href);
-      if (url.searchParams.has("channel")) {
-        url.searchParams.set("channel", next);
-        router.replace(url.pathname + url.search);
-      } else router.refresh();
+      url.searchParams.set("channel", next);
+      if (platform) url.searchParams.set("platform", platform); else url.searchParams.delete("platform");
+      if (platform) url.searchParams.delete("tab");
+      router.replace(url.pathname + url.search, { scroll: false });
     });
   }
 
@@ -229,8 +227,7 @@ function ChannelSwitcher({
       {pills.map((p) => {
         const active = selected === p.key;
         return (
-          <button
-            key={p.key}
+          <div key={p.key}><button
             type="button"
             role="radio"
             aria-checked={active}
@@ -257,7 +254,7 @@ function ChannelSwitcher({
               />
             )}
             {p.label}
-          </button>
+          </button>{list && p.key !== "all" && <details open={active || undefined} className="ml-6 text-xs text-muted"><summary className="cursor-pointer py-1">Platforms</summary>{["youtube", "instagram", "facebook", "hub"].map(platform => <button key={platform} onClick={() => choose(p.key, platform)} className={`block rounded px-3 py-1.5 capitalize hover:bg-card-2 ${search.get("platform") === platform && active ? "text-fg bg-accent-soft" : ""}`}>{platform}</button>)}</details>}</div>
         );
       })}
     </div>

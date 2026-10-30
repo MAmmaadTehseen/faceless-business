@@ -38,6 +38,7 @@ export function filterContent(
   const days = Number(sp.days);
   const query = (sp.q ?? "").trim().toLowerCase();
   return items
+    .map(c => sp.platform ? { ...c, publications: c.publications.filter(p => p.platform === sp.platform) } : c)
     .filter((c) => {
       const pubs = c.publications.filter(
         (p) => !sp.platform || p.platform === sp.platform,
@@ -75,16 +76,17 @@ export function filterContent(
         (!sp.platform || pubs.length > 0) &&
         matches &&
         (!useDate ||
-          ![7, 28, 90].includes(days) ||
+          ![1, 7, 28, 30, 90].includes(days) ||
           Date.parse(c.created_at) >= Date.now() - days * 86400000)
       );
     })
     .sort((a, b) => {
       const s = sp.sort ?? defaultSort;
+      if (s === "title") return a.title.localeCompare(b.title) * (sp.sortDirection === "desc" ? -1 : 1);
       return s === "newest" || s === "oldest"
         ? (Date.parse(a.created_at) - Date.parse(b.created_at)) *
             (s === "oldest" ? 1 : -1)
-        : (metric(b, s) - metric(a, s)) * (s === "lowest" ? -1 : 1) ||
+        : (metric(b, s) - metric(a, s)) * (s === "lowest" || sp.sortDirection === "asc" ? -1 : 1) ||
             a.id.localeCompare(b.id);
     });
 }

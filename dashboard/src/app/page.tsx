@@ -1,3 +1,4 @@
+import { HubAnalytics } from "@/components/HubAnalytics";
 import { SeriesReport } from "@/components/SeriesReport";
 import { getAnalytics } from "@/lib/analytics";
 import { getHubAnalytics } from "@/lib/hub-analytics";
@@ -25,19 +26,20 @@ export default async function Home({
     ? parseChannelFilter(sp.channel)
     : await getChannelFilter();
   const [ov, items, owner] = await Promise.all([
-    getOverview(channel),
+    getOverview(channel, sp.platform),
     getContent(channel, true, sp.days),
     isOwner(),
   ]);
-  const analytics = await getAnalytics(channel, 7);
+  const analytics = await getAnalytics(channel, 7, false, sp.platform);
   const attention =
     Number(ov.paused) +
     Number(!!ov.failedRun) +
     ov.failedPubs.length +
     ov.failedContent.length +
     Number(ov.costs.pct >= 80);
-  const hub = await getHubAnalytics(channel, 7);
+  const hub = !sp.platform || sp.platform === "hub" ? await getHubAnalytics(channel, 7) : null;
   const configured = !!process.env.GITHUB_TOKEN;
+  if (sp.platform === "hub") return <div className="space-y-5"><PageHeader title="Overview" blurb="Hub activity over the last 7 days." /><HubAnalytics data={hub} /></div>;
   return (
     <div className="space-y-6 home-stack">
       <div className="mobile-today">
@@ -83,7 +85,11 @@ export default async function Home({
       </div>
       <div className="desktop-home-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          ["Uploads this week", ov.publishedWeek],
+          ["Views · 7d", analytics.total.views],
+          ["Likes · 7d", analytics.total.likes],
+          ["Comments · 7d", analytics.total.comments],
+          [sp.platform === "instagram" || sp.platform === "facebook" ? "Reels · 7d" : "Uploads · 7d", ov.publishedWeek],
+          ["Posts / day · 7d", (ov.publishedWeek / 7).toFixed(1)],
           ["Queued uploads", ov.queuedUploads.length],
           ["Pending replies", ov.pending.length],
           ["Month spend", fmtUsd(ov.costs.mtd)],
@@ -228,7 +234,7 @@ export default async function Home({
       <Section
         title="Recent content"
         action={
-          <Link className="btn" href="/content">
+          <Link className="btn" href={`/content?${new URLSearchParams({ channel, ...(sp.platform ? { platform: sp.platform } : {}) })}`}>
             All content
           </Link>
         }

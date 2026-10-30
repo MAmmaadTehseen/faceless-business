@@ -1,5 +1,6 @@
 "use client";
-import { useId, useState } from "react";
+import { useId, useState, useTransition } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { seriesColor } from "@/lib/palette";
 
 export type ReportColumn = {
@@ -63,10 +64,15 @@ export function SeriesReport({
   initialDescending?: boolean;
 }) {
   const id = useId();
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const [pending, start] = useTransition();
   const [excluded, setExcluded] = useState<string[]>([]);
   const [show, setShow] = useState(true);
-  const [sort, setSort] = useState(initialSort ?? columns[0]?.key ?? "title");
-  const [descending, setDescending] = useState(initialDescending);
+  const contentSort = params.get("sort");
+  const sort = name === "content" ? contentSort === "newest" || contentSort === "oldest" ? "published" : contentSort === "lowest" ? "views" : contentSort ?? initialSort ?? columns[0]?.key ?? "title" : params.get(`${name}Sort`) ?? initialSort ?? columns[0]?.key ?? "title";
+  const descending = name === "content" ? params.has("sortDirection") ? params.get("sortDirection") === "desc" : contentSort === "oldest" || contentSort === "lowest" ? false : initialDescending : params.has(`${name}Direction`) ? params.get(`${name}Direction`) === "desc" : initialDescending;
   const [hover, setHover] = useState<number | null>(null);
   const colored = rows.map((r, i) => ({
     ...r,
@@ -92,11 +98,13 @@ export function SeriesReport({
   const x = (i: number) => 56 + (i * 888) / Math.max(1, dates.length - 1);
   const y = (v: number) => 210 - (v / max) * 174;
   function order(key: string) {
-    if (sort === key) setDescending(!descending);
-    else {
-      setSort(key);
-      setDescending(key !== "title");
-    }
+    const desc = sort === key ? !descending : key !== "title";
+    const q = new URLSearchParams(params);
+    if (name === "content") {
+      q.set("sort", key === "published" ? desc ? "newest" : "oldest" : key === "views" && !desc ? "lowest" : key);
+      q.set("sortDirection", desc ? "desc" : "asc");
+    } else { q.set(`${name}Sort`, key); q.set(`${name}Direction`, desc ? "desc" : "asc"); }
+    start(() => router.replace(`${pathname}?${q}`, { scroll: false }));
   }
   function download() {
     const csv = [
@@ -122,7 +130,7 @@ export function SeriesReport({
     URL.revokeObjectURL(url);
   }
   return (
-    <div className="series-report space-y-4">
+    <div className={`series-report space-y-4 ${pending ? "opacity-60" : ""}`} aria-busy={pending}>
       <div className="flex flex-wrap items-center justify-end gap-2">
         {hasChart && (
           <label className="flex items-center gap-2 text-sm text-muted">
