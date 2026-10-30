@@ -67,3 +67,21 @@ location, then set `PLAYWRIGHT_MODULE` to that package directory and run
 `node scripts/check-design.cjs` from `hub/` while the fixture dev server runs on port
 3100. The script uses `/usr/bin/google-chrome`; change that path for other machines.
 Results and review limits are in `design-review/README.md`.
+
+### Article images
+
+Apply `supabase/migrations/013_article_image.sql` before deploying the article writer.
+It adds nullable `articles.thumbnail_path`; existing rows continue to work without
+backfilling. The writer uploads the saved long video's thumbnail to the existing
+public `media` bucket at `articles/<content-id>/thumbnail.jpg`, including on cheap
+reruns of an already published article. Missing files or Storage errors preserve the
+previous path. Dry runs never upload. Re-running `python -m pipeline.article <id>`
+can backfill an article when its local render artifacts are still available.
+
+The hub prefers that image, then verified YouTube maxres/hqdefault thumbnails,
+then the article OG route and local channel artwork. Availability checks are cached
+for ten minutes; an on-error chain also covers assets disappearing after render.
+Among the twelve most recent articles, home chooses the first with a verified
+editorial image before falling back to the newest story's generated artwork.
+The migration is additive; this change does not apply it or alter bucket policies.
+After applying it, run the RLS check required by the root AGENTS.md.

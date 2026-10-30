@@ -2,7 +2,7 @@ const nextConfig = {
   trailingSlash: false,
   devIndicators: false,
   compress: true,
-  images: {remotePatterns: [{protocol: 'https', hostname: 'i.ytimg.com', pathname: '/vi/**'}]},
+  images: {remotePatterns: [{protocol: 'https', hostname: 'i.ytimg.com', pathname: '/vi/**'}, {protocol:'https',hostname:'*.supabase.co',pathname:'/storage/v1/object/public/media/**'}]},
   async headers() { return [
     {source: '/:path*', headers: [
       {key: 'X-Content-Type-Options', value: 'nosniff'},

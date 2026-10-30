@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import StoryImage from '@/components/StoryImage';
+import { articleImage, withArticleImages } from '@/lib/article-image';
 import Headline from '@/components/Headline';
 import Image from 'next/image';
 import { ReadingProgress } from '@/components/ReadingTools';
@@ -25,6 +27,7 @@ export async function generateMetadata({params}: {params: Promise<{slug:string}>
 export default async function ArticlePage({params}: {params: Promise<{slug:string}>}) {
   const a = await article((await params).slug); if (!a) notFound();
   const c = getChannel(a.channel);
+  const image = await articleImage(a);
   const siblings = await articles(a.channel);
   const index = siblings.findIndex(item => item.slug === a.slug);
   const previous = index >= 0 ? siblings[index + 1] : undefined;
@@ -34,6 +37,7 @@ export default async function ArticlePage({params}: {params: Promise<{slug:strin
   const related = (await articles()).filter(item => item.slug !== a.slug).sort((x, y) =>
     Number(y.channel === a.channel) - Number(x.channel === a.channel) ||
     [...terms(y)].filter(t => target.has(t)).length - [...terms(x)].filter(t => target.has(t)).length || x.slug.localeCompare(y.slug)).slice(0, 3);
+  const relatedImages = await withArticleImages(related);
   const structuredData = [
     {'@context': 'https://schema.org', '@type': 'Article', headline: a.title,
       description: a.meta_description || a.excerpt, datePublished: a.published_at,
@@ -64,7 +68,7 @@ export default async function ArticlePage({params}: {params: Promise<{slug:strin
   const headings = [...body.matchAll(/^## (.+)$/gm)].map(m => ({text:m[1], id:headingId(m[1])}));
   return <article className="reading article-page" style={{'--channel-accent':c?.color} as React.CSSProperties} data-hub="" data-slug={a.slug} data-channel={a.channel}><ReadingProgress/><script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(structuredData).replace(/</g, '\\u003c')}}/>
     <nav aria-label="Breadcrumb"><Link href="/">Home</Link> / <Link href={`/c/${a.channel}`}>{c?.name}</Link> / <span>{a.title}</span></nav><header className="article-header"><Link className="eyebrow channel-label" style={{'--label-accent':c?.color} as React.CSSProperties} href={`/c/${a.channel}`}>{c?.name}</Link><h1><Headline text={a.title}/></h1><p className="article-dek">{a.excerpt}</p><div className="story-meta">Plainsight Media · {c?.name} · <time dateTime={a.published_at}>{dateLabel(a.published_at)}</time> · {readTime(a)}{a.updated_at && <> · Updated <time dateTime={a.updated_at}>{dateLabel(a.updated_at)}</time></>}</div></header>
-    <figure className="article-hero"><Image src={`/a/${a.slug}/opengraph-image`} alt={a.title} width={1200} height={675} sizes="(max-width: 720px) 100vw, 680px" priority/><figcaption>{c?.name} / Plainsight Media</figcaption></figure>
+    <figure className="article-hero"><div className="hero-frame"><StoryImage sources={image.sources} alt={a.title} priority/></div><figcaption>{c?.name} / Plainsight Media</figcaption></figure>
     {headings.length > 0 && <aside className="contents"><nav aria-label="In this story"><span className="toc-indicator" aria-hidden="true"/><p className="eyebrow">IN THIS STORY</p>{a.quick_answer && <a href="#quick-answer">Quick answer</a>}{headings.map(h => <a key={h.id} href={`#${h.id}`}>{h.text}</a>)}{Boolean(a.faqs?.length) && <a href="#faqs">Questions & answers</a>}</nav></aside>}
     <div className="article-body prose"><Markdown>{intro}</Markdown>
       {a.quick_answer && <section className="summary-box" aria-labelledby="quick-answer"><h2 id="quick-answer">Quick Answer</h2><p>{a.quick_answer}</p></section>}
@@ -74,6 +78,6 @@ export default async function ArticlePage({params}: {params: Promise<{slug:strin
     </div>
     <aside className="quiet-card"><p className="eyebrow">KEEP EXPLORING</p><h2>More perspectives from {c?.name}</h2><Link href={`/c/${a.channel}`}>Read the channel →</Link></aside>
     <nav className="article-pagination" aria-label="Previous and next articles">{previous && <Link rel="prev" href={`/a/${previous.slug}`}><span className="eyebrow">← PREVIOUS</span>{previous.title}</Link>}{next && <Link rel="next" href={`/a/${next.slug}`}><span className="eyebrow">NEXT →</span>{next.title}</Link>}</nav>
-    {related.length > 0 && <section className="related" aria-labelledby="related"><h2 id="related">Related stories</h2><Articles items={related}/></section>}
+    {related.length > 0 && <section className="related" aria-labelledby="related"><h2 id="related">Related stories</h2><Articles items={relatedImages}/></section>}
   </article>;
 }

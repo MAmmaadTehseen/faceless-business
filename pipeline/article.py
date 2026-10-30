@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 from difflib import SequenceMatcher
+from pathlib import Path
 import requests
 from urllib.parse import urlparse
 
@@ -163,11 +164,33 @@ def sharing_summary(excerpt: str) -> str | None:
     return prefix.rstrip() + "…"
 
 
+def article_thumbnail(db, content_id, existing, dry_run):
+    """Persist a bucket-relative public image path; offline runs never upload."""
+    content = db.one("content", {"id": content_id}) or {}
+    candidates = [OUT_DIR / content_id / "thumbnail.jpg", OUT_DIR / content_id / f"{content_id}.jpg"]
+    if content.get("thumbnail_path"):
+        candidate = (OUT_DIR / content_id / Path(content["thumbnail_path"]).name)
+        candidates.insert(0, candidate)
+    path = next((p for p in candidates if p.is_file()), candidates[0])
+    previous = (existing or {}).get("thumbnail_path")
+    if dry_run or not path.is_file() or not getattr(db, "sb", None):
+        return previous
+    key = f"articles/{content_id}/thumbnail.jpg"
+    try:
+        db.sb.storage.from_("media").upload(key, path.read_bytes(),
+            file_options={"content-type": "image/jpeg", "upsert": "true"})
+        return key
+    except Exception:
+        # Storage failures must not prevent the article from being saved.
+        log.warning("Article thumbnail upload failed; keeping existing artwork")
+        return previous
+
+
 def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_run: bool = False, force: bool = False) -> dict:
     # SQLite bootstraps older schemas locally; keep the optional SEO columns compatible.
     if getattr(db, "kind", None) == "sqlite":
         columns = {r[1] for r in db.conn.execute("pragma table_info(articles)")}
-        for name in ("summary_for_og", "updated_at"):
+        for name in ("summary_for_og", "updated_at", "thumbnail_path"):
             if name not in columns:
                 db.conn.execute(f"alter table articles add column {name} text")
     content = db.one("content", {"id": content_id})
@@ -177,10 +200,11 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
     script = json.loads((OUT_DIR / content_id / "script.json").read_text())
     publication = db.one("publications", {"content_id": content_id, "platform": "youtube"}) or {}
     existing = db.one("articles", {"id": content_id})
+    thumbnail_path = article_thumbnail(db, content_id, existing, dry_run)
     youtube_id = publication.get("platform_id") if publication.get("status") == "live" else None
     # Keep reruns cheap, but pick up a newly available YouTube ID.
     if existing and existing.get("published_at") and not dry_run and not force:
-        updates = {"youtube_id": youtube_id, "summary_for_og": sharing_summary(existing.get("excerpt") or "")}
+        updates = {"thumbnail_path": thumbnail_path, "youtube_id": youtube_id, "summary_for_og": sharing_summary(existing.get("excerpt") or "")}
         db.update("articles", {"id": content_id}, updates)
         return {**existing, **updates}
     if dry_run:
@@ -240,7 +264,7 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
         "slug": article_slug, "summary_for_og": sharing_summary(data["excerpt"]), "updated_at": now_iso(),
         "title": data["title"], "excerpt": data["excerpt"], "body_md": data["body_md"],
         **{k: data[k] for k in ("meta_title", "meta_description", "primary_keyword", "faqs", "entities", "quick_answer")},
-        "takeaways": data["key_takeaways"],
+        "takeaways": data["key_takeaways"], "thumbnail_path": thumbnail_path,
         "youtube_id": youtube_id, "published_at": None if dry_run else (existing or {}).get("published_at") or now_iso(),
     }
     candidates = db.select("articles", lte={"published_at": now_iso()})

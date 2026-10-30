@@ -35,3 +35,20 @@ changes instantly. No layout animation is used. View Transitions themselves inte
 snapshot geometry through the browser's native implementation.
 
 Measured route sizes, vitals and reproduction steps: [MOTION-REVIEW.md](MOTION-REVIEW.md).
+
+## Editorial motion revision (30 October)
+
+The owner's follow-up permits a quiet CSS ambient masthead gradient and a short
+spring-shaped height animation for explicitly activated FAQ details. These override
+the earlier no-gradient and instant-height rules above. The headline remains opaque,
+its shallow line masks preserve first paint, and below-fold paragraph enhancement
+starts only after hydration. Pointer tilt is capped at 2 degrees and magnetic travel
+at 6px; pointer work runs only in response to fine-pointer events, throttled with rAF.
+The native cursor remains available. Runtime preference changes cancel active motion.
+Article image order is persisted public media, verified YouTube maxres/hqdefault,
+article OG, then local channel artwork. Never infer image availability from ID alone.
+
+The revision uses Motion's `motion/react-mini` scoped Web Animations hook for
+button presses. It replaces the older LazyMotion/domAnimation wrapper described
+above, avoiding a separate feature download while retaining Motion in a small
+client island. Native/CSS APIs handle the editorial entrances and shared snapshots.

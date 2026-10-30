@@ -138,6 +138,7 @@ alter table settings enable row level security;
 alter table runs enable row level security;
 
 create table if not exists articles (
+  thumbnail_path text,
   id text primary key,
   content_id text references content(id),
   channel text,

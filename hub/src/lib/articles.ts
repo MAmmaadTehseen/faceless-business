@@ -3,6 +3,8 @@ import {previewEnabled, previewArticles} from './preview';
 import { createClient } from '@supabase/supabase-js';
 
 export type Article = {
+  thumbnail_path?: string | null;
+  resolved_image?: {sources:string[];real:boolean};
   summary_for_og: string | null; updated_at: string | null;
   id: string; content_id: string; channel: string; slug: string; title: string;
   meta_title: string | null; meta_description: string | null; primary_keyword: string | null;

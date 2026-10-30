@@ -25,6 +25,7 @@ export function ThemeToggle() {
   }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle className="mode-shape" cx="12" cy="12" r="4" style={{opacity:dark?1:0,transform:dark?'scale(1)':'scale(.5)'}}/><path className="mode-shape" style={{opacity:dark?0:1,transform:dark?'scale(.5)':'scale(1)'}} d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/><g className="sun-rays" style={{transform:dark?'scale(1)':'scale(0)',opacity:dark?1:0}}><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></g></svg></MotionButton>;
 }
 export function ReadingProgress() {
+  const [finished,setFinished] = useState(false);
   useEffect(() => {
     const links = [...document.querySelectorAll<HTMLAnchorElement>('.contents a')];
     const sections = [...document.querySelectorAll<HTMLElement>('.article-body h2[id]')];
@@ -41,7 +42,28 @@ export function ReadingProgress() {
       if (!native && bar) bar.style.transform=`scaleX(${(index+1)/Math.max(1,sections.length)})`;
     },{rootMargin:'-5% 0px -65% 0px',threshold:0});
     sections.forEach(el=>observer.observe(el));
-    return ()=>observer.disconnect();
+    const end=document.querySelector('.article-pagination');
+    const endObserver=new IntersectionObserver(entries=>{
+      const complete=entries.some(e=>e.isIntersecting || e.boundingClientRect.top<0);
+      setFinished(complete);
+    },{threshold:0});
+    if(end)endObserver.observe(end);
+    return ()=>{observer.disconnect();endObserver.disconnect()};
   },[]);
-  return <div className="reading-progress" aria-hidden="true"><span/></div>;
+  useEffect(()=>{
+    if(!finished || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    const button=document.querySelector<HTMLElement>('.back-top');
+    const marker=document.querySelector<HTMLElement>('.reading-progress');
+    if(!button || !marker) return;
+    const curve=getComputedStyle(document.documentElement).getPropertyValue('--motion-spring').trim();
+    const easing=CSS.supports('animation-timing-function',curve)?curve:`cubic-bezier(${ease.join(',')})`;
+    // The same ink surface travels from the root progress line into its completion
+    // capsule. Fixed geometry + one native transform animation cannot shift prose.
+    const animation=button.animate([
+      {opacity:1,transform:`translate(${-button.offsetLeft}px,${-button.offsetTop}px) scale(${innerWidth/button.offsetWidth},${marker.offsetHeight/button.offsetHeight})`,transformOrigin:'top left'},
+      {opacity:1,transform:'none',transformOrigin:'top left'}
+    ],{duration:duration.opening*1000,easing});
+    return ()=>animation.cancel();
+  },[finished]);
+  return <><div className={`reading-progress${finished?' complete':''}`} aria-hidden="true"><span/></div><MotionButton className={`back-top${finished?' visible':''}`} tabIndex={finished?0:-1} aria-hidden={!finished} onClick={()=>window.scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'})}>↑ Back to top</MotionButton></>;
 }

@@ -153,7 +153,7 @@ h3{font-size:24px;line-height:1.2;margin:16px 0 12px}p{line-height:1.65}section{
 .lead-card{animation:lead-arrive var(--motion-opening) var(--motion-ease)}
 @keyframes lead-arrive{from{transform:translateY(8px) scale(.995)}to{transform:none}}
 @keyframes reveal{from{opacity:.35;transform:translateY(16px)}to{opacity:1;transform:none}}
-@keyframes evidence-reveal{from{opacity:.4;transform:translateX(-12px)}to{opacity:1;transform:none}}
+@keyframes evidence-reveal{from{opacity:.4;transform:translateX(-12px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes word-reveal{from{transform:translateY(5px)}to{transform:none}}
 .headline-word{display:inline-block;white-space:pre;animation:word-reveal var(--motion-reveal) var(--motion-ease) both}
 .secondary-stories .story-card:nth-child(2){--stagger:60ms}.article-grid .story-card:nth-child(3n+2){--stagger:60ms}.article-grid .story-card:nth-child(3n){--stagger:120ms}
@@ -198,3 +198,99 @@ a:hover{text-decoration:underline}button:active{transform:scale(.98)}
 body>header nav>a,.contents a,.card-copy h3 a{position:relative}body>header nav>a::after,.contents a::after,.card-copy h3 a::after{content:"";position:absolute;left:0;bottom:-3px;height:1px;width:100%;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform var(--motion-normal) var(--motion-ease)}body>header nav>a:hover::after,.contents a:hover::after,.card-copy h3 a:hover::after{transform:scaleX(1)}
 
 button,summary{position:relative}a:focus-visible::after,button:focus-visible::after,summary:focus-visible::after{content:"";position:absolute;inset:-5px;width:auto;height:auto;border:1px solid var(--ink);background:transparent;pointer-events:none;animation:focus-in var(--motion-fast) var(--motion-ease);transform:none}
+
+/* Editorial geometry: intrinsic text widths must never size grid tracks. */
+:root{--motion-stagger:100ms;--motion-ambient:24s;--motion-parallax:32px;--motion-tilt:2deg;--motion-magnetic:6px;--motion-spring:linear(0,.3,.7,.94,1.04,1.02,1);--motion-shine:800ms}
+.lead-grid{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.secondary-stories,.card-copy,.lead-grid>*,.article-grid>*,.section-heading>*,body>header>*,body>footer>*,.article-pagination>*{min-width:0}
+h1,h2,h3,.brand,.story-meta,.more-link{overflow-wrap:anywhere}
+.article-pagination{grid-template-columns:repeat(2,minmax(0,1fr))}
+body>footer{grid-template-columns:minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr)}
+.card-dek{white-space:normal;overflow:visible;text-overflow:clip}
+.card-image,.hero-frame{position:relative;overflow:hidden;aspect-ratio:16/9}
+.hero-frame img{width:100%;height:100%;object-fit:cover}
+@media(max-width:700px){.lead-grid{grid-template-columns:minmax(0,1fr)}body>footer{grid-template-columns:minmax(0,1fr)}body>header{flex-wrap:wrap}.brand{max-width:100%}.article-pagination{grid-template-columns:minmax(0,1fr)}}
+/* The LCP headline stays opaque throughout its masked, shallow entrance. */
+.headline-line{display:block;overflow:clip;padding-bottom:.12em;margin-bottom:-.12em}
+.headline-line>span{display:block;animation:line-arrive var(--motion-opening) var(--motion-ease) both}
+.headline-line:nth-child(2)>span{animation-delay:var(--motion-stagger)}
+@keyframes line-arrive{from{transform:translateY(12%)}to{transform:translateY(0)}}
+.masthead{position:relative;isolation:isolate;overflow:clip}
+.masthead::before{content:"";position:absolute;inset:-20%;z-index:-1;pointer-events:none;opacity:.35;background:radial-gradient(ellipse at 30% 50%,var(--surface),transparent 65%);animation:ambient var(--motion-ambient) ease-in-out infinite alternate}
+@keyframes ambient{to{transform:translate3d(8%,4%,0) rotate(4deg)}}
+.masthead>p:last-child{animation:dek-arrive var(--motion-opening) var(--motion-ease) calc(var(--motion-opening) + var(--motion-stagger)) backwards}
+@keyframes dek-arrive{from{opacity:.65;transform:translateY(6px)}to{opacity:1;transform:none}}
+.card-image::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(110deg,transparent 25%,#fff2 45%,transparent 65%);transform:translateX(-110%)}
+@media(hover:hover) and (pointer:fine){.story-card:hover{transform:perspective(900px) rotateX(var(--tilt-x,0deg)) rotateY(var(--tilt-y,0deg)) translateY(-2px)}.story-card:hover .card-image img{scale:1.04}.story-card:hover .card-image::after{animation:shine var(--motion-shine) var(--motion-ease)} }
+@keyframes shine{to{transform:translateX(110%)}}
+.card-image img{transition:scale var(--motion-reveal) var(--motion-ease)}
+@keyframes image-wipe{from{clip-path:inset(0 4% 0 0)}to{clip-path:inset(0)}}
+@keyframes parallax{from{transform:translateY(calc(-1 * var(--motion-parallax))) scale(1.12)}to{transform:translateY(var(--motion-parallax)) scale(1.12)}}
+@keyframes hero-settle{from{transform:scale(1.04)}to{transform:scale(1)}}
+@supports(animation-timeline:view()){
+ .story-card:not(.lead-card) .card-image{animation:image-wipe linear both;animation-timeline:view();animation-range:entry 0% entry 65%}
+ .card-image img{animation:parallax linear both;animation-timeline:view();animation-range:cover 0% cover 100%}
+ .hero-frame img{animation:hero-settle linear both;animation-timeline:view();animation-range:exit 0% exit 100%}
+}
+.section-heading{position:relative}
+.section-heading::before{content:"";position:absolute;left:0;top:-1px;width:100%;height:1px;background:var(--ink);transform-origin:left;transform:scaleX(0)}
+.channel-row.in-view .section-heading::before{animation:rule-in var(--motion-opening) var(--motion-ease) both}
+.channel-row.in-view .section-heading h2{animation:evidence-reveal var(--motion-opening) var(--motion-ease)}
+@keyframes rule-in{to{transform:scaleX(1)}}
+.below-fold.in-view{animation:reveal var(--motion-opening) var(--motion-ease)}
+.evidence-box{position:relative;border-left-color:transparent!important}
+.evidence-box::before{content:"";position:absolute;left:-3px;top:0;width:3px;height:100%;background:var(--channel-accent);transform-origin:top}
+.evidence-box.in-view::before{animation:rule-down var(--motion-opening) var(--motion-ease)}
+@keyframes rule-down{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.evidence-box.in-view p{animation:evidence-reveal var(--motion-opening) var(--motion-ease)}
+blockquote:not(.evidence-box).in-view{animation:quote-in var(--motion-opening) var(--motion-ease)}
+@keyframes quote-in{from{transform:scale(.97);opacity:.65}to{transform:scale(1);opacity:1}}
+.takeaways ul{list-style:none;padding-left:0}.takeaways li{position:relative;padding-left:28px}
+.takeaways li::before{content:"✓";position:absolute;left:0;top:0;clip-path:inset(0)}
+.takeaways.in-view li::before{animation:tick-in var(--motion-reveal) var(--motion-ease) both;animation-delay:calc(var(--tick,0) * var(--motion-stagger))}
+@keyframes tick-in{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+.contents .toc-indicator{transition:transform var(--motion-opening) var(--motion-spring)}
+.back-top{position:fixed;right:24px;bottom:24px;z-index:40;background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:12px 18px;opacity:0;transform:translateY(12px) scaleX(.4);pointer-events:none;transition:opacity var(--motion-normal),transform var(--motion-opening) var(--motion-spring)}
+.back-top.visible{opacity:1;transform:none;pointer-events:auto}
+.cursor-dot{display:none}
+@media(pointer:fine) and (hover:hover) and (prefers-reduced-motion:no-preference){.cursor-dot.active{display:block;position:fixed;left:0;top:0;width:8px;height:8px;border-radius:50%;background:var(--ink);opacity:.5;pointer-events:none;z-index:100;translate:-50% -50%;transition:scale var(--motion-normal) var(--motion-ease)}.cursor-dot.over-link{scale:3}}
+@media(prefers-reduced-motion:reduce){.cursor-dot{display:none!important}.card-image img,.hero-frame img{transform:none!important;scale:1!important}.story-card:hover{transform:none!important}.back-top{transform:none}.headline-line>span{transform:none!important}}
+
+.masthead::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath filter='url(%23n)' opacity='.5' d='M0 0h160v160H0z'/%3E%3C/svg%3E")}
+@keyframes image-wipe-right{from{clip-path:inset(0 0 0 4%)}to{clip-path:inset(0)}}
+@keyframes image-wipe-up{from{clip-path:inset(4% 0 0 0)}to{clip-path:inset(0)}}
+@supports(animation-timeline:view()){
+ .story-card[data-channel=tradewinds]:not(.lead-card) .card-image{animation-name:image-wipe-right}
+ .story-card[data-channel=escapevelocity]:not(.lead-card) .card-image{animation-name:image-wipe-up}
+}
+/* The completion capsule uses the same ink surface as the reading marker. */
+.reading-progress{transition:opacity var(--motion-reveal) var(--motion-ease)}
+.reading-progress.complete{opacity:0}
+.back-top::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--ink);transform:scaleX(0);transform-origin:right;z-index:-1;transition:transform var(--motion-opening) var(--motion-ease)}
+.back-top.visible::before{transform:scaleX(1)}.back-top.visible{color:var(--paper)}
+
+.section-index{display:inline-block;font:11px/1 Arial,Helvetica,sans-serif;letter-spacing:1px;margin-right:16px;color:var(--muted)}
+.section-heading::before{background:var(--section-accent,var(--ink))}
+.channel-row.in-view .section-index{animation:evidence-reveal var(--motion-opening) var(--motion-ease)}
+/* Reserve the first viewport while an async server page resolves its images.
+   The footer must never paint above pending editorial content. */
+main{min-height:100svh}
+
+@keyframes full-wipe-left{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+@keyframes full-wipe-right{from{clip-path:inset(0 0 0 100%)}to{clip-path:inset(0)}}
+@keyframes full-wipe-up{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0)}}
+@supports(animation-timeline:view()){
+ .story-card.below-fold-card[data-channel] .card-image{animation-name:full-wipe-left}
+ .story-card.below-fold-card[data-channel=tradewinds] .card-image{animation-name:full-wipe-right}
+ .story-card.below-fold-card[data-channel=escapevelocity] .card-image{animation-name:full-wipe-up}
+}
+@supports not(animation-timeline:view()){
+ .below-fold-card.motion-ready:not(.in-view) .card-image{clip-path:inset(0 100% 0 0)}
+ .below-fold-card.in-view .card-image{animation:full-wipe-left var(--motion-opening) var(--motion-ease)}
+}
+.back-top.visible{background:var(--ink)}
+@media(prefers-reduced-motion:reduce){.below-fold-card .card-image{clip-path:none!important}}
+
+/* Generated artwork contains typography: preserve its safe area instead of
+   overscanning it like photographic footage. Wipes, tilt and shine still apply. */
+.card-image img[data-artwork=true]{animation:none!important;transform:none!important;scale:1!important}
