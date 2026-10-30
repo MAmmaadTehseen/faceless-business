@@ -3,7 +3,7 @@ import copy
 import unittest
 from unittest.mock import Mock, patch
 
-from pipeline.article import assemble_body, validation_errors, write_article
+from pipeline.article import assemble_body, validation_errors, write_article, pick_internal_links
 from pipeline.common import Channel
 from pipeline.script import strip_script_dashes
 
@@ -17,7 +17,7 @@ def valid_article():
         'quick_answer': ' '.join(['Answer'] * 35), 'key_takeaways': ['Covered fact'] * 4,
         'sections': [{'heading': name, 'body_md': 'First paragraph.\n\nContinuation paragraph.'}
                      for name in ['Mechanism', 'Measurement', 'Limitations', 'Implications']],
-        'cta_md': 'Watch the embedded video.\n\nSubscribe to the channel.',
+        'cta_md': f'Watch the embedded video.\n\nSubscribe to [Trade Winds](https://www.youtube.com/@{Channel("tradewinds").handle}).',
         'faqs': [{'question': f'What about edge case {i}?', 'answer': ' '.join(['Answer'] * 45)}
                  for i in range(5)], 'entities': [], 'self_qa': ['PASS: offline fixture'],
     }
@@ -25,7 +25,7 @@ def valid_article():
         'https://science.nasa.gov/example', 'https://www.ox.ac.uk/example', 'https://www.oecd.org/example',
     ]):
         section['evidence'] = {'label': 'Fact', 'text': 'Additional evidence.',
-                               'source_name': 'Fixture source', 'source_url': url}
+                               'source_name': url.split('/')[2], 'source_url': url}
     data['sections'][1]['body_md'] = 'INSERT_KEYWORD\n\nContinuation paragraph.'
     prefix = assemble_body(data).split('INSERT_KEYWORD')[0]
     padding = ' '.join(['Context'] * (500 - len(prefix.split())))
@@ -54,13 +54,15 @@ class ArticleChecks(unittest.TestCase):
         for fragment in ['registered domains', 'FAQ 1', '65 characters', 'em/en dashes']:
             self.assertTrue(any(fragment in e for e in errors), errors)
 
+    @patch('pipeline.article.ping_indexnow', return_value=None)
     @patch('pipeline.article.CostGuard')
     @patch('pipeline.article.OUT_DIR')
-    def test_retry_then_persist_only_valid_result(self, out_dir, guard):
+    def test_retry_then_persist_only_valid_result(self, out_dir, guard, ping):
         out_dir.__truediv__.return_value.__truediv__.return_value.read_text.return_value = '{}'
         guard.return_value.check.return_value = True
         db = Mock()
         db.one.side_effect = lambda table, match: {'id': 'fixture', 'kind': 'long', 'channel': 'tradewinds'} if table == 'content' else None
+        db.select.return_value = []
         db.upsert.side_effect = lambda table, row, on: row
         claude = Mock(channel=Channel('tradewinds'))
         good = valid_article()
@@ -93,9 +95,10 @@ class ArticleChecks(unittest.TestCase):
                 mutate(data)
                 self.assertTrue(any(expected in e for e in validation_errors(data, assemble_body(data))))
 
+    @patch('pipeline.article.ping_indexnow', return_value=None)
     @patch('pipeline.article.CostGuard')
     @patch('pipeline.article.OUT_DIR')
-    def test_second_failure_never_saves(self, out_dir, guard):
+    def test_second_failure_never_saves(self, out_dir, guard, ping):
         out_dir.__truediv__.return_value.__truediv__.return_value.read_text.return_value = '{}'
         guard.return_value.check.return_value = True
         db = Mock()
@@ -108,6 +111,48 @@ class ArticleChecks(unittest.TestCase):
             write_article(db, 'fixture', claude=claude)
         self.assertEqual(claude.run.call_count, 2)
         db.upsert.assert_not_called()
+
+    def test_new_mechanical_boundaries(self):
+        for field, value, fragment in [
+            ('slug', 'Bad Slug', 'Slug'), ('entities', ['absent entity'], 'Entities'),
+            ('self_qa', ['FAIL: topic'], 'Self QA'), ('cta_md', 'Only one paragraph', 'two paragraphs'),
+        ]:
+            data = valid_article()
+            data[field] = value
+            self.assertTrue(any(fragment in e for e in validation_errors(data, assemble_body(data))))
+        data = valid_article()
+        data['sections'][1]['body_md'] = data['primary_keyword'] + '\n\nContinuation.'
+        self.assertTrue(any('450-600' in e for e in validation_errors(data, assemble_body(data))))
+
+    def test_recover_persisted_article(self):
+        from scripts.article_refresh import recover
+        data = valid_article()
+        row = {**data, 'body_md': assemble_body(data), 'takeaways': data['key_takeaways']}
+        recovered = recover(row)
+        self.assertEqual(len(recovered['sections']), 4)
+        self.assertEqual(recovered['cta_md'], data['cta_md'])
+        self.assertEqual(validation_errors(recovered, assemble_body(recovered)), [])
+
+    def test_heading_evidence_table_and_entity_checks(self):
+        mutations = [
+            (lambda d: d['sections'][0].update(body_md='### One\n\n### Two\n\n### Three'), 'two H3s'),
+            (lambda d: d['sections'][0].update(heading='lowercase heading'), 'Title Case'),
+            (lambda d: d['sections'][0].update(body_md='No continuation.'), 'continuation'),
+            (lambda d: d['sections'][1]['evidence'].update(source_name=d['sections'][0]['evidence']['source_name']), 'organizations'),
+            (lambda d: d.update(meta_title=d['title'] + '!'), 'almost identical'),
+        ]
+        for mutate, fragment in mutations:
+            data = valid_article()
+            mutate(data)
+            self.assertTrue(any(fragment in e for e in validation_errors(data, assemble_body(data))))
+
+    def test_internal_links_rank_channel_then_overlap_and_exclude_self_drafts(self):
+        current = {'id': 'self', 'channel': 'a', 'title': 'Orbital Science'}
+        candidates = [dict(id=i, slug=i, channel=c, title=t, published_at=date)
+                      for i, c, t, date in [('self', 'a', 'Orbital', 'now'),
+                          ('draft', 'a', 'Orbital', None), ('other', 'b', 'Orbital Science', 'now'),
+                          ('peer', 'a', 'Cooking', 'now'), ('match', 'a', 'Orbital Science', 'now')]]
+        self.assertEqual([r['id'] for r in pick_internal_links(current, candidates)], ['match', 'peer', 'other'])
 
     def test_dash_cleanup_covers_nested_short_and_metadata(self):
         result = strip_script_dashes({'title': 'Title\u2014detail', 'description': 'Done. \u2014 Next.',

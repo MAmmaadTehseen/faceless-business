@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from difflib import SequenceMatcher
+import requests
 from urllib.parse import urlparse
 
 import tldextract
@@ -53,6 +55,30 @@ def assemble_body(data):
     return "\n\n".join(parts)
 
 
+def pick_internal_links(current, candidates, limit=3):
+    """Prefer channel peers, then shared entities/search terms, with stable ties."""
+    def tokens(row):
+        return set(re.findall(r"[a-z0-9]{3,}", " ".join([row.get("title") or "", row.get("primary_keyword") or "", *(row.get("entities") or [])]).casefold()))
+    target = tokens(current)
+    eligible = [r for r in candidates if r.get("published_at") and r.get("id") != current.get("id")]
+    return sorted(eligible, key=lambda r: (r.get("channel") != current.get("channel"),
+                  -len(target & tokens(r)), r.get("slug", "")))[:limit]
+
+
+INDEXNOW_KEY = "93f0a1c87d624b56a902e13dfe6748ca"
+
+
+def ping_indexnow(slug):
+    try:
+        response = requests.post("https://www.bing.com/indexnow", json={
+            "host": "hub.ammaad.online", "key": INDEXNOW_KEY,
+            "keyLocation": f"https://hub.ammaad.online/{INDEXNOW_KEY}.txt",
+            "urlList": [f"https://hub.ammaad.online/a/{slug}"]}, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException:
+        log.warning("IndexNow notification failed; article remains saved")
+
+
 def validation_errors(data, body):
     errors = []
     def check(ok, message):
@@ -82,13 +108,44 @@ def validation_errors(data, body):
     check(all(domains) and len(set(domains)) == len(domains), "Evidence needs distinct registered domains")
     keyword = data["primary_keyword"].strip().casefold()
     check(bool(keyword) and body.casefold().count(keyword) == 1, "Primary keyword must appear exactly once in body")
+    check(data["primary_keyword"].strip() in body, "Preserve exact keyword spelling and capitalization")
     headings = [data["title"], *re.findall(r"^#{1,6}\s+(.+)$", body, re.M)]
     check(bool(keyword) and all(keyword not in h.casefold() for h in headings)
           and keyword not in data["intro_md"].casefold(), "Keep keyword out of headings and intro")
     if keyword and keyword in body.casefold():
         position = len(body[:body.casefold().index(keyword)].split())
-        if not 300 <= position <= 1000:
-            log.warning("article: keyword at word %d, outside the preferred 300-1000 window (accepted)", position)
+        check(450 <= position <= 600, "Primary keyword must start at words 450-600")
+    check(len(data["cta_md"].strip().split("\n\n")) == 2, "CTA needs two paragraphs")
+    check(bool(re.search(r"\[[^]]+\]\(https://www\.youtube\.com/@[^)]+\)", data["cta_md"])), "CTA needs channel YouTube link")
+    check(all(word in data["cta_md"].casefold() for word in ("watch", "subscribe")), "CTA must invite watch and subscribe")
+    check(SequenceMatcher(None, data["title"].casefold(), data["meta_title"].casefold()).ratio() < .85, "Meta title is almost identical to H1")
+    check(bool(re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", data["slug"])) and len(data["slug"]) <= 60, "Slug needs lowercase hyphenated words, at most 60 characters")
+    check(len({s["heading"].casefold() for s in data["sections"]}) == len(data["sections"]), "Section headings must be distinct")
+    small = {"a", "an", "and", "as", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with"}
+    def title_case(text):
+        return all(w[0].isupper() or (i > 0 and w in small) or w[0].isdigit()
+                   for i, w in enumerate(re.findall(r"[A-Za-z0-9]+", text)))
+    check(title_case(data["title"]), "H1 needs Title Case")
+    for section in data["sections"]:
+        subheads = re.findall(r"^### (.+)$", section["body_md"], re.M)
+        check(len(subheads) <= 2, "At most two H3s per section")
+        check(title_case(section["heading"]) and all(title_case(h) for h in subheads), "Headings need Title Case")
+        check(not re.search(r"^#{1,2} |^#{4,6} ", section["body_md"], re.M), "Section body permits only H3 headings")
+        if section.get("evidence"):
+            check(len(section["body_md"].strip().split("\n\n", 1)) == 2, "Evidence needs first paragraph and continuation")
+        if keyword and keyword in section["body_md"].casefold():
+            check(section is not data["sections"][-1], "Keep keyword out of last body section")
+    names = [re.sub(r"\W+", "", b["source_name"].casefold()) for b in boxes]
+    check(all(names) and len(set(names)) == len(names), "Evidence needs distinct organizations")
+    check(all(e.strip() and e.casefold() in body.casefold() for e in data["entities"]), "Entities must occur in article")
+    check(bool(data.get("self_qa")) and all(q.startswith("PASS") for q in data.get("self_qa", [])), "Self QA must contain only PASS results")
+    tables = list(re.finditer(r"^\s*\|?.+\|.+\n\s*\|?\s*:?-{3,}", body, re.M))
+    check(len(tables) <= 1, "At most one table")
+    if tables:
+        start = tables[0].start()
+        after = body[tables[0].end():].split("\n\n", 1)
+        check(bool(body[:start].strip()) and len(after) == 2 and bool(after[1].strip()), "Table needs introduction and takeaway")
+    check(not re.search(r"!\[\s*\]\(", body), "Images need descriptive alt text")
     check(90 <= len(data["intro_md"].split()) <= 110, "Intro needs 90-110 words")
     check(30 <= len(data["quick_answer"].split()) <= 40, "Quick Answer needs 30-40 words")
     check(4 <= len(data["key_takeaways"]) <= 5, "Use 4-5 takeaways")
@@ -106,7 +163,7 @@ def sharing_summary(excerpt: str) -> str | None:
     return prefix.rstrip() + "…"
 
 
-def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_run: bool = False) -> dict:
+def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_run: bool = False, force: bool = False) -> dict:
     # SQLite bootstraps older schemas locally; keep the optional SEO columns compatible.
     if getattr(db, "kind", None) == "sqlite":
         columns = {r[1] for r in db.conn.execute("pragma table_info(articles)")}
@@ -122,7 +179,7 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
     existing = db.one("articles", {"id": content_id})
     youtube_id = publication.get("platform_id") if publication.get("status") == "live" else None
     # Keep reruns cheap, but pick up a newly available YouTube ID.
-    if existing and existing.get("published_at") and not dry_run:
+    if existing and existing.get("published_at") and not dry_run and not force:
         updates = {"youtube_id": youtube_id, "summary_for_og": sharing_summary(existing.get("excerpt") or "")}
         db.update("articles", {"id": content_id}, updates)
         return {**existing, **updates}
@@ -153,12 +210,14 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
             + json.dumps(script, ensure_ascii=False)
         )
         for attempt in range(2):
-            if not CostGuard(db).check("article", est_usd=0.5):
+            if not CostGuard(db).check("article", est_usd=0.6):
                 raise RuntimeError("Article skipped by budget guard")
             data, _ = claude.run("article", prompt, schema=ARTICLE_SCHEMA, effort="medium",
                                  web_search=True, max_searches=4, max_tokens=20000, content_id=content_id)
             data["body_md"] = assemble_body(data)
             failures = validation_errors(data, data["body_md"])
+            if f"https://www.youtube.com/@{channel.handle}" not in data["cta_md"]:
+                failures.append("CTA must link the supplied channel URL")
             if not failures:
                 break
             log.warning("article validation attempt %d: %s", attempt + 1, "; ".join(failures))
@@ -182,9 +241,18 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
         "title": data["title"], "excerpt": data["excerpt"], "body_md": data["body_md"],
         **{k: data[k] for k in ("meta_title", "meta_description", "primary_keyword", "faqs", "entities", "quick_answer")},
         "takeaways": data["key_takeaways"],
-        "youtube_id": youtube_id, "published_at": None if dry_run else now_iso(),
+        "youtube_id": youtube_id, "published_at": None if dry_run else (existing or {}).get("published_at") or now_iso(),
     }
-    return db.upsert("articles", row, on="id")
+    candidates = db.select("articles", lte={"published_at": now_iso()})
+    related = pick_internal_links(row, candidates)
+    links = "\n\n## Further Reading\n\n" + "\n".join(
+        f"- [{r['title']}](/a/{r['slug']})" for r in related)
+    links += f"\n\nExplore [{channel.name}](/c/{channel.key}).\n\n"
+    row["body_md"] = row["body_md"].replace("## Frequently asked questions", links + "## Frequently asked questions")
+    saved = db.upsert("articles", row, on="id")
+    if not dry_run:
+        ping_indexnow(article_slug)
+    return saved
 
 
 def main():
