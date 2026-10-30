@@ -34,12 +34,22 @@ THUMB_RULES = ("Thumbnail text must be legible at 160px wide, high contrast and 
                "colour grading and stylistic preferences are minor; these must not set thumbnail_ok=false.")
 
 
+def _strict_enabled(value) -> bool:
+    """Settings may arrive as JSON booleans or serialized strings."""
+    return value.strip().lower() in {"true", "1", "yes", "on"} if isinstance(value, str) else bool(value)
+
+
 def finalize_qa(res: dict, strict: bool = False) -> dict:
     """Derive the verdict from findings, never from the model's boolean flags."""
+    strict = _strict_enabled(strict)
     for finding in res["issues"]:
         if finding["severity"] == "minor":
             log.info("qa minor: %s", finding["text"])
     res["pass"] = not any(f["severity"] == "blocking" or strict for f in res["issues"])
+    if res["pass"]:
+        log.info("qa: pass=True minor=%d", sum(f["severity"] == "minor" for f in res["issues"]))
+    else:
+        log.info("qa: pass=False blocking=%s", [f for f in res["issues"] if f["severity"] == "blocking" or strict])
     return res
 
 
@@ -83,6 +93,18 @@ def parse_temporal_output(stderr: str, duration: float) -> list[dict]:
                 raise ValueError("freeze duration without start")
     if freeze_start is not None:
         segments.append(("frozen", freeze_start, duration, 4.0))
+    # Validate before merging so malformed events remain advisory detector errors.
+    for _, start, end, _ in segments:
+        if end < start or end > duration + 0.1:
+            raise ValueError("invalid detector segment bounds")
+    freezes = []
+    for segment in sorted((s for s in segments if s[0] == "frozen"), key=lambda s: s[1]):
+        if freezes and segment[1] <= freezes[-1][2] + 0.001:
+            previous = freezes[-1]
+            freezes[-1] = ("frozen", previous[1], max(previous[2], segment[2]), 4.0)
+        else:
+            freezes.append(segment)
+    segments = [s for s in segments if s[0] != "frozen"] + freezes
     findings = []
     for kind, start, end, threshold in segments:
         if end < start or end > duration + 0.1:
@@ -91,6 +113,8 @@ def parse_temporal_output(stderr: str, duration: float) -> list[dict]:
         if end <= start:
             continue
         length = end - start
+        if kind == "frozen" and length < 0.5:
+            continue
         findings.append({"severity": "blocking" if length >= threshold else "minor",
                          "text": f"{kind} footage at {start:.3f}-{end:.3f}s ({length:.3f}s mid-video)"})
     return findings
@@ -146,7 +170,7 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
             issues.append({"severity": "blocking", "text": "wrong aspect ratio"})
     issues.extend(temporal_findings(video, p["duration"]))
     if any(f["severity"] == "blocking" for f in issues):
-        return {"pass": False, "issues": issues, "thumbnail_ok": None, "frames_ok": False}
+        return finalize_qa({"issues": issues, "thumbnail_ok": None, "frames_ok": False}, strict)
     if not vision:
         log.info("qa: probe passed; vision skipped (placeholder footage)")
         return finalize_qa({"issues": issues, "thumbnail_ok": True, "frames_ok": True}, strict)
@@ -177,7 +201,6 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
         res["thumbnail"] = _retry_thumbnail(claude, video, thumbnail, content_id, res)
     res["issues"] = issues + res["issues"]
     finalize_qa(res, strict)
-    log.info("qa: pass=%s thumbnail_ok=%s issues=%s", res["pass"], res.get("thumbnail_ok"), res["issues"])
     return res
 
 

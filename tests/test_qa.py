@@ -118,3 +118,51 @@ def test_blocked_render_retained_and_resume_publishes_without_rendering(tmp_path
         voice.assert_not_called()
         render.assert_not_called()
         thumb.assert_not_called()
+
+
+@pytest.mark.parametrize('strict,passes', [(False, True), ('false', True), ('true', False), (True, False)])
+def test_produce_minor_local_vision_pass(tmp_path, caplog, strict, passes):
+    """Exercise the real QA merge and caller gate, including stale resume notes."""
+    cid = 'escapevelocity-2026-10-29-minor'
+    work = tmp_path / cid
+    work.mkdir()
+    (work / 'script.json').write_text(json.dumps({
+        'title': 'Fixture', 'description': 'Description', 'title_variants': ['Fixture'],
+        'thumbnail_text': 'Fixture', 'script': ['Narration'], 'shorts': []}))
+    (work / f'{cid}.mp4').touch()
+    (work / f'{cid}.jpg').touch()
+    db = Mock()
+    db.one.return_value = {'placeholder': False, 'qa_status': 'failed', 'qa_notes': 'old verdict'}
+    db.setting.return_value = strict
+    claude = Mock()
+    claude.vision.return_value = ({'pass': True, 'issues': [], 'thumbnail_ok': True, 'frames_ok': True}, {})
+    local = [{'severity': 'minor', 'text': 'frozen footage at 50.000-50.750s'}]
+    with patch('pipeline.run_all.OUT_DIR', tmp_path), \
+         patch('pipeline.run_all.probe', return_value={'duration': 20}), \
+         patch('pipeline.qa.probe', return_value={'duration': 20, 'has_audio': True, 'width': 1920, 'height': 1080}), \
+         patch('pipeline.qa.temporal_findings', return_value=local), \
+         patch('pipeline.qa.grab_frame', return_value=work / 'frame.jpg'), caplog.at_level('INFO'):
+        kwargs = dict(dry_run=False, publish=False, privacy='private', resume=cid, channel=Channel('escapevelocity'))
+        if passes:
+            produce_one(db, claude, Mock(placeholder=False), **kwargs)
+            assert 'qa: pass=True minor=1' in caplog.text
+        else:
+            with pytest.raises(RuntimeError, match='QA failed'):
+                produce_one(db, claude, Mock(placeholder=False), **kwargs)
+            assert 'qa: pass=False blocking=[' in caplog.text
+    claude.vision.assert_called_once()
+    assert any(c.args[2].get('qa_status') == ('passed' if passes else 'failed') for c in db.update.call_args_list)
+
+
+@pytest.mark.parametrize('segments,expected', [
+    ([(50, 50.167), (50.167, 50.433)], []),
+    ([(50, 50.3), (50.3, 50.6)], ['minor']),
+    ([(50, 50.5)], ['minor']),
+    ([(50, 50.2), (51, 51.3)], []),
+    ([(50, 50.6), (52, 52.7)], ['minor', 'minor']),
+    ([(50 + i * .5, 50.5 + i * .5) for i in range(8)], ['blocking']),
+])
+def test_freezes_merge_before_filtering(segments, expected):
+    stderr = '\n'.join(f'freeze_start:{a}\nfreeze_end:{b}' for a, b in segments)
+    findings = parse_temporal_output(stderr, 500)
+    assert [f['severity'] for f in findings] == expected
