@@ -27,7 +27,7 @@ on:
         required: false
         default: "1"
 concurrency:
-  group: produce-${{ github.event.inputs.channel || github.event.schedule }}
+  group: produce-${{ github.event.inputs.resume_id || github.event.inputs.channel || github.event.schedule }}
   cancel-in-progress: false
 permissions:
   contents: write
