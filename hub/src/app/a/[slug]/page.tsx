@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Headline from '@/components/Headline';
 import Image from 'next/image';
 import { ReadingProgress } from '@/components/ReadingTools';
 import { notFound } from 'next/navigation';
@@ -62,9 +63,9 @@ export default async function ArticlePage({params}: {params: Promise<{slug:strin
   const headingId = (text:string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const headings = [...body.matchAll(/^## (.+)$/gm)].map(m => ({text:m[1], id:headingId(m[1])}));
   return <article className="reading article-page" style={{'--channel-accent':c?.color} as React.CSSProperties} data-hub="" data-slug={a.slug} data-channel={a.channel}><ReadingProgress/><script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(structuredData).replace(/</g, '\\u003c')}}/>
-    <nav aria-label="Breadcrumb"><Link href="/">Home</Link> / <Link href={`/c/${a.channel}`}>{c?.name}</Link> / <span>{a.title}</span></nav><header className="article-header"><Link className="eyebrow channel-label" style={{'--label-accent':c?.color} as React.CSSProperties} href={`/c/${a.channel}`}>{c?.name}</Link><h1>{a.title}</h1><p className="article-dek">{a.excerpt}</p><div className="story-meta">Plainsight Media · {c?.name} · <time dateTime={a.published_at}>{dateLabel(a.published_at)}</time> · {readTime(a)}{a.updated_at && <> · Updated <time dateTime={a.updated_at}>{dateLabel(a.updated_at)}</time></>}</div></header>
+    <nav aria-label="Breadcrumb"><Link href="/">Home</Link> / <Link href={`/c/${a.channel}`}>{c?.name}</Link> / <span>{a.title}</span></nav><header className="article-header"><Link className="eyebrow channel-label" style={{'--label-accent':c?.color} as React.CSSProperties} href={`/c/${a.channel}`}>{c?.name}</Link><h1><Headline text={a.title}/></h1><p className="article-dek">{a.excerpt}</p><div className="story-meta">Plainsight Media · {c?.name} · <time dateTime={a.published_at}>{dateLabel(a.published_at)}</time> · {readTime(a)}{a.updated_at && <> · Updated <time dateTime={a.updated_at}>{dateLabel(a.updated_at)}</time></>}</div></header>
     <figure className="article-hero"><Image src={`/a/${a.slug}/opengraph-image`} alt={a.title} width={1200} height={675} sizes="(max-width: 720px) 100vw, 680px" priority/><figcaption>{c?.name} / Plainsight Media</figcaption></figure>
-    {headings.length > 0 && <aside className="contents"><nav aria-label="In this story"><p className="eyebrow">IN THIS STORY</p>{a.quick_answer && <a href="#quick-answer">Quick answer</a>}{headings.map(h => <a key={h.id} href={`#${h.id}`}>{h.text}</a>)}{Boolean(a.faqs?.length) && <a href="#faqs">Questions & answers</a>}</nav></aside>}
+    {headings.length > 0 && <aside className="contents"><nav aria-label="In this story"><span className="toc-indicator" aria-hidden="true"/><p className="eyebrow">IN THIS STORY</p>{a.quick_answer && <a href="#quick-answer">Quick answer</a>}{headings.map(h => <a key={h.id} href={`#${h.id}`}>{h.text}</a>)}{Boolean(a.faqs?.length) && <a href="#faqs">Questions & answers</a>}</nav></aside>}
     <div className="article-body prose"><Markdown>{intro}</Markdown>
       {a.quick_answer && <section className="summary-box" aria-labelledby="quick-answer"><h2 id="quick-answer">Quick Answer</h2><p>{a.quick_answer}</p></section>}
       {Boolean(a.takeaways?.length) && <section className="takeaways"><h2>Key Takeaways</h2><ul>{a.takeaways?.map(t => <li key={t}>{t}</li>)}</ul></section>}

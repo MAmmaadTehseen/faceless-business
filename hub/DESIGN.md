@@ -12,3 +12,26 @@ Reading comfort first, brand second, chrome last. Typography carries the design.
 - About and Privacy: plain article-width prose.
 
 Keep metadata, canonical/alternate URLs, JSON-LD, sitemap, feeds, OG routes, analytics and tracked facade intact. Verify build, rendered SEO and 390/1440px light/dark screenshots. Test fixtures are explicitly opt-in and never replace production reads.
+
+## Motion
+
+Motion for React (`motion/react`) is confined to small client islands: LazyMotion +
+`domAnimation`, `m.button` and the shared spring provide tactile presses without
+turning server-rendered stories into client components. CSS view timelines handle
+reveals; an IntersectionObserver provides progressive enhancement when unavailable.
+Reading progress uses a native root scroll timeline and section-based observer
+steps as its fallback, with no scroll listeners. Native same-document View
+Transitions wrap router navigation and name only the selected card image/title;
+unsupported browsers retain ordinary Next links. The image/title remain visible
+at first paint. Theme changes use a circular native transition and a sun/moon icon.
+Lenis is omitted: native scrolling avoids extra work on the input path.
+
+Tokens are 150/250/400/600ms, cubic-bezier(.22,1,.36,1), and one spring in
+`src/lib/motion.ts`. CSS mirrors these in custom properties. Reduced motion disables
+all animation and smooth scrolling. Space is reserved with existing image ratios.
+FAQ content uses a short transform/opacity reveal within native details: animating
+height conflicts with the transform/opacity-only performance rule, so opening height
+changes instantly. No layout animation is used. View Transitions themselves interpolate
+snapshot geometry through the browser's native implementation.
+
+Measured route sizes, vitals and reproduction steps: [MOTION-REVIEW.md](MOTION-REVIEW.md).
