@@ -1,5 +1,5 @@
 """Stock footage from Pixabay and/or Pexels (both free). Order: Pixabay video, Pexels video, Pixabay photo,
-Pexels photo (Ken Burns), then a generated placeholder clip so a dry run works without any key."""
+Pexels photo (Ken Burns), then a renderer-owned branded card. Explicit dry runs use placeholders."""
 from __future__ import annotations
 
 import hashlib
@@ -38,8 +38,8 @@ class Footage:
             return r.json()
         raise RuntimeError("Pexels rate limited")
 
-    def clip(self, query: str, min_sec: float, orientation: str = "landscape", mood: str = "calm") -> Path:
-        """Return a local video file at least min_sec long (or a photo-based clip)."""
+    def clip(self, query: str, min_sec: float, orientation: str = "landscape", mood: str = "calm") -> Path | None:
+        """Return footage or None so the renderer can try its next candidate query."""
         if self.placeholder:
             return self._placeholder(query, min_sec, orientation)
         if "nasa" in self.providers:
@@ -90,7 +90,7 @@ class Footage:
                     return self._ken_burns(img, min_sec, orientation)
             except Exception as e:
                 log.warning("pexels photo search failed for %r: %s", query, e)
-        return self._placeholder(query, min_sec, orientation)
+        return None
 
     # ---------- NASA Image and Video Library (public domain) ----------
     def _nasa_video(self, query: str, min_sec: float, orientation: str) -> Path | None:
@@ -163,11 +163,19 @@ class Footage:
         path = CACHE / name
         if path.exists() and path.stat().st_size > 0:
             return path
-        with requests.get(url, stream=True, timeout=120) as r:
-            r.raise_for_status()
-            with open(path, "wb") as f:
-                for chunk in r.iter_content(1 << 16):
-                    f.write(chunk)
+        # Never let a failed response become a valid-looking cached download.
+        partial = path.with_suffix(path.suffix + ".part")
+        try:
+            with requests.get(url, stream=True, timeout=120) as r:
+                r.raise_for_status()
+                with open(partial, "wb") as f:
+                    for chunk in r.iter_content(1 << 16):
+                        f.write(chunk)
+            if not partial.stat().st_size:
+                raise ValueError("empty footage download")
+            partial.replace(path)
+        finally:
+            partial.unlink(missing_ok=True)
         return path
 
     @staticmethod
@@ -176,13 +184,18 @@ class Footage:
 
     def _ken_burns(self, img: Path, sec: float, orientation: str) -> Path:
         w, h = self._dims(orientation)
-        out = CACHE / f"{img.stem}_kb_{int(sec)}_{orientation[0]}.mp4"
-        if out.exists():
+        out = CACHE / f"{img.stem}_kb_{sec:.6f}_{orientation[0]}.mp4"
+        if out.exists() and out.stat().st_size > 0:
             return out
         frames = int(sec * 30) + 1
         vf = (f"scale={w*1.3:.0f}:{h*1.3:.0f}:force_original_aspect_ratio=increase,crop={w*1.3:.0f}:{h*1.3:.0f},"
               f"zoompan=z='min(zoom+0.0008,1.25)':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps=30,format=yuv420p")
-        subprocess.run(["ffmpeg", "-y", "-v", "error", "-loop", "1", "-i", str(img), "-vf", vf, "-t", f"{sec:.2f}", "-r", "30", "-c:v", "libx264", "-preset", "veryfast", str(out)], check=True)
+        partial = out.with_suffix(".part.mp4")
+        try:
+            subprocess.run(["ffmpeg", "-y", "-v", "error", "-loop", "1", "-i", str(img), "-vf", vf, "-t", f"{sec:.6f}", "-r", "30", "-c:v", "libx264", "-preset", "veryfast", str(partial)], check=True, timeout=max(60, sec * 10))
+            partial.replace(out)
+        finally:
+            partial.unlink(missing_ok=True)
         return out
 
     def _placeholder(self, query: str, sec: float, orientation: str) -> Path:

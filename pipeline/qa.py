@@ -96,6 +96,18 @@ def parse_temporal_output(stderr: str, duration: float) -> list[dict]:
     return findings
 
 
+def black_segments(video: Path, min_duration: float = 1.0) -> list[tuple[float, float]]:
+    """Cheap black-only scan for renderer diagnostics, including head and tail."""
+    result = subprocess.run([
+        "ffmpeg", "-hide_banner", "-nostats", "-v", "info", "-i", str(video),
+        "-vf", f"scale=160:-2,blackdetect=d={min_duration}:pix_th=0.10",
+        "-an", "-f", "null", "-",
+    ], capture_output=True, text=True, check=True)
+    return [(float(a), float(b)) for a, b, length in re.findall(
+        r"black_start:([0-9.]+) black_end:([0-9.]+) black_duration:([0-9.]+)", result.stderr)
+        if float(length) >= min_duration]
+
+
 def temporal_findings(video: Path, duration: float | None = None) -> list[dict]:
     """Run both detectors once per file; detector failures are advisory."""
     try:
