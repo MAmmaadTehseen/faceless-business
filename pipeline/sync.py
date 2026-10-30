@@ -20,10 +20,15 @@ def flag_reason(text: str) -> str | None:
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--drain-only", action="store_true")
+    ap.add_argument("--channel", choices=Channel.keys())
+    args = ap.parse_args()
     db = DB()
-    for key in Channel.keys():
+    for key in ([args.channel] if args.channel else Channel.keys()):
         try:
-            sync_channel(db, Channel(key))
+            (drain_youtube_queue if args.drain_only else sync_channel)(db, Channel(key))
         except Exception as e:
             log.error("sync %s failed: %s", key, e)
 

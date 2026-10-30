@@ -1,6 +1,7 @@
 """Publish a rendered content item (long + shorts) to every configured platform."""
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -9,17 +10,37 @@ from . import meta, youtube
 from .quota import THUMB_COST, UPDATE_COST, reserve
 
 
-def _next_slot(db, kind: str, channel: Channel | None = None) -> datetime:
-    """Stagger: long videos 12h apart starting 1h from now; shorts 2h after their parent. Per channel."""
-    now = datetime.now(timezone.utc)
-    rows = db.select("publications", {"platform": "youtube"}, order="publish_at", desc=True, limit=60)
-    if channel:
-        ids = {c["id"] for c in db.select("content", {"channel": channel.key})}
-        rows = [r for r in rows if r["content_id"] in ids]
-    future = [datetime.fromisoformat(r["publish_at"].replace("Z", "+00:00")) for r in rows if r.get("publish_at")]
-    future = [t for t in future if t > now]
-    base = max(future) + timedelta(hours=12) if future else now + timedelta(hours=1)
-    return base
+def _next_slot(db, kind: str, channel: Channel | None = None, *, now=None,
+               parent_slot=None, after=None, content_id=None) -> datetime:
+    """Assign a channel calendar slot; failed publications do not occupy slots."""
+    channel = channel or Channel()
+    now = now or datetime.now(timezone.utc)
+    earliest = now + timedelta(hours=1)
+    content = {c["id"]: c for c in db.select("content", {"channel": channel.key})}
+    occupied = []
+    for r in db.select("publications", {"platform": "youtube"}):
+        if (r["content_id"] in content and r["content_id"] != content_id
+                and r.get("status") in ("live", "queued") and r.get("publish_at")):
+            occupied.append((datetime.fromisoformat(r["publish_at"].replace("Z", "+00:00")),
+                             content[r["content_id"]]["kind"]))
+    weekdays, hour = {"futurework": ({0, 2, 4}, 6), "tradewinds": ({1, 3, 5}, 11),
+                      "escapevelocity": ({0, 3, 6}, 16)}[channel.key]
+    if kind == "long":
+        candidate = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    else:
+        hour = channel.cfg.get("shorts_hour_utc", {"futurework": 13, "tradewinds": 15,
+                                                   "escapevelocity": 18}[channel.key]) if parent_slot else channel.cfg.get("daily_short_hour_utc", 20)
+        day = parent_slot + timedelta(days=1) if parent_slot else now
+        if after:
+            day = max(day, after + timedelta(days=1))
+        candidate = day.replace(hour=int(hour), minute=0, second=0, microsecond=0)
+    while True:
+        slot = max(candidate, earliest) if kind == "long" and candidate <= now < candidate + timedelta(hours=1) else candidate
+        day_count = sum(t.date() == slot.date() for t, _ in occupied)
+        taken = any(t == slot or (kind == "long" and k == "long" and t.date() == slot.date()) for t, k in occupied)
+        if slot >= earliest and (kind != "long" or candidate.weekday() in weekdays) and not taken and day_count < 3:
+            return slot
+        candidate += timedelta(days=1)
 
 
 BIG_FILE = 45 * 1024 * 1024   # Supabase free tier caps objects at 50 MB; larger queued files go to a GitHub release
@@ -48,6 +69,8 @@ def _restore_queue(db, row, pub):
         work = OUT_DIR / row["id"]
         work.mkdir(parents=True, exist_ok=True)
         for column, key_column in (("file_path", "media_key"), ("thumbnail_path", "thumbnail_key")):
+            if row.get(column) and Path(row[column]).is_file():
+                continue
             key = pub.get(key_column)
             if not key:
                 continue
@@ -69,8 +92,6 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
     existing = db.one("publications", {"content_id": row["id"], "platform": "youtube"})
     if existing and existing.get("status") == "live":
         return {"platform": "youtube", "content_id": row["id"], "id": existing["platform_id"], "url": existing["url"]}
-    if existing and existing.get("status") == "queued" and not draining:
-        return None
     if row.get("placeholder"):
         raise RuntimeError("Refusing to publish placeholder footage")
     if row.get("qa_status") != "passed":
@@ -82,7 +103,7 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
         raise FileNotFoundError(f"Queued media missing for {row['id']}")
     thumbnail = Path(row["thumbnail_path"]) if row.get("thumbnail_path") else None
     units = THUMB_COST if thumbnail and thumbnail.exists() else 0
-    if force_queue or not reserve(db, units, uploads=1):
+    if not reserve(db, units, uploads=1):
         fields = {}
         if not draining:
             db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued",
@@ -95,11 +116,26 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
                 raise
         db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued",
                   "privacy": privacy, "publish_at": slot.isoformat(), **fields}, on="content_id,platform")
-        log.info("youtube: queued %s (daily quota reserve)", row["id"])
+        day = datetime.now(timezone.utc).date().isoformat()
+        usage = db.one("quota_log", {"day": day}) or {}
+        used_units, used_uploads = usage.get("units", 0), usage.get("uploads", 0)
+        unit_limit = int(db.setting("youtube_quota_units_per_day", 10000)) - 1000
+        upload_limit = int(db.setting("youtube_uploads_per_day", 100)) - 2
+        buckets = []
+        if used_units + units > unit_limit:
+            buckets.append("general")
+        if used_uploads + 1 > upload_limit:
+            buckets.append("uploads")
+        log.info("youtube: queued %s bucket=%s units=%s+%s/%s uploads=%s+1/%s",
+                 row["id"], ",".join(buckets) or "reservation rejected (concurrent usage)",
+                 used_units, units, unit_limit, used_uploads, upload_limit)
         return None
     try:
         # Preserve order but move an expired scheduling slot into the future.
-        slot = max(slot, datetime.now(timezone.utc) + timedelta(hours=1))
+        if slot < datetime.now(timezone.utc) + timedelta(hours=1):
+            parent = db.one("publications", {"content_id": row.get("parent_id"), "platform": "youtube"}) if row.get("parent_id") else None
+            slot = _next_slot(db, row["kind"], channel, content_id=row["id"],
+                              parent_slot=datetime.fromisoformat(parent["publish_at"].replace("Z", "+00:00")) if parent and parent.get("publish_at") else None)
         r = youtube.upload(video, row["title"], row.get("description") or "", row.get("tags") or [],
             privacy=privacy, publish_at=slot if privacy == "private" else None, thumbnail=thumbnail,
             is_short=row["kind"] == "short", category_id=channel.cfg.get("category_id", "28"))
@@ -194,7 +230,7 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
     results = []
     if youtube.configured():
         try:
-            r = _youtube_publish(db, s, channel, privacy, slot or _next_slot(db, "short", channel), force_queue=queue_youtube)
+            r = _youtube_publish(db, s, channel, privacy, slot or _next_slot(db, "short", channel, content_id=s["id"]), force_queue=queue_youtube)
             if r:
                 results.append(r)
         except Exception as e:
@@ -243,7 +279,7 @@ def publish_all(db, content_id, privacy="private", channel=None):
     long = db.one("content", {"id": content_id})
     channel = channel or Channel(long.get("channel") or "futurework")
     youtube.use_channel(channel); meta.use_channel(channel)
-    slot = _next_slot(db, "long", channel)
+    slot = _next_slot(db, "long", channel, content_id=content_id)
     results = []
     long_url = None
     if youtube.configured():
@@ -255,7 +291,9 @@ def publish_all(db, content_id, privacy="private", channel=None):
         except Exception as e:
             log.error("youtube long deferred for %s (%s)", content_id, type(e).__name__)
     parent_pub = db.one("publications", {"content_id": content_id, "platform": "youtube"})
-    queue_shorts = bool(parent_pub and parent_pub.get("status") == "queued")
+    if parent_pub and parent_pub.get("publish_at"):
+        slot = datetime.fromisoformat(parent_pub["publish_at"].replace("Z", "+00:00"))
+    previous_short = None
     shorts = db.select("content", {"parent_id": content_id, "kind": "short"}, order="id")
     for i, short in enumerate(shorts):
         if short.get("qa_status") != "passed":
@@ -263,7 +301,9 @@ def publish_all(db, content_id, privacy="private", channel=None):
         if not short.get("tags"):
             short["tags"] = long.get("tags") or []
             db.update("content", {"id": short["id"]}, {"tags": short["tags"]})
-        results.extend(publish_short(db, short, channel, privacy, long_url, slot=slot + timedelta(hours=2*(i+1)), queue_youtube=queue_shorts))
+        short_slot = _next_slot(db, "short", channel, parent_slot=slot, after=previous_short, content_id=short["id"])
+        results.extend(publish_short(db, short, channel, privacy, long_url, slot=short_slot))
+        previous_short = short_slot
     return results
 
 
@@ -279,11 +319,21 @@ def drain_youtube_queue(db, channel):
             try:
                 r = _youtube_publish(db, rows[p["content_id"]], channel, p.get("privacy") or "private", slot, draining=True)
             except Exception as e:
-                db.update("publications", {"id": p["id"]}, {"error": "Queue drain failed: " + type(e).__name__})
+                try:
+                    attempts = json.loads(p.get("error") or "{}").get("drain_attempts", 0)
+                except (ValueError, AttributeError):
+                    attempts = 0
+                attempts += 1
+                db.update("publications", {"id": p["id"]}, {
+                    "status": "failed" if attempts >= 3 else "queued",
+                    "error": json.dumps({"drain_attempts": attempts, "error": "Queue drain failed: " + type(e).__name__})})
                 log.error("youtube queue drain failed for %s (%s)", p["content_id"], type(e).__name__)
-                break
+                continue
             if not r:
-                break
+                current = db.one("publications", {"id": p["id"]})
+                if current and current.get("status") == "queued":
+                    break
+                continue
             drained += 1
     remaining = sum(1 for p in db.select("publications", {"platform": "youtube", "status": "queued"}) if p["content_id"] in rows)
     log.info("youtube queue[%s]: drained %d, remaining %d", channel.key, drained, remaining)
