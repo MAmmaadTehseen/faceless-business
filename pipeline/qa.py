@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import math
+import re
 import subprocess
 from pathlib import Path
 
@@ -41,25 +43,71 @@ def finalize_qa(res: dict, strict: bool = False) -> dict:
     return res
 
 
-def temporal_findings(video: Path) -> list[dict]:
-    """Detect sustained black/frozen footage; sampled images cannot establish duration."""
-    import re
-    result = subprocess.run([
-        "ffmpeg", "-v", "info", "-i", str(video), "-vf",
-        "blackdetect=d=1:pix_th=0.10,freezedetect=n=-60dB:d=1", "-an", "-f", "null", "-",
-    ], capture_output=True, text=True, check=True)
+def parse_temporal_output(stderr: str, duration: float) -> list[dict]:
+    """Parse ffmpeg segments, measuring only footage outside fades/end cards.
+
+    An unfinished freeze extends to EOF. Malformed events must not silently pass.
+    """
+    if not math.isfinite(duration) or duration <= 0:
+        raise ValueError("invalid video duration")
+    segments = []
+    freeze_start = None
+    number = r"([0-9]+(?:\.[0-9]+)?)"
+    for line in stderr.splitlines():
+        if "black_start:" in line:
+            match = re.search(r"black_start:\s*" + number + r"\s+black_end:\s*" + number
+                              + r"\s+black_duration:\s*" + number, line)
+            if not match:
+                raise ValueError("malformed blackdetect segment")
+            start, end, length = map(float, match.groups())
+            if abs(end - start - length) > 0.1:
+                raise ValueError("inconsistent blackdetect duration")
+            segments.append(("black", start, end, 2.0))
+        elif "black_end:" in line or "black_duration:" in line:
+            raise ValueError("incomplete blackdetect segment")
+        for match in re.finditer(r"freeze_(start|duration|end):\s*(\S+)", line):
+            event, raw = match.groups()
+            value = float(raw)
+            if not math.isfinite(value) or value < 0:
+                raise ValueError("invalid freezedetect timestamp")
+            if event == "start":
+                if freeze_start is not None:
+                    raise ValueError("duplicate freeze start")
+                freeze_start = value
+            elif event == "end":
+                if freeze_start is None:
+                    raise ValueError("freeze end without start")
+                segments.append(("frozen", freeze_start, value, 4.0))
+                freeze_start = None
+            elif freeze_start is None:
+                raise ValueError("freeze duration without start")
+    if freeze_start is not None:
+        segments.append(("frozen", freeze_start, duration, 4.0))
     findings = []
-    for kind, pattern in (("black", r"black_duration:\s*([0-9.]+)"),
-                          ("frozen", r"freeze_duration:\s*([0-9.]+)")):
-        durations = [float(d) for d in re.findall(pattern, result.stderr)]
-        if kind == "frozen":
-            starts = re.findall(r"freeze_start:\s*([0-9.]+)", result.stderr)
-            ends = re.findall(r"freeze_end:\s*([0-9.]+)", result.stderr)
-            if len(starts) > len(ends):
-                durations.append(probe(video)["duration"] - float(starts[-1]))
-        if any(d > 1 for d in durations):
-            findings.append({"severity": "blocking", "text": f"{kind} footage for more than 1 second"})
+    for kind, start, end, threshold in segments:
+        if end < start or end > duration + 0.1:
+            raise ValueError("invalid detector segment bounds")
+        start, end = max(start, 2.5), min(end, duration - 3.0)
+        if end <= start:
+            continue
+        length = end - start
+        findings.append({"severity": "blocking" if length >= threshold else "minor",
+                         "text": f"{kind} footage at {start:.3f}-{end:.3f}s ({length:.3f}s mid-video)"})
     return findings
+
+
+def temporal_findings(video: Path, duration: float | None = None) -> list[dict]:
+    """Run both detectors once per file; detector failures are advisory."""
+    try:
+        if duration is None:
+            duration = probe(video)["duration"]
+        result = subprocess.run([
+            "ffmpeg", "-hide_banner", "-nostats", "-v", "info", "-i", str(video), "-vf",
+            "blackdetect=d=0:pix_th=0.10,freezedetect=n=-60dB:d=0.1", "-an", "-f", "null", "-",
+        ], capture_output=True, text=True, check=True)
+        return parse_temporal_output(result.stderr, duration)
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
+        return [{"severity": "minor", "text": f"temporal detector unavailable: {type(exc).__name__}: {exc}"}]
 
 
 def probe(video: Path) -> dict:
@@ -84,12 +132,12 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
         ratio = (p["width"] or 0) / (p["height"] or 1)
         if min(abs(ratio - 16/9), abs(ratio - 9/16)) > 0.02:
             issues.append({"severity": "blocking", "text": "wrong aspect ratio"})
-    issues.extend(temporal_findings(video))
-    if issues:
+    issues.extend(temporal_findings(video, p["duration"]))
+    if any(f["severity"] == "blocking" for f in issues):
         return {"pass": False, "issues": issues, "thumbnail_ok": None, "frames_ok": False}
     if not vision:
         log.info("qa: probe passed; vision skipped (placeholder footage)")
-        return {"pass": True, "issues": [], "thumbnail_ok": True, "frames_ok": True}
+        return finalize_qa({"issues": issues, "thumbnail_ok": True, "frames_ok": True}, strict)
 
     work.mkdir(parents=True, exist_ok=True)
     frames = [grab_frame(video, p["duration"] * f, work / f"qa_{i}.jpg") for i, f in enumerate((0.1, 0.5, 0.85))]
@@ -99,7 +147,7 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
         f"The remaining {len(frames)} images are sampled video frames. "
         "Report every finding as {severity: blocking|minor, text}. "
         "pass=false ONLY if at least one blocking finding exists. "
-        "Blocking: black/frozen footage lasting >1s (do not infer duration from a still), "
+        "Temporal black/freeze duration is checked locally; do not infer it from a still. Blocking: "
         "visible third-party watermark or logo OVERLAY covering content, cut-off or unreadable text/captions, "
         "wrong aspect ratio, missing audio, placeholder footage, nudity, gore, misleading medical/income claims. "
         "Minor: pillarboxing/letterboxing, soft or blurry archival footage, incidental signage, "
@@ -111,10 +159,11 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
         res, _ = claude.vision("qa", prompt, images, QA_SCHEMA, content_id=content_id)
     except Exception as e:
         log.warning("qa vision failed, passing on probe only: %s", e)
-        return finalize_qa({"issues": [{"severity": "minor", "text": f"vision skipped: {e}"}], "thumbnail_ok": True, "frames_ok": True, "thumbnail": thumbnail}, strict)
+        return finalize_qa({"issues": issues + [{"severity": "minor", "text": f"vision skipped: {e}"}], "thumbnail_ok": True, "frames_ok": True, "thumbnail": thumbnail}, strict)
     res["thumbnail"] = thumbnail
     if thumbnail and not res.get("thumbnail_ok", True):
         res["thumbnail"] = _retry_thumbnail(claude, video, thumbnail, content_id, res)
+    res["issues"] = issues + res["issues"]
     finalize_qa(res, strict)
     log.info("qa: pass=%s thumbnail_ok=%s issues=%s", res["pass"], res.get("thumbnail_ok"), res["issues"])
     return res

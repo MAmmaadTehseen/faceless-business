@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from pipeline.qa import run_qa, temporal_findings
+from pipeline.qa import run_qa, temporal_findings, parse_temporal_output
 from pipeline.run_all import produce_one
 from pipeline.common import Channel
 
@@ -33,16 +33,55 @@ def test_severity_verdict(findings, model_pass, strict, expected, tmp_path, capl
     assert 'qa minor:' in caplog.text
 
 
-@pytest.mark.parametrize('stderr,expected', [
-    ('black_duration:0.9', False),
-    ('black_duration:1.1', True),
-    ('freeze_start:2\nfreeze_duration:2\nfreeze_end:4', True),
-    ('freeze_start:2', True),
+@pytest.mark.parametrize('stderr,severity', [
+    ('black_start:0 black_end:1.4 black_duration:1.4', None),
+    ('black_start:300 black_end:302.5 black_duration:2.5', 'blocking'),
+    ('black_start:120 black_end:121.5 black_duration:1.5', 'minor'),
+    ('freeze_start:50\nfreeze_duration:6\nfreeze_end:56', 'blocking'),
+    ('black_start:498 black_end:500 black_duration:2', None),
+    ('freeze_start:496', 'minor'),
+    ('black_start:2 black_end:4 black_duration:2', 'minor'),
+    ('black_start:30 black_end:32 black_duration:2', 'blocking'),
+    ('freeze_start:50\nfreeze_duration:4\nfreeze_end:54', 'blocking'),
 ])
-def test_sustained_black_or_frozen(stderr, expected):
-    with patch('pipeline.qa.subprocess.run', return_value=Mock(stderr=stderr)), \
-         patch('pipeline.qa.probe', return_value={'duration': 5}):
-        assert bool(temporal_findings(Path('video.mp4'))) is expected
+def test_temporal_parser(stderr, severity):
+    findings = parse_temporal_output(stderr, 500)
+    assert [f['severity'] for f in findings] == ([severity] if severity else [])
+    if findings:
+        assert 's (' in findings[0]['text']
+
+
+@pytest.mark.parametrize('failure', [FileNotFoundError('ffmpeg'), ValueError('parse')])
+def test_detector_failure_is_minor(failure):
+    with patch('pipeline.qa.subprocess.run', side_effect=failure):
+        assert temporal_findings(Path('video.mp4'), 500)[0]['severity'] == 'minor'
+
+
+def test_malformed_detector_output_is_minor():
+    with patch('pipeline.qa.subprocess.run', return_value=Mock(stderr='black_duration:2')) as run:
+        assert temporal_findings(Path('video.mp4'), 500)[0]['severity'] == 'minor'
+    run.assert_called_once()
+
+
+@pytest.mark.parametrize('vision,raises', [(True, False), (True, True), (False, False)])
+def test_local_minor_preserved_and_vision_runs(vision, raises, tmp_path):
+    local = {'severity': 'minor', 'text': 'black footage at 120.000-121.500s'}
+    model = {'severity': 'blocking', 'text': 'Unreadable captions'}
+    claude = Mock()
+    if raises:
+        claude.vision.side_effect = RuntimeError('offline')
+    else:
+        claude.vision.return_value = ({'issues': [model], 'thumbnail_ok': True}, {})
+    with patch('pipeline.qa.probe', return_value={'duration': 500, 'has_audio': True, 'width': 1920, 'height': 1080}), \
+         patch('pipeline.qa.temporal_findings', return_value=[local]) as detectors, \
+         patch('pipeline.qa.grab_frame', return_value=tmp_path / 'frame.jpg'):
+        result = run_qa(claude, tmp_path / 'video.mp4', None, 500, 'id', tmp_path, vision=vision)
+    detectors.assert_called_once_with(tmp_path / 'video.mp4', 500)
+    assert local in result['issues']
+    assert result['pass'] is (not vision or raises)
+    assert claude.vision.call_count == int(vision)
+    if vision and not raises:
+        assert model in result['issues']
 
 
 def test_blocked_render_retained_and_resume_publishes_without_rendering(tmp_path):
