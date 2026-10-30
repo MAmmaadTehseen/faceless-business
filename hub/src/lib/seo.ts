@@ -17,3 +17,7 @@ export function organizationJsonLd() {
     logo: absolute('/icon-512.png'),
   };
 }
+
+export function websiteJsonLd() {
+  return {'@context': 'https://schema.org', '@type': 'WebSite', name: 'Plainsight Media', alternateName: 'Plainsight', url: `${siteURL}/`};
+}

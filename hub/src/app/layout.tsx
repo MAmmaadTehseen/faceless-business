@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-48x48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
     ],
@@ -27,7 +31,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: '#101112' };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return <html lang="en" className={serif.variable} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html: `try{var t=localStorage.getItem('plainsight-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch{}`}}/></head><body><a className="skip" href="#main">Skip to content</a>
-    <header><Link className="brand" href="/">PLAIN<span>SIGHT</span><small>MEDIA</small></Link><nav aria-label="Main"><Link href="/">Stories</Link><Link href="/about">About</Link><ThemeToggle/></nav></header>
+    <header><Link className="brand" href="/" aria-label="Plainsight Media home"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12 Q12 1 21 12 M3 12 Q12 23 21 12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg><span className="brand-wordmark">PLAIN<span>SIGHT</span><small>MEDIA</small></span></Link><nav aria-label="Main"><Link href="/">Stories</Link><Link href="/about">About</Link><ThemeToggle/></nav></header>
     <main id="main">{children}</main><footer><div><Link className="footer-brand" href="/">Plainsight Media</Link><p>A clearer view of what comes next.</p></div><nav aria-label="Our channels">{channels.map(c => <Link key={c.key} href={`/c/${c.key}`}>{c.name}</Link>)}</nav><nav aria-label="Legal"><Link href="/about">About</Link><Link href="/privacy">Privacy</Link><Link href="/feed.xml">RSS</Link></nav></footer>
   <Tracker/></body></html>;
 }

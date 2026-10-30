@@ -18,7 +18,7 @@ export async function generateMetadata({params}: {params: Promise<{slug:string}>
   const title = a.meta_title || a.title;
   const description = a.meta_description || a.excerpt;
   const meta = pageMetadata(title, a.summary_for_og || description, `/a/${a.slug}`, `/a/${a.slug}/opengraph-image`);
-  return {...meta, title: {absolute: title}, description, openGraph: {...meta.openGraph, type: 'article', publishedTime: a.published_at,
+  return {...meta, title: {absolute: /\|\s*Plainsight Media$/i.test(title) ? title : `${title} | Plainsight Media`}, description, openGraph: {...meta.openGraph, type: 'article', publishedTime: a.published_at,
     modifiedTime: a.updated_at || a.published_at, authors: [getChannel(a.channel)?.name || 'Plainsight Media']}};
 }
 export default async function ArticlePage({params}: {params: Promise<{slug:string}>}) {

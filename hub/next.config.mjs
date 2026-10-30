@@ -11,6 +11,7 @@ const nextConfig = {
       {key: 'Content-Security-Policy', value: "frame-ancestors 'none'; frame-src https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'"},
     ]},
     {source: '/:path*\\.(woff2|png|jpg|webp|svg)', headers: [{key: 'Cache-Control', value: 'public, max-age=86400'}]},
+    {source: '/:icon(favicon\\.ico|favicon\\.svg|favicon-[0-9]+x[0-9]+\\.png|icon-[a-z0-9-]+\\.png|apple-touch-icon\\.png|safari-pinned-tab\\.svg|mark\\.svg)', headers: [{key: 'Cache-Control', value: 'public, max-age=2592000'}]},
   ]; },
 };
 export default nextConfig;
