@@ -18,6 +18,10 @@ on:
       artifact_run_id:
         description: "Run id holding videos-<channel>-<run_id> (required for resume)"
         required: false
+      rerender:
+        description: "Rebuild resumed long video and Shorts from saved shot queries"
+        type: boolean
+        default: false
       count:
         description: "long videos this run"
         required: false
@@ -115,12 +119,14 @@ jobs:
         env:
           RESUME_ID: ${{ github.event.inputs.resume_id }}
           CHANNEL: ${{ steps.pick.outputs.channel }}
+          RERENDER: ${{ github.event.inputs.rerender }}
           COUNT: ${{ github.event.inputs.count || '1' }}
           PRIVACY: ${{ github.event.inputs.privacy }}
         run: |
           ARGS=(--publish --channel "$CHANNEL")
           if [ -n "$RESUME_ID" ]; then
             ARGS+=(--resume "$RESUME_ID")
+            if [ "$RERENDER" = "true" ]; then ARGS+=(--rerender); fi
           else
             ARGS+=(--count "$COUNT")
           fi
@@ -136,6 +142,11 @@ jobs:
             out/**/*.jpg
             out/**/script.json
             out/**/result.json
+            out/**/voice.mp3
+            out/**/*_voice.mp3
+            out/**/*timings.json
+            out/**/*.srt
+            out/**/captions*
           retention-days: 3
           if-no-files-found: ignore
       - name: Persist persona learnings

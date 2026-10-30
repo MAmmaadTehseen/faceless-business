@@ -36,7 +36,7 @@ publishing; the channel is inferred from the content id and the long video is no
 RESUME_ID='<content-id>' ARTIFACT_RUN_ID='<original-github-run-id>'
 gh workflow run produce.yml -f resume_id="$RESUME_ID" -f artifact_run_id="$ARTIFACT_RUN_ID" -f privacy=private
 ```
-
+Add `-f rerender=true` to rebuild the long video and Shorts from saved scripts/shot queries (`--resume <id> --rerender` locally); retained narration is reused.
 
 ## Hard rules (do not break)
 - Secrets only in local `.env`, GitHub Actions secrets, Vercel env. Never print them, never commit them.

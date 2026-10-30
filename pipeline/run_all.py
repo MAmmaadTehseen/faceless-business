@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,7 +28,67 @@ from .tts import synthesize
 FIXTURE = ROOT / "data" / "fixture_script.json"
 
 
-def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None, channel: Channel | None = None) -> dict:
+def resume_plan(out_dir: Path, content_id: str, *, rerender: bool = False) -> tuple[str, ...]:
+    """Validate retained inputs before doing work; describe the resume stages."""
+    script = out_dir / "script.json"
+    if not script.is_file():
+        raise FileNotFoundError(f"Cannot resume {content_id}: missing required artifact file: {script}")
+    if not rerender:
+        video = out_dir / f"{content_id}.mp4"
+        if not video.is_file():
+            raise FileNotFoundError(f"Cannot resume {content_id}: missing required artifact file: {video}")
+        return ("thumbnail", "qa", "shorts", "publish", "article")
+    data = json.loads(script.read_text())
+    if not data.get("shot_list"):
+        result = out_dir / "result.json"
+        saved = json.loads(result.read_text()) if result.is_file() else {}
+        data["shot_list"] = saved.get("shot_list")
+    for key in ("script", "shot_list", "title", "title_variants", "description", "thumbnail_text"):
+        if not data.get(key):
+            raise ValueError(f"Cannot rerender {content_id}: missing required {key} in script.json/result.json")
+    for shot in data["shot_list"]:
+        if not isinstance(shot, dict) or not shot.get("query") or "paragraph_index" not in shot:
+            raise ValueError(f"Cannot rerender {content_id}: invalid shot_list query/paragraph_index")
+    names = ["voice"]
+    for i, short in enumerate(data.get("shorts", [])):
+        for key in ("script", "query", "hook_title"):
+            if not short.get(key):
+                raise ValueError(f"Cannot rerender {content_id}: missing shorts[{i}].{key} in script.json")
+        names.append(f"{content_id}-short-{i+1}_voice")
+    for name in names:
+        if (out_dir / f"{name}.mp3").is_file():
+            for suffix in ("_timings.json", ".srt"):
+                required = out_dir / f"{name}{suffix}"
+                if not required.is_file():
+                    raise FileNotFoundError(f"Cannot rerender {content_id}: missing required artifact file: {required}")
+            if not json.loads((out_dir / f"{name}_timings.json").read_text()):
+                raise ValueError(f"Cannot rerender {content_id}: empty {name}_timings.json")
+    return (("tts",) if not (out_dir / "voice.mp3").is_file() else ()) + ("footage", "render", "thumbnail", "qa", "shorts", "publish", "article")
+
+
+def retained_tts(out_dir: Path, name: str = "voice") -> dict:
+    timings = json.loads((out_dir / f"{name}_timings.json").read_text())
+    audio = out_dir / f"{name}.mp3"
+    return {"audio": audio, "srt": out_dir / f"{name}.srt", "timings": timings,
+            "duration": probe(audio)["duration"]}
+
+
+def rerender_short(short: dict, out_dir: Path, voice, footage: Footage, name: str, style: dict) -> dict:
+    if not (out_dir / f"{name}_voice.mp3").is_file():
+        return make_short(short, out_dir, voice, footage, name=name, style=style)
+    tts = retained_tts(out_dir, f"{name}_voice")
+    shots = [{"paragraph_index": t["index"], "query": short["query"], "mood": "bright"}
+             for t in tts["timings"]]
+    segs = segments_from_timings(tts["timings"], shots, min_shot=3.0, max_shot=5.0)
+    video = out_dir / f"{name}.mp4"
+    render(segs, tts["audio"], tts["srt"], video, "portrait", footage, music_db=-20.0, style=style)
+    return {"file": video, "duration": tts["duration"], "title": short["hook_title"], "script": short["script"]}
+
+
+def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None, channel: Channel | None = None, rerender: bool = False) -> dict:
+    if rerender and not resume:
+        raise ValueError("--rerender requires --resume")
+    row = {}
     channel = channel or (claude.channel if claude else Channel())
     voice = channel.voice or db.setting("tts_voice", "en-US-AndrewMultilingualNeural")
     shorts_per_long = channel.shorts_per_long
@@ -40,11 +99,10 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     if resume:
         content_id = resume
         out_dir = OUT_DIR / content_id
-        # Resume must reuse the retained long render, never silently regenerate it.
-        for required in (out_dir / "script.json", out_dir / f"{content_id}.mp4"):
-            if not required.is_file():
-                raise FileNotFoundError(f"Cannot resume {content_id}: missing required artifact file: {required}")
+        resume_plan(out_dir, content_id, rerender=rerender)
         data = json.loads((out_dir / "script.json").read_text())
+        if rerender and not data.get("shot_list"):
+            data["shot_list"] = json.loads((out_dir / "result.json").read_text())["shot_list"]
         row = db.one("content", {"id": content_id}) or {}
         topic = {"topic": row.get("topic") or data.get("title"), "angle": "", "source_url": None, "source_headline": None, "queue_id": None}
         if publish and row.get("placeholder"):
@@ -69,17 +127,22 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
 
     video = out_dir / f"{content_id}.mp4"
     timings_file = out_dir / "voice_timings.json"
-    reused_render = bool(resume and video.exists())
+    reused_render = bool(resume and not rerender and video.exists())
+    if rerender:
+        # Invalidate every retained final render before QA or publishing can see it.
+        video.unlink(missing_ok=True)
+        for old_short in out_dir.glob(f"{content_id}-short-*.mp4"):
+            old_short.unlink()
     if reused_render:
         timings = json.loads(timings_file.read_text()) if timings_file.exists() else []
         tts = {"timings": timings, "duration": timings[-1]["end"] if timings else probe(video)["duration"],
                "audio": out_dir / "voice.mp3", "srt": out_dir / "voice.srt"}
     else:
-        tts = synthesize(data["script"], out_dir, voice=voice)
+        tts = retained_tts(out_dir) if rerender and (out_dir / "voice.mp3").is_file() else synthesize(data["script"], out_dir, voice=voice)
         segs = segments_from_timings(tts["timings"], data["shot_list"])
         video = render(segs, tts["audio"], tts["srt"], video, "landscape", footage, style=style)
     thumb = out_dir / f"{content_id}.jpg"
-    if not (resume and thumb.exists()):
+    if not (resume and not rerender and thumb.exists()):
         thumb = make_thumbnail(video, data["thumbnail_text"], thumb, accent=accent)
 
     chapters = (row.get("chapters") or []) if reused_render and not tts["timings"] else []
@@ -112,16 +175,16 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     for i, s in enumerate(data.get("shorts", [])[:shorts_per_long]):
         sid = f"{content_id}-short-{i+1}"
         existing = db.one("content", {"id": sid}) if resume else None
-        if existing and existing.get("qa_status") == "passed" and Path(existing.get("file_path") or "").is_file():
+        if not rerender and existing and existing.get("qa_status") == "passed" and Path(existing.get("file_path") or "").is_file():
             shorts.append({"id": sid, "file": Path(existing["file_path"])})
             continue
         try:
             short_file = out_dir / f"{sid}.mp4"
-            if resume and short_file.exists():
+            if resume and not rerender and short_file.exists():
                 res = {"file": short_file, "duration": probe(short_file)["duration"],
                        "title": s["hook_title"], "script": s["script"]}
             else:
-                res = make_short(s, out_dir, voice, footage, name=sid, style=style)
+                res = (rerender_short if rerender else make_short)(s, out_dir, voice, footage, name=sid, style=style)
         except Exception as e:
             log.error("short %s failed: %s", sid, e)
             continue
@@ -170,8 +233,12 @@ def main():
     ap.add_argument("--privacy", choices=["private", "public", "unlisted"])
     ap.add_argument("--count", type=int, default=None, help="long videos this run (default from settings)")
     ap.add_argument("--resume", help="content id in out/ to continue from its rendered video (thumbnail, QA, shorts, publish)")
+    ap.add_argument("--rerender", action="store_true", help="with --resume, rebuild long and Shorts from saved scripts and shot queries")
     ap.add_argument("--channel", default=None, help="channel key (folder in channels/). Default: futurework, or inferred from --resume id")
     args = ap.parse_args()
+
+    if args.rerender and not args.resume:
+        ap.error("--rerender requires --resume")
 
     db = DB()
     ckey = args.channel or (args.resume.split("-20")[0] if args.resume and not args.resume.startswith("20") else None) or "futurework"
@@ -197,7 +264,7 @@ def main():
         if guard and not guard.check("produce", est_usd=1.0):
             break
         try:
-            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume, channel=channel))
+            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume, channel=channel, rerender=args.rerender))
         except Exception as e:
             errors.append(f"{e}\n{traceback.format_exc()}")
             log.error("produce failed: %s", e)
