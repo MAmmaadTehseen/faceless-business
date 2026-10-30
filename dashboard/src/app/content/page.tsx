@@ -16,7 +16,8 @@ export default async function ContentPage({
   const channel = sp.channel
     ? parseChannelFilter(sp.channel)
     : await getChannelFilter();
-  const items = filterContent(await getPlatformContent(channel, sp.days, sp.platform), sp);
+  const allItems = await getPlatformContent(channel, sp.days, sp.platform);
+  const items = filterContent(allItems, sp);
   const analytics = await getAnalytics(
     channel,
     [1, 7, 28, 30, 90].includes(Number(sp.days)) ? Number(sp.days) : 28,
@@ -25,21 +26,26 @@ export default async function ContentPage({
   );
   return (
     <div className="space-y-5">
-      <PageHeader title="Content" count={items.length} />
+      <PageHeader title="Content" />
+      <div className="hero"><p className="hero-label">Videos in this view</p><p className="hero-value">{items.length}</p><p className="text-xs text-muted mt-2">{items.filter(c => c.publications.some(p => p.status === "failed") || c.qa_status === "failed").length} need attention</p></div>
       <ContentFilters sp={sp} channel={channel} path="/content" />
       <Section title="Videos">
-        <p className="text-xs text-muted mb-4">
-          Table metrics are latest cumulative totals. Chart shows daily view
-          growth for the selected period (28 days by default), in UTC. Hub article views use the selected period; likes and comments are not collected for Hub.
-        </p>
+
         <ContentList
           items={items}
+          allItems={allItems}
+          dates={analytics.daily.map(d => d.date)}
+          initialChartVisible={false}
           sort={sp.sort ?? "newest"}
-          dates={analytics.daily.map((d) => d.date)}
+
           daily={Object.fromEntries(
             analytics.videos.map((v) => [v.id, v.daily]),
           )}
         />
+        <details className="text-xs text-muted"><summary>Metric definitions</summary><p>
+          Table metrics are latest cumulative totals. Chart shows daily view
+          growth for the selected period (28 days by default), in UTC. Hub article views use the selected period; likes and comments are not collected for Hub.
+        </p></details>
       </Section>
     </div>
   );

@@ -1,3 +1,4 @@
+import { AutoFilters } from "@/components/AutoFilters";
 import { SeriesReport, type ReportColumn } from "@/components/SeriesReport";
 import { getHubAnalytics } from "@/lib/hub-analytics";
 import { HubAnalytics, HubChannels } from "@/components/HubAnalytics";
@@ -29,7 +30,7 @@ function Delta({
   const d = value - old;
   return (
     <span
-      className={`text-xs ${d < 0 ? "text-alert-fg" : d > 0 ? "text-ok-fg" : "text-muted"}`}
+      className={`text-xs ${d < 0 ? "text-muted" : d > 0 ? "text-muted" : "text-muted"}`}
     >
       {d > 0 ? "+" : ""}
       {pp ? d.toFixed(1) + " pp" : fmtNum(d)} vs previous
@@ -157,42 +158,26 @@ export default async function Analytics({
       <PageHeader
         title="Analytics"
         action={
-          <div className="flex flex-wrap gap-2 analytics-periods">
-            {["1", "7", "28", "30", "90", "all"].map((d) => {
-              const q = new URLSearchParams(sp);
-              q.set("days", d);
-              return (
-                <Link
-                  key={d}
-                  className={`btn ${(sp.days ?? "28") === d ? "btn-primary" : ""}`}
-                  href={`?${q}`}
-                >
-                  {d === "1" ? "Last 24 hours" : d === "all" ? "All time" : `${d} days`}
-                </Link>
-              );
-            })}
-          </div>
+          <AutoFilters className="analytics-periods flex justify-end"><select name="days" aria-label="Analytics date range" defaultValue={sp.days ?? "28"}>{["1","7","28","30","90","all"].map(d=><option key={d} value={d}>{d === "1" ? "Last 24 hours" : d === "all" ? "All time" : `${d} days`}</option>)}</select></AutoFilters>
         }
       />
-      {tab !== "hub" && <div className="flex flex-wrap gap-3 text-sm text-muted"><span>Reels: {a.videos.filter(v => v.kind === "short" && v.publications.some(p => ["instagram", "facebook"].includes(p.platform) && p.published_at && Date.parse(p.published_at) >= a.start && Date.parse(p.published_at) <= a.end)).length}</span><span>Posting cadence: {(a.videos.flatMap(v => v.publications).filter(p => p.published_at && (Date.parse(p.published_at) >= a.start && Date.parse(p.published_at) <= a.end)).length / a.periodDays).toFixed(1)} posts/day</span><span>Followers / subscribers: unavailable in stored metrics</span></div>}
       {tab !== "hub" && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="analytics-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
             {(
               [
                 ["Views", "views"],
                 ["Likes", "likes"],
                 ["Comments", "comments"],
-                ["Subscribers gained", "subscribers"],
                 ["Average watch %", "watch"],
               ] as const
             ).map(([title, key]) => {
-              const v = key === "subscribers" ? null : a.total[key];
-              const old = key === "subscribers" ? null : a.previous[key];
+              const v = a.total[key];
+              const old = a.previous[key];
               return (
                 <div className="card" key={key}>
                   <p className="text-xs text-muted">{title}</p>
-                  <p className="stat-value mt-2 text-right">
+                  <p className={`${key === "views" ? "hero-value" : "stat-value"} mt-2 text-right`}>
                     {v == null
                       ? "—"
                       : key === "watch"
@@ -208,12 +193,7 @@ export default async function Analytics({
               );
             })}
           </div>
-          <p className="text-xs text-muted">
-            Growth between cumulative snapshots; first observations include
-            prior activity. Watch % is view-weighted from latest snapshots, not
-            period retention. Subscriber gains are not stored. Filters below
-            apply to top videos; breakdowns use the selected channel and period.
-          </p>
+
         </>
       )}
       <nav
@@ -235,14 +215,8 @@ export default async function Analytics({
           );
         })}
       </nav>
-      <div>
-        <h2 className="text-lg font-semibold">
-          {tab[0].toUpperCase() + tab.slice(1)}
-        </h2>
-        <p className="text-sm text-muted mt-1">{explanations[tab]}</p>
-      </div>
+
       {tab === "hub" && <HubAnalytics data={hub} />}
-      {tab === "channels" && <HubChannels data={hub} />}
       {tab !== "hub" && tab !== "overview" && <ContentFilters sp={sp} channel={channel} path="/analytics" defaultSort="views" analytics />}
       {tab === "overview" && (
         <>
@@ -326,6 +300,13 @@ export default async function Analytics({
           ))}
         </>
       )}
+      {tab === "channels" && hub && <details><summary className="text-sm text-muted">Hub channel details</summary><HubChannels data={hub} /></details>}
+      {tab !== "hub" && (<details className="text-xs text-muted"><summary>Metric definitions</summary><p>
+            Growth between cumulative snapshots; first observations include
+            prior activity. Watch % is view-weighted from latest snapshots, not
+            period retention. Subscriber gains are not stored. Filters below
+            apply to top videos; breakdowns use the selected channel and period.
+          </p></details>)}
     </div>
   );
 }

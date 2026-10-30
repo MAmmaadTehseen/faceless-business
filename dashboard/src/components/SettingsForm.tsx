@@ -77,7 +77,7 @@ export function SettingsForm({
               checked={s.pipeline_paused}
               onChange={(e) => set("pipeline_paused", e.target.checked)}
             />
-            Pipeline paused
+            <span>Pipeline paused<span className="block text-xs text-muted">Stop scheduled production until resumed.</span></span>
           </label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Long videos per run">
@@ -100,7 +100,30 @@ export function SettingsForm({
                 className="w-full"
               />
             </Field>
-            <Field label="YouTube uploads per day">
+            <Field label="Publish privacy">
+              <select
+                value={s.publish_privacy}
+                onChange={(e) =>
+                  set(
+                    "publish_privacy",
+                    e.target.value as Settings["publish_privacy"],
+                  )
+                }
+                className="w-full"
+              >
+                <option value="private">private</option>
+                <option value="public">public</option>
+              </select>
+            </Field>
+            <Field label="TTS voice">
+              <input
+                value={s.tts_voice}
+                onChange={(e) => set("tts_voice", e.target.value)}
+                className="w-full"
+              />
+            </Field>
+          </div>
+          <details><summary className="text-sm text-muted">Upload limits</summary><div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">            <Field label="YouTube uploads per day">
               <input
                 type="number"
                 min={1}
@@ -130,29 +153,7 @@ export function SettingsForm({
                 General bucket (thumbnails, title updates, replies). Google's default is 10,000. Uploads are counted separately below.
               </span>
             </Field>
-            <Field label="Publish privacy">
-              <select
-                value={s.publish_privacy}
-                onChange={(e) =>
-                  set(
-                    "publish_privacy",
-                    e.target.value as Settings["publish_privacy"],
-                  )
-                }
-                className="w-full"
-              >
-                <option value="private">private</option>
-                <option value="public">public</option>
-              </select>
-            </Field>
-            <Field label="TTS voice">
-              <input
-                value={s.tts_voice}
-                onChange={(e) => set("tts_voice", e.target.value)}
-                className="w-full"
-              />
-            </Field>
-          </div>
+</div></details>
           <Field label="Niche keywords (one per line)">
             <textarea
               rows={4}
@@ -176,7 +177,7 @@ export function SettingsForm({
                   <span className="inline-flex items-center gap-1.5">
                     <span
                       aria-hidden
-                      className="inline-block h-2 w-2 rounded-full"
+                      className="inline-block h-1.5 w-1.5 rounded-full"
                       style={{ backgroundColor: accentCss(c) }}
                     />
                     {c.name}
@@ -217,7 +218,7 @@ export function SettingsForm({
                     })
                   }
                 />
-                Auto-reply {p}
+                <span>Auto-reply {p}<span className="block text-xs text-muted">Send approved automated replies on the next run.</span></span>
               </label>
             ))}
             <label className="flex items-center gap-2">
@@ -228,7 +229,7 @@ export function SettingsForm({
                   set("auto_like", { facebook: e.target.checked })
                 }
               />
-              Auto-like facebook
+              <span>Auto-like facebook<span className="block text-xs text-muted">Like eligible Facebook comments during engagement.</span></span>
             </label>
           </div>
           <Field label="Max replies per day">

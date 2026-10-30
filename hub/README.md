@@ -45,3 +45,25 @@ For Google Search Console:
 3. General blog articles are [not eligible for Google's Indexing API](https://developers.google.com/search/apis/indexing-api/v3/quickstart) (reserved for supported job/live-stream pages); use the sitemap and URL Inspection instead.
 
 Security headers deny framing of the hub while permitting outgoing YouTube privacy-enhanced embeds. Compressed responses and Next-managed immutable build assets retain framework caching; public image/font assets receive a one-day cache. The lite video facade reserves its aspect ratio and loads the iframe only on activation. The tracker records that activation as `youtube_embed` and avoids counting the subsequent iframe focus again; browser privacy opt-outs still apply.
+
+### Editorial design verification
+
+`DESIGN.md` defines the typography, palette, page structure and component rules.
+Source Serif 4 is vendored under its OFL license and served by `next/font/local`
+(preloaded, `display: swap`), so builds do not depend on Google Fonts availability.
+
+For a credential-free local preview with 42 test articles, run:
+
+```sh
+SUPABASE_URL='' SUPABASE_SERVICE_KEY='' HUB_PREVIEW_FIXTURES=1 GOOGLE_SITE_VERIFICATION=local-check npm run dev
+node scripts/check-seo.mjs http://localhost:3000 preview-story-0
+```
+
+Fixture mode is disabled in production. The SEO script expects the fixture article's
+FAQ and video and an explicit verification value; it never reads credentials.
+
+For Chrome screenshots and interaction assertions, install Playwright in a temporary
+location, then set `PLAYWRIGHT_MODULE` to that package directory and run
+`node scripts/check-design.cjs` from `hub/` while the fixture dev server runs on port
+3100. The script uses `/usr/bin/google-chrome`; change that path for other machines.
+Results and review limits are in `design-review/README.md`.

@@ -1,258 +1,44 @@
-import { HubAnalytics } from "@/components/HubAnalytics";
-import { SeriesReport } from "@/components/SeriesReport";
-import { getAnalytics } from "@/lib/analytics";
-import { getHubAnalytics } from "@/lib/hub-analytics";
-import { ContentFilters } from "@/components/ContentFilters";
-import { filterContent } from "@/lib/content-filters";
-import { parseChannelFilter } from "@/lib/channels";
 import Link from "next/link";
+import { getAnalytics } from "@/lib/analytics";
 import { getOverview } from "@/lib/data";
 import { getContent } from "@/lib/content-data";
 import { getChannelFilter } from "@/lib/channel-filter";
 import { isOwner } from "@/lib/role";
-import { CHANNELS } from "@/lib/channels";
-import { fmtDate, fmtUsd } from "@/lib/format";
+import { CHANNELS, parseChannelFilter } from "@/lib/channels";
+import { fmtUsd, fmtDate } from "@/lib/format";
 import { ContentList } from "@/components/ContentList";
+import { ContentFilters } from "@/components/ContentFilters";
+import { filterContent } from "@/lib/content-filters";
 import { PageHeader } from "@/components/PageHeader";
 import { Section } from "@/components/Section";
 import { ActionButton } from "@/components/ActionButton";
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string>>;
-}) {
+import { HubAnalytics } from "@/components/HubAnalytics";
+import { getHubAnalytics } from "@/lib/hub-analytics";
+import { Countdown } from "@/components/Countdown";
+export default async function Home({ searchParams }: { searchParams: Promise<Record<string,string>> }) {
   const sp = await searchParams;
-  const channel = sp.channel
-    ? parseChannelFilter(sp.channel)
-    : await getChannelFilter();
-  const [ov, items, owner] = await Promise.all([
-    getOverview(channel, sp.platform),
-    getContent(channel, true, sp.days),
-    isOwner(),
-  ]);
-  const analytics = await getAnalytics(channel, 7, false, sp.platform);
-  const attention =
-    Number(ov.paused) +
-    Number(!!ov.failedRun) +
-    ov.failedPubs.length +
-    ov.failedContent.length +
-    Number(ov.costs.pct >= 80);
-  const hub = !sp.platform || sp.platform === "hub" ? await getHubAnalytics(channel, 7) : null;
+  const channel = sp.channel ? parseChannelFilter(sp.channel) : await getChannelFilter();
+  const [ov, items, owner, analytics, today] = await Promise.all([getOverview(channel, sp.platform), getContent(channel,true,sp.days), isOwner(), getAnalytics(channel,7,false,sp.platform), getAnalytics(channel,1,false,sp.platform)]);
+  if (sp.platform === "hub") return <div className="space-y-6"><PageHeader title="Overview"/><HubAnalytics data={await getHubAnalytics(channel,7)}/></div>;
   const configured = !!process.env.GITHUB_TOKEN;
-  if (sp.platform === "hub") return <div className="space-y-5"><PageHeader title="Overview" blurb="Hub activity over the last 7 days." /><HubAnalytics data={hub} /></div>;
-  return (
-    <div className="space-y-6 home-stack">
-      <div className="mobile-today">
-        <h1 className="text-xl font-semibold mb-4">Today</h1>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            ["Views · 7d", analytics.total.views.toLocaleString()],
-            ["Likes · 7d", analytics.total.likes.toLocaleString()],
-            ["Pending replies", ov.pending.length],
-            [
-              "Month / budget",
-              `${fmtUsd(ov.costs.mtd)} / ${fmtUsd(ov.costs.budget)}`,
-            ],
-          ].map(([label, value]) => (
-            <div className="card" key={label}>
-              <p className="text-sm text-muted">{label}</p>
-              <p className="stat-value mt-2">{value}</p>
-            </div>
-          ))}
-        </div>
+  const next = items.flatMap(c => c.publications).filter(p => p.publish_at && Date.parse(p.publish_at) > Date.now() && (!sp.platform || p.platform === sp.platform)).sort((a,b) => Date.parse(a.publish_at!) - Date.parse(b.publish_at!))[0];
+  const attention = [ ...(ov.paused ? [{text:"Pipeline is paused",href:"/automation"}] : []), ...(ov.failedRun ? [{text:"Latest run needs review",href:"/costs"}] : []), ...ov.failedPubs.map(p=>({text:`${p.title} · upload failed`,href:"/content?status=failed"})), ...ov.failedContent.map(c=>({text:`${c.title} · production needs review`,href:"/content?status=failed"})), ...(ov.costs.pct >= 80 ? [{text:`${ov.costs.pct.toFixed(0)}% of monthly budget used`,href:"/costs"}] : []) ];
+  const delta = analytics.total.views - analytics.previous.views;
+  const running = ov.health.filter(h => h.lastRun && ["running","in_progress","queued"].includes(h.lastRun.status ?? ""));
+  return <div className="space-y-8">
+    <PageHeader title="Overview" action={owner && <details className="run-menu"><summary className="btn">Workspace actions</summary><div><ActionButton action="sync" label="Sync now" configured={configured}/><ActionButton action="engage" label="Reply now" configured={configured}/></div></details>}/>
+    <section>
+      <div className="hero"><p className="hero-label">Views · last 24 hours</p><p className="hero-value">{today.total.views.toLocaleString()}</p><p className="text-xs text-muted mt-2">{delta > 0 ? "+" : ""}{delta.toLocaleString()} views · last 7 days vs previous 7</p></div>
+      <div className="supporting-stats">
+        <div><p>Subscribers gained</p><strong title="Subscriber gains are not stored in the current metrics source">—</strong></div>
+        <div><p>Pending replies</p><Link href="/inbox"><strong>{ov.pending.length}</strong></Link></div>
+        <div><p>Month spend / budget</p><Link href="/costs"><strong>{fmtUsd(ov.costs.mtd)} <span className="text-muted text-xs">/ {fmtUsd(ov.costs.budget)}</span></strong></Link><div className="budget-track"><span style={{width:`${Math.min(100,ov.costs.pct)}%`}}/></div></div>
+        <div><p>Next publish</p>{next?.publish_at ? <strong title={fmtDate(next.publish_at)}><Countdown at={next.publish_at}/></strong> : <span className="text-muted">Nothing scheduled</span>}</div>
       </div>
-
-      <div className="home-title">
-        <PageHeader
-          title="Overview"
-          action={
-            owner && (
-              <div className="flex gap-2">
-                <ActionButton
-                  action="sync"
-                  label="Sync now"
-                  configured={configured}
-                />
-                <ActionButton
-                  action="engage"
-                  label="Reply now"
-                  configured={configured}
-                />
-              </div>
-            )
-          }
-        />
-      </div>
-      <div className="desktop-home-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          ["Views · 7d", analytics.total.views],
-          ["Likes · 7d", analytics.total.likes],
-          ["Comments · 7d", analytics.total.comments],
-          [sp.platform === "instagram" || sp.platform === "facebook" ? "Reels · 7d" : "Uploads · 7d", ov.publishedWeek],
-          ["Posts / day · 7d", (ov.publishedWeek / 7).toFixed(1)],
-          ["Queued uploads", ov.queuedUploads.length],
-          ["Pending replies", ov.pending.length],
-          ["Month spend", fmtUsd(ov.costs.mtd)],
-          ...(hub && hub.total.views > 0
-            ? [
-                ["Hub views · 7d", hub.total.views],
-                ["Hub YouTube click-throughs · 7d", hub.total.youtube],
-              ]
-            : []),
-        ].map(([label, value]) => (
-          <div className="card" key={label}>
-            <div className="text-xs text-muted">{label}</div>
-            <div className="stat-value text-right mt-2">{value}</div>
-            {label === "Queued uploads" && (
-              <p className="text-xs text-muted mt-2">
-                Waiting for upload quota · {ov.queue.count} topics ready
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="mobile-today card">
-        <p className="text-sm text-muted mb-2">Views over the last 7 days</p>
-        <svg viewBox="0 0 320 72" className="w-full h-20" role="img" aria-label={`Daily views: ${analytics.daily.map(d => d.views).join(", ")}`}>
-          <polyline fill="none" stroke="var(--accent-fg)" strokeWidth="3" strokeLinejoin="round" points={analytics.daily.map((d, i, days) => `${8 + i * 304 / Math.max(1, days.length - 1)},${64 - d.views / Math.max(1, ...days.map(day => day.views)) * 56}`).join(" ")} />
-        </svg>
-        <div className="flex justify-between text-xs text-muted"><span>{analytics.daily[0]?.date}</span><span>{analytics.daily.at(-1)?.date}</span></div>
-      </div>
-      <div className="hidden md:block"><Section title="Views over the last 7 days">
-        <SeriesReport
-          name="overview-channels"
-          dates={analytics.daily.map((d) => d.date)}
-          columns={[{ key: "views", label: "Views", share: true }]}
-          rows={analytics.channels.map((c) => ({
-            id: c.name,
-            title: CHANNELS.find((m) => m.key === c.name)?.short ?? c.name,
-            daily: c.daily,
-            values: { views: c.views },
-          }))}
-        />
-      </Section></div>
-      {
-        <details className="card attention">
-          <summary className="cursor-pointer min-h-11 flex items-center">
-            Needs attention{" "}
-            <span
-              className={`badge ${attention ? "badge-alert" : "badge-ok"} ml-2`}
-            >
-              {attention}
-            </span>
-          </summary>
-          <div className="space-y-2 pt-3">
-            {!attention && (
-              <p className="text-muted">Everything looks clear.</p>
-            )}
-            {ov.paused && <p className="text-warn-fg">Pipeline paused</p>}
-            {ov.failedRun && (
-              <Link href="/costs" className="text-alert-fg">
-                Latest run failed · View log
-              </Link>
-            )}
-            {ov.failedPubs.map((p) => (
-              <p key={p.id} className="text-alert-fg">
-                {p.title}: {p.platform} upload failed
-              </p>
-            ))}
-            {ov.failedContent.map((c) => (
-              <p key={c.id} className="text-alert-fg">
-                {c.title}: production or QA failed
-              </p>
-            ))}
-            {ov.costs.pct >= 80 && (
-              <p className="text-warn-fg">
-                Budget {ov.costs.pct.toFixed(0)}% used
-              </p>
-            )}
-          </div>
-        </details>
-      }
-      <div className="home-pipeline">
-        <Section title="Pipeline queue">
-          {!ov.queuedUploads.length && (
-            <p className="text-sm text-muted">
-              No queued uploads. Uploads awaiting quota will appear here.
-            </p>
-          )}
-          {ov.queuedUploads.map((p) => (
-            <p key={p.id} className="text-sm text-muted">
-              {p.title} · {p.platform} · Queued
-              {p.error ? ` (last attempt: ${p.error.slice(0, 120)})` : ""}
-            </p>
-          ))}
-        </Section>
-      </div>
-      <Section title="Channels">
-        <div className="home-channels divide-y divide-border">
-          {CHANNELS.filter((c) => channel === "all" || channel === c.key).map(
-            (c) => {
-              const h = ov.health.find((h) => h.key === c.key);
-              return (
-                <div
-                  key={c.key}
-                  className="flex flex-wrap items-center gap-3 py-3"
-                >
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ background: c.brand.fg }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <b>{c.name}</b>
-                    <div className="text-xs text-muted">
-                      {c.schedule} ·{" "}
-                      {h?.lastContentAt
-                        ? fmtDate(h.lastContentAt)
-                        : "No content yet"}
-                    </div>
-                  </div>
-                  {h?.level === "alert" && (
-                    <span className="badge badge-alert">Failed</span>
-                  )}
-                  {h?.level === "warn" && (
-                    <span className="badge badge-warn">Check channel</span>
-                  )}
-                  <span className="text-xs tabular-nums">
-                    {h?.queued ?? 0} queued
-                  </span>
-                  {owner && (
-                    <div className="flex flex-wrap gap-2">
-                      <ActionButton
-                        action="produce"
-                        label="Produce now"
-                        channel={c.key}
-                        configured={configured}
-                      />
-                      <ActionButton
-                        action="shorts"
-                        label="Daily Short now"
-                        channel={c.key}
-                        configured={configured}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            },
-          )}
-        </div>
-      </Section>
-      <Section
-        title="Recent content"
-        action={
-          <Link className="btn" href={`/content?${new URLSearchParams({ channel, ...(sp.platform ? { platform: sp.platform } : {}) })}`}>
-            All content
-          </Link>
-        }
-      >
-        <ContentFilters sp={sp} channel={channel} path="/" />
-        <ContentList
-          items={filterContent(items, sp)}
-          sort={sp.sort ?? "newest"}
-          limit={12}
-        />
-      </Section>
-    </div>
-  );
+    </section>
+    <section><div className="flex justify-between mb-3"><h2 className="text-base font-semibold">Needs attention</h2><Link className="text-xs text-muted" href="/content?status=failed">View all →</Link></div><div className="attention-list">{attention.length ? attention.slice(0,5).map((a,i)=><Link key={i} href={a.href}><span>{a.text}</span><span className="text-muted">→</span></Link>) : <p className="text-muted">Everything looks clear.</p>}</div></section>
+    <section><h2 className="text-base font-semibold mb-4">Channels</h2><div className="home-channels">{CHANNELS.filter(c=>channel === "all" || c.key === channel).map(c=>{const h=ov.health.find(h=>h.key===c.key); const a=analytics.channels.find(a=>a.name===c.key);return <div className="channel-card" key={c.key}><div className="flex items-center justify-between gap-3"><h3 className="font-semibold flex items-center gap-2"><i className="series-dot" style={{background:c.brand.fg}}/>{c.short}</h3>{owner && <details className="run-menu"><summary className="btn">Run</summary><div><ActionButton action="produce" label="Produce now" channel={c.key} configured={configured}/><ActionButton action="shorts" label="Daily Short now" channel={c.key} configured={configured}/></div></details>}</div><div className="channel-stats"><div>{(a?.views??0).toLocaleString()}<span>Views · 7d</span></div><div>{a?.likes??0}<span>Likes</span></div><div>{h?.queued??0}<span>Topics queued</span></div></div><svg viewBox="0 0 300 48" className="w-full h-12" role="img" aria-label="Views over seven days"><polyline fill="none" stroke="var(--muted)" strokeWidth="2" points={(a?.daily??[0,0]).map((v,i,all)=>`${i*300/Math.max(1,all.length-1)},${44-v/Math.max(1,...all)*36}`).join(" ")}/></svg></div>})}</div></section>
+    <section><h2 className="text-base font-semibold mb-3">Runs in flight</h2>{running.length ? <div className="card space-y-3">{running.map(h=><p key={h.key}>{h.lastRun?.workflow ?? "Production"} <span className="text-muted">in progress</span></p>)}</div> : <p className="text-muted">No runs in flight.</p>}{ov.queuedUploads.length > 0 && <details className="mt-3"><summary className="text-xs text-muted">{ov.queuedUploads.length} uploads waiting for quota</summary><div className="card mt-3">{ov.queuedUploads.map(p=><details key={p.id}><summary>{p.title} <span className="status-chip ml-2">queued</span></summary><p className="text-xs text-muted">{p.error ?? "Awaiting upload quota"}</p></details>)}</div></details>}</section>
+    <Section title="Last published" action={<Link className="btn" href={`/content?channel=${channel}${sp.platform ? `&platform=${sp.platform}` : ""}`}>All content →</Link>}><details><summary className="text-xs text-muted">Filter content</summary><ContentFilters sp={sp} channel={channel} path="/"/></details><ContentList items={filterContent(items.filter(c=>c.publications.some(p=>["published","live"].includes(p.status))),sp)} sort={sp.sort??"newest"} limit={5}/></Section>
+  </div>;
 }

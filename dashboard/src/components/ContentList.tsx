@@ -10,12 +10,16 @@ export function views(c: ContentItem) {
 }
 export function ContentList({
   items,
+  allItems,
+  initialChartVisible = true,
   limit = Infinity,
   dates = [],
   daily = {},
   sort = "newest",
 }: {
   items: ContentItem[];
+  allItems?: ContentItem[];
+  initialChartVisible?: boolean;
   limit?: number;
   sort?: string;
   dates?: string[];
@@ -36,17 +40,18 @@ export function ContentList({
       initialDescending={sort !== "oldest" && sort !== "lowest"}
       dates={dates}
       chart={dates.length > 0}
+      initialChartVisible={initialChartVisible}
       columns={[
         { key: "views", label: "Views", share: true },
         { key: "likes", label: "Likes", share: true },
         { key: "comments", label: "Comments", share: true },
         { key: "watch", label: "Watch %", format: "percent" },
-        { key: "published", label: "Created (UTC)", format: "date" },
+        { key: "published", label: "Created (UTC)", format: "date", detailOnly:true },
       ]}
       rows={shown.map((c) => ({
         id: c.id,
         title: c.title,
-        status:
+        status: c.status === "killed" ? "killed" :
           c.status === "failed" ||
           c.qa_status === "failed" ||
           c.publications.some((p) => p.status === "failed")
@@ -60,12 +65,13 @@ export function ContentList({
                       (p.publish_at && Date.parse(p.publish_at) > Date.now()),
                   )
                 ? "scheduled"
-                : c.status,
+                : c.publications.some(p => ["published","live"].includes(p.status) && p.privacy === "public") ? "live"
+                : c.publications.some(p => p.privacy === "private") ? "private" : c.status,
         subtitle: `${channelMeta(c.channel)?.short ?? c.channel} · ${fmtDate(c.created_at)} · ${category(c)} · QA ${c.qa_status}`,
-        links: c.publications
+        links: (allItems?.find(item => item.id === c.id) ?? c).publications
           .filter((p) => p.url)
           .map((p) => ({
-            label: `${p.platform} · ${p.privacy ?? p.status}`,
+            label: `${p.platform} · ${p.privacy ?? p.status} · ${(p.metric?.views ?? 0).toLocaleString()} views · ${p.metric?.likes ?? 0} likes · ${p.metric?.comments ?? 0} comments`,
             href: p.url!,
           })),
         href:

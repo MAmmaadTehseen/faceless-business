@@ -1,4 +1,5 @@
 import 'server-only';
+import {previewEnabled, previewArticles} from './preview';
 import { createClient } from '@supabase/supabase-js';
 
 export type Article = {
@@ -19,6 +20,7 @@ function db() {
   });
 }
 export async function articles(channel?: string): Promise<Article[]> {
+  if (previewEnabled) return previewArticles.filter(a => !channel || a.channel === channel);
   const client = db();
   if (!client) return [];
   const result: Article[] = [];
@@ -37,6 +39,7 @@ export async function articles(channel?: string): Promise<Article[]> {
   return result;
 }
 export async function article(slug: string): Promise<Article | null> {
+  if (previewEnabled) return previewArticles.find(a => a.slug === slug) || null;
   const client = db();
   if (!client) return null;
   const { data, error } = await client.from('articles').select('*').eq('slug', slug)

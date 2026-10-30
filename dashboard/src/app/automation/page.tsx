@@ -15,11 +15,12 @@ export default async function AutomationPage() {
     );
   }
   return (
-    <div>
+    <div className="automation-settings">
       <PageHeader
         title="Automation"
         blurb="Pipeline switches, per-channel keywords, engagement rules and the monthly budget guard. Changes apply on the next run."
       />
+      <div className="hero"><p className="hero-label">Pipeline</p><p className="hero-value">{settings.pipeline_paused ? "Paused" : "Ready to run"}</p><p className="text-xs text-muted mt-2">Settings apply on the next run.</p></div>
       <SettingsForm initial={settings} readOnly={!(await isOwner())} />
     </div>
   );

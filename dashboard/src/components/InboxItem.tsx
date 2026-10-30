@@ -1,9 +1,7 @@
 "use client";
 import { toast } from "./Toast";
 import { RelativeTime } from "./RelativeTime";
-import { PlatformIcon } from "./PlatformIcon";
-import { channelMeta } from "@/lib/channels";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Comment } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
 
@@ -20,6 +18,26 @@ export function InboxItem({
   channel?: string | null;
   url?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const drawer = useRef<HTMLElement>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function keyboard(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Tab") {
+        const focusable = drawer.current?.querySelectorAll<HTMLElement>('button:not(:disabled), textarea, a[href]');
+        if (!focusable?.length) return;
+        const first = focusable[0], last = focusable[focusable.length-1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    document.addEventListener("keydown", keyboard);
+    return () => {document.body.style.overflow = previous; document.removeEventListener("keydown",keyboard); opener.current?.focus();};
+  }, [open]);
   const [text, setText] = useState(comment.draft_reply ?? "");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -46,7 +64,7 @@ export function InboxItem({
             : "Comment liked",
       );
       if (action === "like") setLiked(true);
-      else setDone(action === "reply" ? "sent" : "skipped");
+      else { setOpen(false); setDone(action === "reply" ? "sent" : "skipped"); }
     } catch {
       setError("Could not reach the server. Try again.");
       toast("Action failed. Try again.");
@@ -58,26 +76,21 @@ export function InboxItem({
   if (done) return null;
 
   return (
-    <div className="card space-y-2">
+    <div className={`inbox-conversation ${comment.reply_status === "sent" ? "inbox-replied" : ""}`}><span className="avatar" aria-hidden>{(comment.author ?? "A").slice(0,1).toUpperCase()}</span><div className="conversation-copy">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-        <PlatformIcon platform={comment.platform} />
-        <span
-          className="w-2 h-2 rounded-full"
-          title={channelMeta(channel)?.name}
-          style={{ background: channelMeta(channel)?.brand.fg }}
-        />
+        <span className="series-dot" title={comment.platform} style={{background:"var(--muted)"}}/>
         <span className="truncate font-medium text-fg">
-          {videoTitle || "(unknown video)"}
+          {comment.author ?? "Viewer"}
         </span>
         <RelativeTime value={comment.posted_at} />
         {comment.flagged && (
-          <span className="badge badge-alert" title={comment.flag_reason ?? ""}>
-            flagged{comment.flag_reason ? `: ${comment.flag_reason}` : ""}
+          <span className="status-chip badge-alert" title={comment.flag_reason ?? ""}>
+            needs review
           </span>
         )}
-        {url && (
+        {url && <details className="row-details"><summary>Details</summary><p>{videoTitle || "Unknown video"}</p>
           <a
-            className="text-accent-fg"
+            className="text-muted"
             href={
               comment.platform === "youtube"
                 ? `${url}&lc=${encodeURIComponent(comment.platform_comment_id)}`
@@ -87,11 +100,11 @@ export function InboxItem({
             rel="noreferrer"
           >
             Open on platform
-          </a>
-        )}
+          </a></details>
+        }
       </div>
-      <p className="text-sm">
-        <b>{comment.author ?? "anon"}</b>: {comment.text}
+      <p className="text-sm conversation-preview">
+        {comment.text}
       </p>
       {comment.reply_status === "sent" ? (
         <div className="border-l border-border pl-3 text-sm">
@@ -104,6 +117,8 @@ export function InboxItem({
       ) : owner &&
         ["new", "drafted", "failed"].includes(comment.reply_status) ? (
         <>
+          <button ref={opener} className="btn" onClick={() => setOpen(true)}>Reply →</button>
+          {open && <div className="reply-backdrop" onClick={() => setOpen(false)}><section ref={drawer} className="reply-drawer" role="dialog" aria-modal="true" aria-label="Reply to comment" onClick={e => e.stopPropagation()}><button autoFocus className="btn float-right" onClick={() => setOpen(false)}>Close ×</button><h2 className="text-base font-semibold">{comment.author ?? "Viewer"}</h2><p className="text-muted text-sm mt-6">{comment.text}</p>
           <textarea
             className="w-full"
             rows={3}
@@ -134,9 +149,9 @@ export function InboxItem({
             >
               {busy === "like" ? "..." : liked ? "Liked" : "Like"}
             </button>
-          </div>
+          </div></section></div>}
         </>
       ) : null}
-    </div>
+    </div></div>
   );
 }

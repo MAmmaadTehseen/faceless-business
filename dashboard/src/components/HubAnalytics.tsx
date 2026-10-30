@@ -41,21 +41,19 @@ export function HubAnalytics({ data: a }: { data: Data | null }) {
           "Unique visitors": a.total.uniques,
           Sessions: a.total.sessions,
           "Avg seconds / page": a.seconds,
-          "Median scroll depth": `${a.scroll}%`,
-          "Bounce-ish rate": `${a.bounce}%`,
         }).map(([k, v]) => (
           <div className="card" key={k}>
             <p className="text-xs text-muted">{k}</p>
-            <p className="stat-value mt-2">{v}</p>
+            <p className={`${k === "Page views" ? "hero-value" : "stat-value"} mt-2`}>{v}</p>
           </div>
         ))}
       </div>
-      <p className="text-xs text-muted">
+      <details className="text-xs text-muted"><summary>Metric definitions</summary><p>
         Visitors reset daily. Sessions last until tab close or 30 minutes of
         inactivity. Time counts visible seconds. Bounce-ish means one pageview
         and under 10 seconds. YouTube clicks include embed focus interactions,
-        not confirmed plays. CTR is YouTube clicks / page views.
-      </p>
+        not confirmed plays. CTR is YouTube clicks / page views. Median scroll {a.scroll}%; bounce-ish rate {a.bounce}%.
+      </p></details>
       <Section title="Daily hub views (UTC)">
         <SeriesReport
           name="hub-daily"

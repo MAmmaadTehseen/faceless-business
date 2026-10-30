@@ -79,12 +79,11 @@ export default async function InboxPage({
     <div>
       <PageHeader
         title="Inbox"
-        count={comments.length}
         action={
           <div className="flex flex-wrap gap-2">
             {["pending", "replied", "flagged", "all"].map((t) => (
               <Link
-                className={`btn ${tab === t ? "btn-primary" : ""}`}
+                className={`btn ${tab === t ? "bg-card-2 text-fg" : "text-muted"}`}
                 key={t}
                 scroll={false}
                 href={`?${new URLSearchParams({ ...sp, tab: t })}`}
@@ -95,6 +94,7 @@ export default async function InboxPage({
           </div>
         }
       />
+<div className="hero"><p className="hero-label">{tab === "pending" ? "Awaiting a reply" : "Conversations in this view"}</p><p className="hero-value">{comments.length}</p></div>
       <FilterSheet count={[platform, sp.q, days !== "all", channel !== "all"].filter(Boolean).length}><AutoFilters key={JSON.stringify({ ...sp, q: undefined })} className="filter-bar mb-4">
         <select name="channel" aria-label="Channel" defaultValue={channel}><option value="all">All channels</option>{CHANNELS.map(c => <option key={c.key} value={c.key}>{c.short}</option>)}</select>
         <input name="q" aria-label="Search comments" placeholder="Search comments…" defaultValue={sp.q ?? ""} />
@@ -104,7 +104,7 @@ export default async function InboxPage({
       </AutoFilters></FilterSheet>
       {comments.length === 0 && (
         <div className="card text-sm text-ok-fg">
-          No comments in this tab. Try another tab or platform.
+          No comments in this view.<Link className="btn ml-2" href={`/inbox?channel=${channel}&tab=all`}>All conversations →</Link>
         </div>
       )}
       <div className="space-y-3">

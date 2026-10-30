@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
+import localFont from 'next/font/local';
+import { channels } from '@/lib/channels';
+import { ThemeToggle } from '@/components/ReadingTools';
+const serif = localFont({ src: [{path:'../fonts/SourceSerif4-400.ttf',weight:'400'}, {path:'../fonts/SourceSerif4-500.ttf',weight:'500'}, {path:'../fonts/SourceSerif4-600.ttf',weight:'600'}], variable: '--font-serif', display: 'swap', preload: true });
 import './globals.css';
 import Tracker from '@/components/Tracker';
 import { pageMetadata, siteURL } from '@/lib/seo';
@@ -22,8 +26,8 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { themeColor: '#101112' };
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body><a className="skip" href="#main">Skip to content</a>
-    <header><Link className="brand" href="/">PLAIN<span>SIGHT</span><small>MEDIA</small></Link><nav aria-label="Main"><Link href="/">Stories</Link><Link href="/about">About</Link></nav></header>
-    <main id="main">{children}</main><footer><p>Plainsight Media · A clearer view of what comes next.</p><Link href="/privacy">Privacy</Link></footer>
+  return <html lang="en" className={serif.variable} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html: `try{var t=localStorage.getItem('plainsight-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch{}`}}/></head><body><a className="skip" href="#main">Skip to content</a>
+    <header><Link className="brand" href="/">PLAIN<span>SIGHT</span><small>MEDIA</small></Link><nav aria-label="Main"><Link href="/">Stories</Link><Link href="/about">About</Link><ThemeToggle/></nav></header>
+    <main id="main">{children}</main><footer><div><Link className="footer-brand" href="/">Plainsight Media</Link><p>A clearer view of what comes next.</p></div><nav aria-label="Our channels">{channels.map(c => <Link key={c.key} href={`/c/${c.key}`}>{c.name}</Link>)}</nav><nav aria-label="Legal"><Link href="/about">About</Link><Link href="/privacy">Privacy</Link><Link href="/feed.xml">RSS</Link></nav></footer>
   <Tracker/></body></html>;
 }

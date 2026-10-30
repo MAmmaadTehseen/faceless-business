@@ -131,19 +131,11 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
       </PageHeader>
 
       <AutoFilters><select name="days" aria-label="Date range" defaultValue={days}>{[["1","Last 24 hours"],["7","7 days"],["30","30 days"],["all","All time"],["month","This month"]].map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></AutoFilters>
-      <section className="card space-y-3">
-        <div className="grid grid-cols-3 gap-2 text-center sm:text-left">
-          <Stat label={days === "month" ? "Month to date" : "Selected period"} value={fmtUsd(mtd)} />
-          <Stat
-            label="Projected"
-            value={fmtUsd(projected)}
-            warn={budget > 0 && projected > budget}
-          />
-          <Stat label="Budget" value={budget ? fmtUsd(budget) : "-"} />
-        </div>
+      <section className="card space-y-3 cost-hero">
+        <div className="hero"><p className="hero-label">Month to date</p><p className="hero-value">{fmtUsd(monthly)} <span className="text-sm text-muted font-normal">of {budget ? fmtUsd(budget) : "no budget set"}</span></p><p className="text-xs text-muted mt-2">Projected month-end {fmtUsd(projected)}</p></div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-card-2">
           <div
-            className={`h-full rounded-full ${pct >= 90 ? "bg-alert shadow-[0_0_10px_var(--alert)]" : pct >= 70 ? "bg-warn" : "bg-accent"}`}
+            className={`h-full rounded-full ${pct >= 90 ? "bg-alert " : pct >= 70 ? "bg-warn" : "bg-accent"}`}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -157,19 +149,20 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
 
       {all && (
         <Section title="By channel (selected period)">
-          <SeriesReport
+          <div className="space-y-6">{channelRows.map(r=><div key={r.key}><div className="flex justify-between"><span>{r.meta?.name ?? r.key}</span><span>{fmtUsd(r.usd)}</span></div><div className="budget-track"><span style={{width:`${mtd ? r.usd/mtd*100 : 0}%`}}/></div></div>)}</div>
+          <details><summary className="text-xs text-muted">Channel breakdown</summary>          <SeriesReport
             name="costs-by-channel"
             chart={false}
             columns={[
-              { key: "calls", label: "Calls" },
               { key: "spend", label: "Spend", format: "usd", share: true },
+              { key: "calls", label: "Calls" },
             ]}
             rows={channelRows.map((r) => ({
               id: r.key,
               title: r.meta?.name ?? r.key,
               values: { calls: r.n, spend: r.usd },
             }))}
-          />
+          /></details>
         </Section>
       )}
 
@@ -178,8 +171,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
           name="costs-by-step"
           chart={false}
           columns={[
-            { key: "calls", label: "Calls" },
             { key: "spend", label: "Spend", format: "usd", share: true },
+            { key: "calls", label: "Calls" },
           ]}
           rows={steps.map(([step, e]) => ({
             id: step,
@@ -189,7 +182,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
         />
       </Section>
 
-      <Section title="Per content (last 30)">
+      <details><summary className="text-base font-semibold">Per-content costs</summary><Section title="Last 30 videos">
         <SeriesReport
           name="costs-per-content"
           chart={false}
@@ -206,7 +199,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
         />
       </Section>
 
-      <Section title="Last 20 runs">
+      </details><Section title="Last 20 runs">
         {runs.length === 0 && (
           <p className="text-sm text-muted">No runs yet.</p>
         )}
@@ -220,44 +213,21 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
                   )}
                 <span className="font-medium">{r.workflow ?? "run"}</span>
                 {all && <ChannelBadge channel={r.channel} />}
-                <span className="text-xs text-muted">
+
+              </div>
+              {<details className="mt-0.5 text-xs text-muted">
+                  <summary className="cursor-pointer">Details</summary>                <span className="text-xs text-muted">
                   {fmtDate(r.started_at)}
                   {r.finished_at ? ` → ${fmtDate(r.finished_at)}` : ""}
                 </span>
-              </div>
-              {r.log && (
-                <details className="mt-0.5 text-xs text-muted">
-                  <summary className="cursor-pointer">log</summary>
-                  <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words">
+                  {r.log && <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words">
                     {r.log}
-                  </pre>
-                </details>
-              )}
+                  </pre>}
+                </details>}
             </li>
           ))}
         </ul>
       </Section>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  warn,
-}: {
-  label: string;
-  value: string;
-  warn?: boolean;
-}) {
-  return (
-    <div>
-      <div className="text-xs text-muted">{label}</div>
-      <div
-        className={`stat-value text-right mt-1 ${warn ? "text-alert-fg" : ""}`}
-      >
-        {value}
-      </div>
     </div>
   );
 }

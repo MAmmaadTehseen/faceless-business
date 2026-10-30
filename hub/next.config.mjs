@@ -1,5 +1,6 @@
 const nextConfig = {
   trailingSlash: false,
+  devIndicators: false,
   compress: true,
   images: {remotePatterns: [{protocol: 'https', hostname: 'i.ytimg.com', pathname: '/vi/**'}]},
   async headers() { return [

@@ -53,28 +53,29 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
     <div className="space-y-5">
       <PageHeader
         title="Topic queue"
-        count={rows.length}
         blurb="Topics the pipeline will turn into videos, highest priority first. +5 bumps a topic up; Kill drops it."
       />
-      <p className="text-xs text-muted">Scheduled estimates use each channel’s next UTC cron slots, one topic per run. +5 can change queue order and dates.</p>
+      <div className="hero"><p className="hero-label">Topics ready for production</p><p className="hero-value">{rows.length}</p></div>
+      <section aria-label="Next seven days" className="schedule-strip">{Array.from({length:7},(_,i)=>{const date=new Date(now+i*86400000);const day=date.toISOString().slice(0,10);const dayRows=rows.filter(r=>slots.get(r.id)?.at.slice(0,10)===day);return <div className="schedule-day" key={day}><p>{date.toLocaleDateString("en-US",{weekday:"short",day:"numeric",timeZone:"UTC"})}</p><strong>{dayRows.length}</strong><span className="text-xs text-muted"> planned</span>{dayRows.slice(0,2).map(r=><a href={`#topic-${r.id}`} key={r.id}>{r.topic}</a>)}</div>})}</section><details className="text-xs text-muted"><summary>Schedule details</summary><p>Estimates use each channel’s next UTC cron slots, one topic per run. Priority changes can move dates; these are topic plans, not confirmed publications.</p></details>
       <FilterSheet count={count}><AutoFilters key={JSON.stringify({ ...sp, q: undefined })}><select name="channel" aria-label="Channel" defaultValue={channel}><option value="all">All channels</option>{CHANNELS.map(c => <option key={c.key} value={c.key}>{c.short}</option>)}</select><select name="source" aria-label="Source" defaultValue={sp.source ?? ""}><option value="">All sources</option>{[...new Set(allRows.map(r => r.added_by))].map(v => <option key={v}>{v}</option>)}</select><input name="q" aria-label="Search topics" placeholder="Search topics…" defaultValue={sp.q ?? ""}/><span className="badge">{count} active</span><Link href="/queue?channel=all" scroll={false} className="badge">Clear</Link></AutoFilters></FilterSheet>
       {owner && (
-        <Section title="Add a topic">
+        <details><summary className="btn">+ Add topic</summary><Section title="New topic">
           <AddTopicForm
             key={channel}
             defaultChannel={channel === "all" ? undefined : channel}
           />
-        </Section>
+        </Section></details>
       )}
       {rows.length === 0 && (
         <div className="card border-warn/50 text-sm text-warn-fg">
-          Queue is empty. The next scheduled run will have nothing to produce.
+          No topics in this view.<Link className="btn ml-2" href="/queue?channel=all">View all topics →</Link>
         </div>
       )}
       <ol className="card divide-y divide-border">
         {rows.map((r, i) => (
           <li
             key={r.id}
+            id={`topic-${r.id}`}
             className="py-3 flex flex-wrap items-start justify-between gap-3"
           >
             <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -82,16 +83,17 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
                 {i + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="queue-main flex flex-wrap items-center gap-2">
+                  <span className="queue-title font-semibold">{r.topic}</span>
                   {channel === "all" && (
-                    <ChannelBadge channel={r.channel} short />
+                    <span className="series-dot" title={CHANNELS.find(c=>c.key===r.channel)?.name} style={{background:CHANNELS.find(c=>c.key===r.channel)?.brand.fg}}/>
                   )}
-                  <span className="badge badge-warn">p{r.priority}</span>
+
                   {slots.has(r.id) && <ScheduledTopic {...slots.get(r.id)!} />}
-                  <span className="badge">{r.added_by}</span>
-                  <span className="font-medium">{r.topic}</span>
+
+
                 </div>
-                <div className="mt-1 text-xs text-muted">
+                <details className="row-details"><summary>Details</summary><p>Priority {r.priority} · Added by {r.added_by}</p>
                   {r.source_headline && <span>{r.source_headline} · </span>}
                   {r.source_url && (
                     <a
@@ -105,7 +107,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
                   )}
                   {r.source_url && " · "}
                   {fmtDate(r.created_at)}
-                </div>
+                </details>
               </div>
             </div>
             {owner && <QueueRowActions id={r.id} />}

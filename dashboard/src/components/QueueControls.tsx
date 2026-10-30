@@ -49,9 +49,9 @@ export function QueueRowActions({ id }: { id: number }) {
     router.refresh();
   }
   return (
-    <div className="flex gap-1">
-      <button className="btn" disabled={busy} onClick={() => act("bump")}>+5</button>
-      <button className="btn btn-danger" disabled={busy} onClick={() => act("kill")}>Kill</button>
+    <div className="queue-row-actions flex gap-1">
+      <button className="btn" disabled={busy} title="Increase priority by 5" aria-label="Increase priority by 5" onClick={() => act("bump")}>↑</button>
+      <button className="btn btn-danger" disabled={busy} title="Kill topic" aria-label="Kill topic" onClick={() => act("kill")}>×</button>
     </div>
   );
 }

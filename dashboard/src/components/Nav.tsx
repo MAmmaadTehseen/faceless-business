@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Density } from "./Density";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CHANNELS, ChannelFilter, accentCss, parseChannelFilter } from "@/lib/channels";
@@ -43,7 +44,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
     <Link href="/" className="flex items-center gap-2.5">
       <span
         aria-hidden
-        className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-sm font-bold text-white shadow-[0_0_18px_-4px_var(--accent)]"
+        className="grid h-8 w-8 place-items-center rounded-lg bg-card-2 text-sm font-semibold text-white"
       >
         F
       </span>
@@ -88,9 +89,12 @@ export function Shell({
     router.push("/login");
   }
 
+  if (path === "/login") return <main className="login-shell"><div hidden><Density /></div>{children}</main>;
+
   if (isPublic) {
     return (
       <>
+        <div hidden><Density /></div>
         <header className="border-b border-border bg-bg-2/80 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
             <Brand compact />
@@ -129,7 +133,7 @@ export function Shell({
         aria-current={active ? "page" : undefined}
         className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition ${
           active
-            ? "bg-accent text-white shadow-[0_6px_18px_-8px_var(--accent)]"
+            ? "bg-card-2 text-accent-fg"
             : "text-muted hover:bg-card-2 hover:text-fg"
         }`}
       >
@@ -165,7 +169,7 @@ export function Shell({
       </aside>
 
       <header className="mobile-header md:hidden">
-        <Brand compact />
+        <div className="flex items-center justify-between"><Brand compact /><Density /></div>
         <details className="mobile-channel-switcher"><summary className="flex items-center min-h-11 cursor-pointer text-sm">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"} · Channels & platforms</summary><ChannelSwitcher key={channel} current={channel} layout="list" /></details>
       </header>
       <nav className="mobile-tabs md:hidden" aria-label="Main navigation">
@@ -175,9 +179,10 @@ export function Shell({
       {more && <div className="sheet-backdrop md:hidden" onClick={() => setMore(false)}><section id="more-menu" className="mobile-sheet" role="dialog" aria-modal="true" aria-label="More navigation" onClick={e => e.stopPropagation()}><button className="btn float-right" autoFocus onClick={() => setMore(false)}>Close</button><h2>More</h2>{[links[4], links[6], links[5]].map(([href, label]) => <Link className="sheet-link" key={href} href={scopedHref(href)} onClick={() => setMore(false)}>{label}</Link>)}<button className="sheet-link" onClick={logout}>Log out</button></section></div>}
 
       <main className="md:pl-60">
-        <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8">
+        <div className="workspace">
+          <div className="workspace-header hidden md:flex"><div>{banners}</div><Density /></div>
           {platform && <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"} / <span className="capitalize">{platform}</span><button className="badge" onClick={() => { const q = new URLSearchParams(params); q.delete("platform"); router.replace(`${path}?${q}`, { scroll: false }); }}>Clear platform ×</button></div>}
-          {banners}
+          <div className="md:hidden">{banners}</div>
           {children}
         </div>
       </main>
@@ -234,23 +239,23 @@ function ChannelSwitcher({
             onClick={() => choose(p.key)}
             className={
               list
-                ? `flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm transition ${active ? "bg-accent-soft text-fg ring-1 ring-accent/50" : "text-muted hover:bg-card-2 hover:text-fg"}`
+                ? `flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm transition ${active ? "bg-card-2 text-fg" : "text-muted hover:bg-card-2 hover:text-fg"}`
                 : `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs ${active ? "border-accent bg-accent-soft text-fg" : "border-border text-muted"}`
             }
           >
             {p.color ? (
               <span
                 aria-hidden
-                className="inline-block h-2 w-2 rounded-full"
+                className="inline-block h-1.5 w-1.5 rounded-full"
                 style={{
                   backgroundColor: p.color,
-                  boxShadow: `0 0 6px ${p.color}`,
+
                 }}
               />
             ) : (
               <span
                 aria-hidden
-                className="inline-block h-2 w-2 rounded-full border border-muted"
+                className="inline-block h-1.5 w-1.5 rounded-full border border-muted"
               />
             )}
             {p.label}

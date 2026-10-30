@@ -4,8 +4,8 @@ export function ChannelDot({ meta, className = "" }: { meta: ChannelMeta; classN
   return (
     <span
       aria-hidden
-      className={`inline-block h-2 w-2 shrink-0 rounded-full ${className}`}
-      style={{ backgroundColor: accentCss(meta), boxShadow: `0 0 6px ${accentCss(meta)}` }}
+      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${className}`}
+      style={{ backgroundColor: accentCss(meta) }}
     />
   );
 }
@@ -19,7 +19,7 @@ export function ChannelBadge({ channel, short = false }: { channel: string | nul
     <span
       className="badge"
       title={`@${meta.handle}`}
-      style={{ backgroundColor: meta.brand.bg, color: meta.brand.fg, borderColor: `${meta.brand.fg}55` }}
+
     >
       <ChannelDot meta={meta} />
       {short ? meta.short : meta.name}

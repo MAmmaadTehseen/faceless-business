@@ -97,7 +97,7 @@ export function ContentFilters({
         placeholder="Search title or topic…"
         defaultValue={sp.q ?? ""}
       />
-      {fields.map(([name, label, options]) => (
+      {fields.filter(([name]) => !analytics || name !== "days").map(([name, label, options]) => (
         <select
           key={name}
           name={name}

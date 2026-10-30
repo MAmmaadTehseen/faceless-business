@@ -1,13 +1,13 @@
 "use client";
 import { useId, useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { seriesColor } from "@/lib/palette";
 
 export type ReportColumn = {
   key: string;
   label: string;
   format?: "number" | "percent" | "usd" | "date";
   share?: boolean;
+  detailOnly?: boolean;
 };
 export type ReportRow = {
   id: string;
@@ -52,6 +52,7 @@ export function SeriesReport({
   dates = [],
   name = "report",
   chart = true,
+  initialChartVisible = true,
   initialSort,
   initialDescending = true,
 }: {
@@ -60,23 +61,25 @@ export function SeriesReport({
   dates?: string[];
   name?: string;
   chart?: boolean;
+  initialChartVisible?: boolean;
   initialSort?: string;
   initialDescending?: boolean;
 }) {
+  const visibleColumns = columns.filter(c => !c.detailOnly).slice(0, 5);
   const id = useId();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [pending, start] = useTransition();
   const [excluded, setExcluded] = useState<string[]>([]);
-  const [show, setShow] = useState(true);
+  const [show, setShow] = useState(initialChartVisible);
   const contentSort = params.get("sort");
   const sort = name === "content" ? contentSort === "newest" || contentSort === "oldest" ? "published" : contentSort === "lowest" ? "views" : contentSort ?? initialSort ?? columns[0]?.key ?? "title" : params.get(`${name}Sort`) ?? initialSort ?? columns[0]?.key ?? "title";
   const descending = name === "content" ? params.has("sortDirection") ? params.get("sortDirection") === "desc" : contentSort === "oldest" || contentSort === "lowest" ? false : initialDescending : params.has(`${name}Direction`) ? params.get(`${name}Direction`) === "desc" : initialDescending;
   const [hover, setHover] = useState<number | null>(null);
   const colored = rows.map((r, i) => ({
     ...r,
-    color: r.color ?? seriesColor(r.id, i),
+    color: i === 0 ? "var(--accent-fg)" : ["#adb1ba", "#858a94", "#656b76", "#454c58"][i % 4],
   }));
   const selected = colored.filter((r) => !excluded.includes(r.id));
   const sorted = [...colored].sort(
@@ -164,14 +167,6 @@ export function SeriesReport({
                   No activity recorded for this period.
                 </p>
               )}
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted">
-                {selected.map((r) => (
-                  <span key={r.id} className="inline-flex items-center gap-2">
-                    <i className="series-dot" style={{ background: r.color }} />
-                    {r.title}
-                  </span>
-                ))}
-              </div>
               <svg
                 viewBox="0 0 1000 254"
                 role="img"
@@ -317,10 +312,7 @@ export function SeriesReport({
         </div>
       )}
       {!rows.length ? (
-        <p className="text-sm text-muted py-6">
-          No data for this period. Widen the date range or sync published
-          content.
-        </p>
+        <div className="py-6"><p className="text-sm text-muted">No data for this period.</p><button className="btn mt-3" onClick={() => {const q = new URLSearchParams(params); ["q","status","kind","category"].forEach(k => q.delete(k)); q.set("days","all"); router.replace(`${pathname}?${q}`,{scroll:false});}}>Widen date range</button></div>
       ) : (
         <table className="report-table w-full text-sm">
           <thead>
@@ -340,7 +332,7 @@ export function SeriesReport({
                   {sort === "title" ? (descending ? "↓" : "↑") : ""}
                 </button>
               </th>
-              {columns.map((c) => (
+              {visibleColumns.map((c) => (
                 <th
                   className="text-right"
                   key={c.key}
@@ -361,11 +353,12 @@ export function SeriesReport({
           </thead>
           <tbody>
             {sorted.map((r) => (
-              <tr key={r.id} style={{ borderLeft: `3px solid ${r.color}` }}>
+              <tr key={r.id} style={{ borderLeft: "none" }}>
                 <td>
                   <div className="report-title">
-                    {hasChart && (
-                      <input
+                    {hasChart && show && <i className="series-dot" style={{background:r.color}}/>}
+                    {hasChart && show && (
+                      <label className="series-toggle"><input
                         type="checkbox"
                         checked={!excluded.includes(r.id)}
                         onChange={(e) =>
@@ -376,7 +369,7 @@ export function SeriesReport({
                           )
                         }
                         aria-label={`Include ${r.title} in chart`}
-                      />
+                      /></label>
                     )}
                     {r.thumbnail && (
                       <div className="report-thumbnail">
@@ -396,7 +389,7 @@ export function SeriesReport({
                       {r.href ? (
                         <a
                           href={r.href}
-                          className="text-accent-fg hover:underline"
+                          className="hover:underline"
                         >
                           {r.title}
                         </a>
@@ -405,27 +398,27 @@ export function SeriesReport({
                       )}
                       {r.status && (
                         <span
-                          className={`badge ml-2 ${r.status.includes("failed") ? "badge-alert" : /queued|scheduled/.test(r.status) ? "badge-warn" : ""}`}
+                          className={`${/^(published|live|scheduled|queued|failed|needs review)$/.test(r.status) ? "status-chip" : "text-xs text-muted"} ml-2 ${r.status.includes("failed") ? "badge-alert" : /queued|scheduled/.test(r.status) ? "badge-warn" : ""}`}
                         >
-                          {r.status}
+                          {r.status === "published" ? "live" : r.status}
                         </span>
                       )}
-                      {r.subtitle && (
+                      {<details className="row-details"><summary>Details</summary>                      {r.subtitle && (
                         <p className="text-xs text-muted mt-1">{r.subtitle}</p>
                       )}
                       {r.links && (
-                        <div className="flex flex-wrap gap-3 mt-1 text-xs text-accent-fg">
+                        <div className="flex flex-col gap-3 mt-3 text-xs text-muted">
                           {r.links.map((l) => (
                             <a key={l.label} href={l.href}>
                               {l.label}
                             </a>
                           ))}
                         </div>
-                      )}
+                      )}<p className="detail-title">{r.title}</p><dl className="detail-metrics">{columns.map(c => <div key={c.key}><dt>{c.label}</dt><dd>{display(r.values[c.key], c.format)}</dd></div>)}</dl></details>}
                     </div>
                   </div>
                 </td>
-                {columns.map((c) => (
+                {visibleColumns.map((c) => (
                   <td
                     key={c.key}
                     data-label={c.label}
@@ -434,7 +427,7 @@ export function SeriesReport({
                     <span>
                       {display(r.values[c.key], c.format)}
                       {c.share && (
-                        <small className="text-muted ml-3">
+                        <small className="text-muted ml-3" title="Share of total">
                           {totals[c.key]
                             ? (
                                 ((r.values[c.key] ?? 0) / totals[c.key]) *

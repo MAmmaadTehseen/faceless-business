@@ -8,19 +8,19 @@ export async function Banners() {
   const reviewer = (await headers()).get("x-dashboard-role") === "reviewer";
   if (!paused && !failedRun && !reviewer) return null;
   return (
-    <div className="mb-5 space-y-2 text-sm">
+    <div className="space-y-2 text-sm">
       {reviewer && (
-        <div className="rounded-lg border border-accent/50 bg-accent-soft px-3 py-2">
-          <b>Read-only reviewer account.</b> You can browse everything; sending replies and changing settings is disabled.
+        <div className="text-xs text-muted py-2">
+          <span title="Sending replies and changing settings is disabled">Read-only workspace</span>
         </div>
       )}
       {paused && (
-        <div className="rounded-lg border border-warn/50 bg-warn/10 px-3 py-2">
+        <div className="text-xs text-muted py-2">
           Pipeline is <b>paused</b>. <Link href="/automation" className="text-accent-fg underline">Resume in Automation</Link>.
         </div>
       )}
       {failedRun && (
-        <div className="rounded-lg border border-alert/60 bg-alert-soft px-3 py-2 text-alert-fg">
+        <div className="text-xs text-alert-fg py-2">
           Latest run <b>failed</b> ({failedRun.workflow ?? "run"} at {fmtDate(failedRun.started_at)}).{" "}
           <Link href="/costs" className="underline">See runs</Link>.
         </div>

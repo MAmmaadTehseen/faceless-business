@@ -27,13 +27,8 @@ export default function LoginPage() {
   return (
     <div className="mx-auto mt-16 max-w-sm sm:mt-24">
       <div className="mb-5">
-        <span aria-hidden className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-accent text-base font-bold text-white shadow-[0_0_24px_-4px_var(--accent)]">F</span>
-        <h1 className="text-xl font-semibold tracking-tight">Future Work Explained</h1>
-        <p className="mt-1 text-sm text-muted">
-          Private publishing dashboard for the{" "}
-          <a href="https://www.youtube.com/@futurework.explained" className="text-accent-fg underline">Future Work Explained YouTube channel</a>.
-          Uses YouTube API Services.
-        </p>
+        <span aria-hidden className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-card-2 text-base font-semibold text-white">F</span>
+        <h1 className="text-[22px] font-semibold tracking-tight">Welcome to Faceless</h1>
       </div>
       <form onSubmit={submit} className="card space-y-3">
         <label className="block text-sm">
