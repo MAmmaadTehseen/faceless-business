@@ -1,3 +1,4 @@
+import { videoShorts } from "@/lib/video-detail";
 import { AutoFilters } from "@/components/AutoFilters";
 import { CHANNELS, parseChannelFilter } from "@/lib/channels";
 import { FilterSheet } from "@/components/FilterSheet";
@@ -29,6 +30,12 @@ export default async function InboxPage({
   if (tab === "replied") q = q.eq("reply_status", "sent");
   if (tab === "flagged") q = q.eq("flagged", true);
   if ([1, 7, 30].includes(Number(days))) q = q.gte("posted_at", new Date(Date.now() - Number(days) * 86400000).toISOString());
+  if (sp.video) {
+    const children = await videoShorts(sp.video);
+    const {data: videoPubs, error: videoError} = await db().from("publications").select("id").in("content_id", [sp.video,...children.map(c=>c.id)]);
+    if(videoError) throw videoError;
+    q = q.in("publication_id", (videoPubs ?? []).map(p=>p.id));
+  }
   const owner = await isOwner();
   const urls = new Map<number, string>();
   if (platform) q = q.eq("platform", platform);
@@ -44,6 +51,7 @@ export default async function InboxPage({
         .filter((x): x is number => x != null),
     ),
   ];
+  const videoIds = new Map<number, string>();
   const titles = new Map<number, string>();
   const channels = new Map<number, string | null>();
   if (pubIds.length) {
@@ -60,6 +68,7 @@ export default async function InboxPage({
           ? `https://www.youtube.com/watch?v=${encodeURIComponent(p.platform_id)}`
           : p.url;
       if (url) urls.set(p.id, url);
+      videoIds.set(p.id, p.content_id);
       titles.set(p.id, row?.title ?? p.content_id);
       channels.set(p.id, row?.channel ?? null);
     }
@@ -96,6 +105,7 @@ export default async function InboxPage({
       />
 <div className="hero"><p className="hero-label">{tab === "pending" ? "Awaiting a reply" : "Conversations in this view"}</p><p className="hero-value">{comments.length}</p></div>
       <FilterSheet count={[platform, sp.q, days !== "all", channel !== "all"].filter(Boolean).length}><AutoFilters key={JSON.stringify({ ...sp, q: undefined })} className="filter-bar mb-4">
+        {sp.video && <><input type="hidden" name="video" value={sp.video}/><span className="text-xs text-muted">Filtered to this video and its Shorts</span></>}
         <select name="channel" aria-label="Channel" defaultValue={channel}><option value="all">All channels</option>{CHANNELS.map(c => <option key={c.key} value={c.key}>{c.short}</option>)}</select>
         <input name="q" aria-label="Search comments" placeholder="Search comments…" defaultValue={sp.q ?? ""} />
         <select name="platform" aria-label="Platform" defaultValue={platform}><option value="">All platforms</option>{PLATFORMS.map(p => <option key={p}>{p}</option>)}</select>
@@ -113,6 +123,7 @@ export default async function InboxPage({
             key={c.id}
             comment={c}
             owner={owner}
+            contentId={videoIds.get(c.publication_id ?? 0)}
             channel={channels.get(c.publication_id ?? 0)}
             url={urls.get(c.publication_id ?? 0)}
             videoTitle={

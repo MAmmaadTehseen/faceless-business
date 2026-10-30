@@ -11,12 +11,14 @@ export function InboxItem({
   owner,
   channel,
   url,
+  contentId,
 }: {
   comment: Comment;
   videoTitle: string;
   owner: boolean;
   channel?: string | null;
   url?: string;
+  contentId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const drawer = useRef<HTMLElement>(null);
@@ -83,6 +85,8 @@ export function InboxItem({
           {comment.author ?? "Viewer"}
         </span>
         <RelativeTime value={comment.posted_at} />
+        <span>{comment.platform}</span>
+        {contentId && <a className="btn" href={`/content/${encodeURIComponent(contentId)}`}>View video →</a>}
         {comment.flagged && (
           <span className="status-chip badge-alert" title={comment.flag_reason ?? ""}>
             needs review

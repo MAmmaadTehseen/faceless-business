@@ -49,6 +49,7 @@ function csvCell(value: unknown) {
 export function SeriesReport({
   rows,
   columns,
+  chartOnly = false,
   dates = [],
   name = "report",
   chart = true,
@@ -56,6 +57,7 @@ export function SeriesReport({
   initialSort,
   initialDescending = true,
 }: {
+  chartOnly?: boolean;
   rows: ReportRow[];
   columns: ReportColumn[];
   dates?: string[];
@@ -134,7 +136,7 @@ export function SeriesReport({
   }
   return (
     <div className={`series-report space-y-4 ${pending ? "opacity-60" : ""}`} aria-busy={pending}>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      {!chartOnly && <div className="flex flex-wrap items-center justify-end gap-2">
         {hasChart && (
           <label className="flex items-center gap-2 text-sm text-muted">
             <input
@@ -149,7 +151,7 @@ export function SeriesReport({
         <button className="btn" onClick={download} disabled={!rows.length}>
           Download CSV
         </button>
-      </div>
+      </div>}
       {hasChart && show && (
         <div
           id={id}
@@ -311,7 +313,7 @@ export function SeriesReport({
           )}
         </div>
       )}
-      {!rows.length ? (
+      {chartOnly ? null : !rows.length ? (
         <div className="py-6"><p className="text-sm text-muted">No data for this period.</p><button className="btn mt-3" onClick={() => {const q = new URLSearchParams(params); ["q","status","kind","category"].forEach(k => q.delete(k)); q.set("days","all"); router.replace(`${pathname}?${q}`,{scroll:false});}}>Widen date range</button></div>
       ) : (
         <table className="report-table w-full text-sm">

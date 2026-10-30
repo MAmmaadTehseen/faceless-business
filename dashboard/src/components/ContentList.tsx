@@ -1,4 +1,6 @@
 "use client";
+import { useSearchParams } from "next/navigation";
+import { contentHref } from "@/lib/content-link";
 import { SeriesReport } from "./SeriesReport";
 import { metric } from "@/lib/content-filters";
 import { category } from "@/lib/categories";
@@ -25,6 +27,7 @@ export function ContentList({
   dates?: string[];
   daily?: Record<string, number[]>;
 }) {
+  const params = useSearchParams();
   const shown = items.slice(0, limit);
   return (
     <SeriesReport
@@ -75,8 +78,7 @@ export function ContentList({
             href: p.url!,
           })),
         href:
-          c.publications.find((p) => p.url)?.url ??
-          `/content?q=${encodeURIComponent(c.title)}`,
+          contentHref(c, params.toString()),
         thumbnail: /^https?:\/\//.test(c.thumbnail_path ?? "")
           ? c.thumbnail_path
           : null,
