@@ -22,7 +22,9 @@ jobs:
   retry:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    concurrency: manual-publication-retry
+    concurrency:
+      group: retry-${{ inputs.request_id || github.run_id }}
+      cancel-in-progress: false
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

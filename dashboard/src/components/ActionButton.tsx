@@ -37,7 +37,7 @@ export function ActionButton({
           if (j.status !== "completed") setMessage(j.status === "in_progress" ? "Running" : "Dispatched");
           if (j.status === "completed") {
             setMessage(
-              j.conclusion === "success" ? "Done" : `Failed (${j.conclusion})`,
+              j.conclusion === "success" ? "Done" : j.conclusion === "cancelled" ? "Cancelled, retry again" : `Failed (${j.conclusion})`,
             );
             setSince(0);
             router.refresh();

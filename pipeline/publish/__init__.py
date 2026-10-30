@@ -64,7 +64,7 @@ def _persist_queue(db, row):
 
 
 def _restore_queue(db, row, pub):
-    if db.sb:
+    if db.sb or any(str(pub.get(k) or "").startswith("https://") for k in ("media_key", "thumbnail_key")):
         from ..common import OUT_DIR
         work = OUT_DIR / row["id"]
         work.mkdir(parents=True, exist_ok=True)
@@ -167,14 +167,17 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
         return {"platform": "youtube", "content_id": row["id"], **r}
     except Exception as e:
         details = youtube.error_details(e)
-        quota = bool(set(details["reason"].split(",")) & youtube.QUOTA_REASONS) and not force
+        daily_cap = "uploadLimitExceeded" in details["reason"].split(",")
+        quota = daily_cap or (bool(set(details["reason"].split(",")) & youtube.QUOTA_REASONS) and not force)
+        if daily_cap:
+            details["message"] = "YouTube daily upload cap reached for this channel; try after the cap resets"
         fields = {}
         if quota:
             details["retry_after"] = (datetime.now(timezone.utc) + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
             try:
                 fields = _persist_queue(db, row)
             except Exception as storage_error:
-                quota = False
+                quota = daily_cap
                 details["storage_error"] = type(storage_error).__name__
         log.error("youtube upload failed for %s: %s", row["id"], json.dumps(details))
         db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued" if quota else "failed",
@@ -195,7 +198,7 @@ def _media_url(db, s) -> str:
 def _local_file(db, s) -> Path:
     """Local mp4 for a Short; on a fresh runner, download it from its public media URL."""
     f = Path(s.get("file_path") or "")
-    if f.exists():
+    if f.is_file():
         return f
     import requests
     from ..common import OUT_DIR
@@ -203,9 +206,14 @@ def _local_file(db, s) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     with requests.get(_media_url(db, s), stream=True, timeout=600) as r:
         r.raise_for_status()
-        with open(target, "wb") as fh:
-            for chunk in r.iter_content(1 << 20):
-                fh.write(chunk)
+        temporary = target.with_suffix(".mp4.part")
+        try:
+            with open(temporary, "wb") as fh:
+                for chunk in r.iter_content(1 << 20):
+                    fh.write(chunk)
+            temporary.replace(target)
+        finally:
+            temporary.unlink(missing_ok=True)
     return target
 
 

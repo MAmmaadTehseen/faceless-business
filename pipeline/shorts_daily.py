@@ -10,7 +10,8 @@ from .common import Channel, Claude, CostGuard, OUT_DIR, log, now_iso, slugify, 
 from .db import DB
 from .footage import Footage
 from .ideate import fetch_news
-from .publish import publish_short
+from .publish import publish_short, meta
+from .retry import production_notes
 from .qa import run_qa
 from .script import BANNED_TITLE, SCRIPT_SCHEMA, strip_script_dashes
 from .shorts import make_short
@@ -104,10 +105,16 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
            "topic": topic["topic"], "title": data["hook_title"], "description": data["description"],
            "tags": data["tags"], "script": data["script"], "duration_sec": res["duration"],
            "file_path": str(res["file"]), "status": "rendered" if qa["pass"] else "qa_failed", "placeholder": footage.placeholder, "qa_status": "passed" if qa["pass"] else "failed",
-           "qa_notes": json.dumps(qa["issues"])}
+           "qa_notes": production_notes(qa["issues"], channel, "shorts")}
     db.upsert("content", row, on="id")
     if not qa["pass"]:
         raise RuntimeError(f"Daily Short QA failed: {qa['issues']}")
+    if not dry_run and not footage.placeholder:
+        try:
+            row["media_url"] = meta.public_url_for(res["file"], tag=f"media-{datetime.now(timezone.utc):%Y%m%d}")
+            db.update("content", {"id": content_id}, {"media_url": row["media_url"]})
+        except Exception as exc:
+            log.warning("daily short public media upload failed (%s)", type(exc).__name__)
     if topic.get("queue_id"):
         db.update("topic_queue", {"id": topic["queue_id"]}, {"status": "used"})
     result = {"content_id": content_id, "video": str(res["file"])}

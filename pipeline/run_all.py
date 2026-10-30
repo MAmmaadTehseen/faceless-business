@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from .retry import production_notes
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -166,7 +167,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     if claude:
         qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not (bool(row.get("placeholder")) if reused_render else footage.placeholder), db=db)
     thumb = qa.get("thumbnail") or thumb
-    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": json.dumps(qa["issues"]), "thumbnail_path": str(thumb)})
+    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": production_notes(qa["issues"], channel, "produce"), "thumbnail_path": str(thumb)})
     if not qa["pass"]:
         db.update("content", {"id": content_id}, {"status": "qa_failed"})
         raise RuntimeError(f"QA failed for {content_id}: {qa['issues']}")
@@ -195,7 +196,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
                               "duration_sec": res["duration"], "placeholder": footage.placeholder,
                               "status": "rendered" if short_qa["pass"] else "qa_failed",
                               "qa_status": "passed" if short_qa["pass"] else "failed",
-                              "qa_notes": json.dumps(short_qa["issues"])}, on="id")
+                              "qa_notes": production_notes(short_qa["issues"], channel, "produce")}, on="id")
         if not short_qa["pass"]:
             log.error("short %s failed QA: %s", sid, short_qa["issues"])
             continue
