@@ -37,9 +37,9 @@ def colour(tmp_path, colour='red', duration=0.1):
     return src
 
 
-def test_short_clip_holds_last_frame(tmp_path):
-    out = render._fit_clip(colour(tmp_path), 0.6, 'landscape', tmp_path / 'slot.mp4')
-    assert probe(out)['duration'] == pytest.approx(0.6, abs=0.034)
+def test_short_clip_caps_last_frame_padding(tmp_path):
+    out = render._fit_clip(colour(tmp_path), 0.5, 'landscape', tmp_path / 'slot.mp4')
+    assert probe(out)['duration'] == pytest.approx(0.5, abs=0.034)
     assert black_segments(out, 0.03) == []
 
 
@@ -164,3 +164,99 @@ def test_almost_black_source_uses_card(tmp_path):
     out = render._fill_slot({'query': 'space'}, 0.2, 'landscape', tmp_path / 'slot.mp4', footage)
     assert out.with_suffix('.txt').exists()
     assert black_segments(out, 0.03) == []
+
+
+def motion(tmp_path, name, duration):
+    src = tmp_path / f'{name}.mp4'
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
+                    'testsrc2=s=160x90:r=30', '-t', str(duration), '-c:v', 'libx264',
+                    '-preset', 'ultrafast', str(src)], check=True, timeout=4)
+    return src
+
+
+def test_short_motion_loops_without_half_second_freeze(tmp_path, caplog):
+    from pipeline.qa import freeze_segments
+    caplog.set_level('INFO')
+    src = motion(tmp_path, 'moving', 2.1)
+    out = render._fit_clip(src, 4.5, 'landscape', tmp_path / 'loop.mp4')
+    assert probe(out)['duration'] == pytest.approx(4.5, abs=0.034)
+    assert freeze_segments(out, 0.5) == []
+    assert 'looping' in caplog.text
+
+
+def test_tiny_motion_concatenates_next_candidate(tmp_path, caplog):
+    from pipeline.qa import freeze_segments
+    footage = Mock()
+    caplog.set_level('INFO')
+    footage.clip.side_effect = [motion(tmp_path, 'tiny', 0.2), motion(tmp_path, 'next', 2.1)]
+    out = render._fill_slot({'query': 'first', 'candidate_queries': ['next']}, 4.5,
+                            'landscape', tmp_path / 'joined.mp4', footage)
+    assert [call.args[0] for call in footage.clip.call_args_list] == ['first', 'next']
+    assert probe(out)['duration'] == pytest.approx(4.5, abs=0.034)
+    assert freeze_segments(out, 0.51) == []
+    assert 'concatenating next candidate' in caplog.text
+
+
+def test_six_second_photo_motion_clears_qa(tmp_path):
+    from pipeline.qa import freeze_segments
+    img = tmp_path / 'lavfi.bmp'
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
+                    'testsrc2=s=320x180:r=1', '-t', '1', '-frames:v', '1', str(img)],
+                   check=True, timeout=4)
+    footage = Footage(placeholder=True)
+    out = footage._ken_burns(img, 6, 'landscape')
+    assert probe(out)['duration'] == pytest.approx(6, abs=0.034)
+    assert freeze_segments(out) == []
+    assert freeze_segments(out, 0.5) == []
+
+
+def test_moving_caption_card_clears_qa(tmp_path):
+    from pipeline.qa import freeze_segments
+    out = render._background_card('The next mission to the Moon', 6, 'landscape', tmp_path / 'card.mp4')
+    assert freeze_segments(out) == []
+
+
+def test_retry_starts_with_next_candidate(tmp_path):
+    footage = Mock()
+    footage.clip.return_value = motion(tmp_path, 'retry', 2.1)
+    render._fill_slot({'query': 'first', 'candidate_queries': ['second'], '_retry': True},
+                      2, 'landscape', tmp_path / 'retry-slot.mp4', footage)
+    assert footage.clip.call_args.args[0] == 'second'
+
+
+def test_post_render_repairs_only_overlapping_slot_once(tmp_path, monkeypatch, caplog):
+    caplog.set_level('INFO')
+    fill = Mock(side_effect=lambda seg, sec, orientation, out, *args: out)
+    monkeypatch.setattr(render, '_fill_slot', fill)
+    monkeypatch.setattr(render, '_check_black', Mock())
+    monkeypatch.setattr(render, '_music', lambda: None)
+    monkeypatch.setattr(render, '_font', lambda: None)
+    scan = Mock(side_effect=[[(6, 10.1)], [(6, 10.1)]])
+    monkeypatch.setattr('pipeline.qa.freeze_segments', scan)
+    runner = Mock()
+    monkeypatch.setattr(subprocess, 'run', runner)
+    segments = [{'query': 'first', 'start': 0, 'end': 6},
+                {'query': 'second', 'start': 6, 'end': 12}]
+    out = tmp_path / 'final.mp4'
+    render.render(segments, tmp_path / 'voice.wav', tmp_path / 'captions.srt', out,
+                  footage=Mock())
+    assert fill.call_count == 3
+    assert fill.call_args.args[0] == dict(segments[1], _retry=True)
+    assert scan.call_count == 2
+    assert 'retrying next candidate once' in caplog.text
+    assert 'freeze persists after one repair' in caplog.text
+    assert not (tmp_path / 'final_work').exists()
+
+
+def test_black_stripping_loops_cleaned_motion(tmp_path):
+    from pipeline.qa import freeze_segments
+    src = tmp_path / 'black-and-motion.mp4'
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
+                    'color=black:s=160x90:r=30:d=0.4', '-f', 'lavfi', '-i',
+                    'testsrc2=s=160x90:r=30:d=2.1', '-filter_complex',
+                    '[0:v][1:v]concat=n=2:v=1:a=0', '-t', '2.5', '-c:v',
+                    'libx264', '-preset', 'ultrafast', str(src)], check=True, timeout=4)
+    out = render._fit_clip(src, 4.5, 'landscape', tmp_path / 'clean-loop.mp4')
+    assert probe(out)['duration'] == pytest.approx(4.5, abs=0.034)
+    assert black_segments(out, 0.03) == []
+    assert freeze_segments(out, 0.5) == []

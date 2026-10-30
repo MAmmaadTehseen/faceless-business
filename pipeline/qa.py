@@ -132,6 +132,27 @@ def black_segments(video: Path, min_duration: float = 1.0) -> list[tuple[float, 
         if float(length) >= min_duration]
 
 
+def freeze_segments(video: Path, min_duration: float = 4.0) -> list[tuple[float, float]]:
+    """Renderer scan at QA's noise threshold, including freezes ending at EOF."""
+    duration = probe(video)["duration"]
+    result = subprocess.run([
+        "ffmpeg", "-hide_banner", "-nostats", "-v", "info", "-i", str(video),
+        "-t", str(duration), "-vf", f"freezedetect=n=-60dB:d={min_duration}",
+        "-an", "-f", "null", "-",
+    ], capture_output=True, text=True, check=True, timeout=max(60, duration*3))
+    spans = []
+    start = None
+    for event, value in re.findall(r"freeze_(start|end):\s*([0-9.]+)", result.stderr):
+        if event == "start":
+            start = float(value)
+        elif start is not None:
+            spans.append((start, float(value)))
+            start = None
+    if start is not None:
+        spans.append((start, duration))
+    return [(a, b) for a, b in spans if b-a >= min_duration]
+
+
 def temporal_findings(video: Path, duration: float | None = None) -> list[dict]:
     """Run both detectors once per file; detector failures are advisory."""
     try:

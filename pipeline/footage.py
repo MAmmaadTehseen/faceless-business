@@ -184,12 +184,12 @@ class Footage:
 
     def _ken_burns(self, img: Path, sec: float, orientation: str) -> Path:
         w, h = self._dims(orientation)
-        out = CACHE / f"{img.stem}_kb_{sec:.6f}_{orientation[0]}.mp4"
+        out = CACHE / f"{img.stem}_kb_motion2_{sec:.6f}_{orientation[0]}.mp4"
         if out.exists() and out.stat().st_size > 0:
             return out
         frames = int(sec * 30) + 1
         vf = (f"scale={w*1.3:.0f}:{h*1.3:.0f}:force_original_aspect_ratio=increase,crop={w*1.3:.0f}:{h*1.3:.0f},"
-              f"zoompan=z='min(zoom+0.0008,1.25)':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps=30,format=yuv420p")
+              f"zoompan=z='1+0.025*on/30':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps=30,format=yuv420p")
         partial = out.with_suffix(".part.mp4")
         try:
             subprocess.run(["ffmpeg", "-y", "-v", "error", "-loop", "1", "-i", str(img), "-vf", vf, "-t", f"{sec:.6f}", "-r", "30", "-c:v", "libx264", "-preset", "veryfast", str(partial)], check=True, timeout=max(60, sec * 10))
