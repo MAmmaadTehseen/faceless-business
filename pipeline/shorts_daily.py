@@ -99,12 +99,12 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
     if footage.placeholder and not (dry_run or no_publish):
         raise RuntimeError("Refusing to publish placeholder footage")
     res = make_short(data, out, channel.voice, footage, name=content_id, style=channel.style)
-    qa = run_qa(claude, res["file"], None, res["duration"], content_id, out / "qa", vision=not footage.placeholder)
+    qa = run_qa(claude, res["file"], None, res["duration"], content_id, out / "qa", vision=not footage.placeholder, db=db)
     row = {"id": content_id, "channel": channel.key, "kind": "short", "parent_id": None,
            "topic": topic["topic"], "title": data["hook_title"], "description": data["description"],
            "tags": data["tags"], "script": data["script"], "duration_sec": res["duration"],
-           "file_path": str(res["file"]), "status": "rendered", "placeholder": footage.placeholder, "qa_status": "passed" if qa["pass"] else "failed",
-           "qa_notes": "; ".join(qa["issues"])}
+           "file_path": str(res["file"]), "status": "rendered" if qa["pass"] else "qa_failed", "placeholder": footage.placeholder, "qa_status": "passed" if qa["pass"] else "failed",
+           "qa_notes": json.dumps(qa["issues"])}
     db.upsert("content", row, on="id")
     if not qa["pass"]:
         raise RuntimeError(f"Daily Short QA failed: {qa['issues']}")

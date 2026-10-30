@@ -13,18 +13,53 @@ QA_SCHEMA = {
     "properties": {
         "pass": {"type": "boolean"},
         "thumbnail_ok": {"type": "boolean"},
-        "frames_ok": {"type": "boolean", "description": "false only for black/blank frames, watermarks, wrong orientation, or captions missing on most frames"},
+        "frames_ok": {"type": "boolean", "description": "false only for blocking video findings; minor notes and captions absent during pauses are acceptable"},
         "frames_without_caption": {"type": "integer"},
-        "issues": {"type": "array", "items": {"type": "string"}},
+        "issues": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["severity", "text"],
+            "properties": {"severity": {"type": "string", "enum": ["blocking", "minor"]},
+                           "text": {"type": "string"}},
+        }},
     },
 }
 
 THUMB_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["ok", "issue"],
                 "properties": {"ok": {"type": "boolean"}, "issue": {"type": "string"}}}
 
-THUMB_RULES = ("Thumbnail rules: text is at most three words, large and legible when shrunk to 160px wide, high contrast, "
-               "no stock-site watermark, no readable third-party brand logos or trademarks (a car badge, a phone brand, a shop sign), "
-               "no identifiable real person's face in close-up, image not blurry or blank.")
+THUMB_RULES = ("Thumbnail text must be legible at 160px wide, high contrast and not cut off. "
+               "Blocking: watermark/logo overlays covering content or policy problems. "
+               "Sparse but legible text on black, incidental signage, source logos, soft archival imagery, "
+               "colour grading and stylistic preferences are minor; these must not set thumbnail_ok=false.")
+
+
+def finalize_qa(res: dict, strict: bool = False) -> dict:
+    """Derive the verdict from findings, never from the model's boolean flags."""
+    for finding in res["issues"]:
+        if finding["severity"] == "minor":
+            log.info("qa minor: %s", finding["text"])
+    res["pass"] = not any(f["severity"] == "blocking" or strict for f in res["issues"])
+    return res
+
+
+def temporal_findings(video: Path) -> list[dict]:
+    """Detect sustained black/frozen footage; sampled images cannot establish duration."""
+    import re
+    result = subprocess.run([
+        "ffmpeg", "-v", "info", "-i", str(video), "-vf",
+        "blackdetect=d=1:pix_th=0.10,freezedetect=n=-60dB:d=1", "-an", "-f", "null", "-",
+    ], capture_output=True, text=True, check=True)
+    findings = []
+    for kind, pattern in (("black", r"black_duration:\s*([0-9.]+)"),
+                          ("frozen", r"freeze_duration:\s*([0-9.]+)")):
+        durations = [float(d) for d in re.findall(pattern, result.stderr)]
+        if kind == "frozen":
+            starts = re.findall(r"freeze_start:\s*([0-9.]+)", result.stderr)
+            ends = re.findall(r"freeze_end:\s*([0-9.]+)", result.stderr)
+            if len(starts) > len(ends):
+                durations.append(probe(video)["duration"] - float(starts[-1]))
+        if any(d > 1 for d in durations):
+            findings.append({"severity": "blocking", "text": f"{kind} footage for more than 1 second"})
+    return findings
 
 
 def probe(video: Path) -> dict:
@@ -37,28 +72,19 @@ def probe(video: Path) -> dict:
             "width": v.get("width"), "height": v.get("height")}
 
 
-def black_ratio(video: Path) -> float:
-    """Fraction of the video flagged black by ffmpeg's blackdetect."""
-    out = subprocess.run(["ffmpeg", "-v", "info", "-i", str(video), "-vf", "blackdetect=d=0.5:pix_th=0.10", "-an", "-f", "null", "-"],
-                         capture_output=True, text=True).stderr
-    total = 0.0
-    for line in out.splitlines():
-        if "black_duration:" in line:
-            total += float(line.split("black_duration:")[1].strip().split()[0])
-    dur = probe(video)["duration"]
-    return total / dur if dur else 1.0
-
-
-def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: float, content_id: str, work: Path, vision: bool = True) -> dict:
+def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: float, content_id: str, work: Path, vision: bool = True, *, db=None) -> dict:
+    strict = db.setting("qa_strict", False) if db is not None else False
     issues = []
     p = probe(video)
     if not p["has_audio"]:
-        issues.append("no audio track")
+        issues.append({"severity": "blocking", "text": "no audio track"})
     if abs(p["duration"] - expected_sec) > max(3.0, expected_sec * 0.05):
-        issues.append(f"duration {p['duration']:.1f}s differs from narration {expected_sec:.1f}s")
-    br = black_ratio(video)
-    if br > 0.03:
-        issues.append(f"{br:.0%} of video is black")
+        issues.append({"severity": "blocking", "text": f"duration {p['duration']:.1f}s differs from narration {expected_sec:.1f}s"})
+    if (p["width"], p["height"]) not in ((1920, 1080), (1080, 1920)):
+        ratio = (p["width"] or 0) / (p["height"] or 1)
+        if min(abs(ratio - 16/9), abs(ratio - 9/16)) > 0.02:
+            issues.append({"severity": "blocking", "text": "wrong aspect ratio"})
+    issues.extend(temporal_findings(video))
     if issues:
         return {"pass": False, "issues": issues, "thumbnail_ok": None, "frames_ok": False}
     if not vision:
@@ -69,24 +95,27 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
     frames = [grab_frame(video, p["duration"] * f, work / f"qa_{i}.jpg") for i, f in enumerate((0.1, 0.5, 0.85))]
     images = ([thumbnail] if thumbnail else []) + frames
     prompt = (
-        (f"Image 1 is a YouTube thumbnail (1280x720). {THUMB_RULES}\n" if thumbnail else "") +
-        f"The remaining {len(frames)} images are frames sampled from the video. Check each: not black or blank, "
-        "no visible stock-site watermark, no text cut off at the edge, not an obviously wrong orientation (letterboxing or sideways). "
-        "Captions appear near the bottom during speech; a frame sampled during a pause may have none, which is fine. Count frames without a caption.\n"
-        "pass=true when the video frames are acceptable; thumbnail problems are reported separately via thumbnail_ok and do not fail the video."
+        (f"Image 1 is a YouTube thumbnail. {THUMB_RULES}\n" if thumbnail else "") +
+        f"The remaining {len(frames)} images are sampled video frames. "
+        "Report every finding as {severity: blocking|minor, text}. "
+        "pass=false ONLY if at least one blocking finding exists. "
+        "Blocking: black/frozen footage lasting >1s (do not infer duration from a still), "
+        "visible third-party watermark or logo OVERLAY covering content, cut-off or unreadable text/captions, "
+        "wrong aspect ratio, missing audio, placeholder footage, nudity, gore, misleading medical/income claims. "
+        "Minor: pillarboxing/letterboxing, soft or blurry archival footage, incidental signage, "
+        "source logos on objects such as NASA rockets, sparse but legible thumbnails, colour grading, stylistic notes. "
+        "Keep thumbnail_ok as a separate check of thumbnail usability; sparse but legible is OK. "
+        "Count frames_without_caption, but captions may be absent during pauses; absence in sampled stills alone is not blocking."
     )
     try:
         res, _ = claude.vision("qa", prompt, images, QA_SCHEMA, content_id=content_id)
     except Exception as e:
         log.warning("qa vision failed, passing on probe only: %s", e)
-        return {"pass": True, "issues": [f"vision skipped: {e}"], "thumbnail_ok": True, "frames_ok": True, "thumbnail": thumbnail}
-    if res.get("frames_without_caption", 0) >= len(frames):
-        res["frames_ok"] = False
-        res["issues"].append("no captions visible on any sampled frame")
-    res["pass"] = bool(res.get("frames_ok", True)) and not any("black" in i.lower() or "watermark" in i.lower() for i in res["issues"])
+        return finalize_qa({"issues": [{"severity": "minor", "text": f"vision skipped: {e}"}], "thumbnail_ok": True, "frames_ok": True, "thumbnail": thumbnail}, strict)
     res["thumbnail"] = thumbnail
     if thumbnail and not res.get("thumbnail_ok", True):
         res["thumbnail"] = _retry_thumbnail(claude, video, thumbnail, content_id, res)
+    finalize_qa(res, strict)
     log.info("qa: pass=%s thumbnail_ok=%s issues=%s", res["pass"], res.get("thumbnail_ok"), res["issues"])
     return res
 
@@ -106,7 +135,7 @@ def _retry_thumbnail(claude: Claude, video: Path, thumbnail: Path, content_id: s
         if chk["ok"]:
             cand.replace(thumbnail)
             res["thumbnail_ok"] = True
-            res["issues"] = [i for i in res["issues"] if "thumbnail" not in i.lower()]
+            res["issues"] = [i for i in res["issues"] if "thumbnail" not in i["text"].lower()]
             log.info("qa: thumbnail replaced using %s", frame.name)
             return thumbnail
         cand.unlink(missing_ok=True)

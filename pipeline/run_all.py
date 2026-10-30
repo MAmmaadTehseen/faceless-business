@@ -19,7 +19,7 @@ from .common import OUT_DIR, ROOT, Channel, Claude, CostGuard, log, now_iso, slu
 from .db import DB
 from .footage import Footage
 from .ideate import choose_topic
-from .qa import run_qa
+from .qa import probe, run_qa
 from .render import render, segments_from_timings
 from .script import write_script
 from .shorts import make_short
@@ -65,17 +65,20 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
 
     video = out_dir / f"{content_id}.mp4"
     timings_file = out_dir / "voice_timings.json"
-    if resume and video.exists() and timings_file.exists():
-        timings = json.loads(timings_file.read_text())
-        tts = {"timings": timings, "duration": timings[-1]["end"] if timings else 0, "audio": out_dir / "voice.mp3", "srt": out_dir / "voice.srt"}
-        tts["duration"] = float(__import__("subprocess").run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(video)], capture_output=True, text=True).stdout.strip() or tts["duration"])
+    reused_render = bool(resume and video.exists())
+    if reused_render:
+        timings = json.loads(timings_file.read_text()) if timings_file.exists() else []
+        tts = {"timings": timings, "duration": timings[-1]["end"] if timings else probe(video)["duration"],
+               "audio": out_dir / "voice.mp3", "srt": out_dir / "voice.srt"}
     else:
         tts = synthesize(data["script"], out_dir, voice=voice)
         segs = segments_from_timings(tts["timings"], data["shot_list"])
         video = render(segs, tts["audio"], tts["srt"], video, "landscape", footage, style=style)
-    thumb = make_thumbnail(video, data["thumbnail_text"], out_dir / f"{content_id}.jpg", accent=accent)
+    thumb = out_dir / f"{content_id}.jpg"
+    if not (resume and thumb.exists()):
+        thumb = make_thumbnail(video, data["thumbnail_text"], thumb, accent=accent)
 
-    chapters = []
+    chapters = (row.get("chapters") or []) if reused_render and not tts["timings"] else []
     for ch in data.get("chapters", []):
         t = next((x for x in tts["timings"] if x["index"] == ch["paragraph_index"]), None)
         if t:
@@ -89,33 +92,46 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     db.update("content", {"id": content_id}, {
         "title": data["title"], "title_variants": data["title_variants"], "description": desc,
         "script": "\n\n".join(data["script"]), "chapters": chapters, "tags": data.get("tags", []),
-        "duration_sec": tts["duration"], "file_path": str(video), "thumbnail_path": str(thumb), "status": "rendered", "placeholder": bool(row.get("placeholder")) if resume and video.exists() else footage.placeholder,
+        "duration_sec": tts["duration"], "file_path": str(video), "thumbnail_path": str(thumb), "status": "rendered", "placeholder": bool(row.get("placeholder")) if reused_render else footage.placeholder,
     })
 
     qa = {"pass": True, "issues": []}
     if claude:
-        qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not footage.placeholder)
+        qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not (bool(row.get("placeholder")) if reused_render else footage.placeholder), db=db)
     thumb = qa.get("thumbnail") or thumb
-    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": "; ".join(qa["issues"]), "thumbnail_path": str(thumb)})
+    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": json.dumps(qa["issues"]), "thumbnail_path": str(thumb)})
     if not qa["pass"]:
+        db.update("content", {"id": content_id}, {"status": "qa_failed"})
         raise RuntimeError(f"QA failed for {content_id}: {qa['issues']}")
 
     shorts = []
     for i, s in enumerate(data.get("shorts", [])[:shorts_per_long]):
         sid = f"{content_id}-short-{i+1}"
+        existing = db.one("content", {"id": sid}) if resume else None
+        if existing and existing.get("qa_status") == "passed" and Path(existing.get("file_path") or "").is_file():
+            shorts.append({"id": sid, "file": Path(existing["file_path"])})
+            continue
         try:
-            res = make_short(s, out_dir, voice, footage, name=sid, style=style)
+            short_file = out_dir / f"{sid}.mp4"
+            if resume and short_file.exists():
+                res = {"file": short_file, "duration": probe(short_file)["duration"],
+                       "title": s["hook_title"], "script": s["script"]}
+            else:
+                res = make_short(s, out_dir, voice, footage, name=sid, style=style)
         except Exception as e:
             log.error("short %s failed: %s", sid, e)
             continue
-        short_qa = run_qa(claude, res["file"], None, res["duration"], sid, out_dir / f"qa-{sid}", vision=not footage.placeholder)
+        short_qa = run_qa(claude, res["file"], None, res["duration"], sid, out_dir / f"qa-{sid}", vision=not footage.placeholder, db=db)
+        db.upsert("content", {"id": sid, "channel": channel.key, "kind": "short", "parent_id": content_id,
+                              "topic": topic["topic"], "title": res["title"], "file_path": str(res["file"]),
+                              "description": f"{res['title']}\n\nFull video: {{LONG_URL}}\n#shorts", "script": res["script"],
+                              "duration_sec": res["duration"], "placeholder": footage.placeholder,
+                              "status": "rendered" if short_qa["pass"] else "qa_failed",
+                              "qa_status": "passed" if short_qa["pass"] else "failed",
+                              "qa_notes": json.dumps(short_qa["issues"])}, on="id")
         if not short_qa["pass"]:
             log.error("short %s failed QA: %s", sid, short_qa["issues"])
-            db.update("content", {"id": sid}, {"qa_status": "failed", "qa_notes": "; ".join(short_qa["issues"])})
             continue
-        db.upsert("content", {"id": sid, "channel": channel.key, "kind": "short", "parent_id": content_id, "topic": topic["topic"], "title": res["title"],
-                              "description": f"{res['title']}\n\nFull video: {{LONG_URL}}\n#shorts", "script": res["script"],
-                              "duration_sec": res["duration"], "file_path": str(res["file"]), "status": "rendered", "qa_status": "passed", "placeholder": footage.placeholder}, on="id")
         if publish and not footage.placeholder:
             try:
                 from .publish import meta
