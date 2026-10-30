@@ -39,7 +39,7 @@ export default async function QueuePage() {
         </Section>
       )}
       {rows.length === 0 && (
-        <div className="card card-alert text-sm text-alert-fg">
+        <div className="card border-warn/50 text-sm text-warn-fg">
           Queue is empty. The next scheduled run will have nothing to produce.
         </div>
       )}
@@ -58,7 +58,7 @@ export default async function QueuePage() {
                   {channel === "all" && (
                     <ChannelBadge channel={r.channel} short />
                   )}
-                  <span className="badge badge-accent">p{r.priority}</span>
+                  <span className="badge badge-warn">p{r.priority}</span>
                   <span className="badge">{r.added_by}</span>
                   <span className="font-medium">{r.topic}</span>
                 </div>

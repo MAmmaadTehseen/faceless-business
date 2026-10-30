@@ -130,6 +130,15 @@ export async function getAnalytics(
       start,
       end,
     ),
+    daily: Array.from(
+      { length: days },
+      (_, i) =>
+        sum(
+          pubs.filter((p) => p.content_id === c.id),
+          start + i * 86400000,
+          start + (i + 1) * 86400000,
+        ).views,
+    ),
     previous: sum(
       pubs.filter((p) => p.content_id === c.id),
       previous,

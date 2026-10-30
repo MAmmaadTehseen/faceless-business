@@ -1,3 +1,5 @@
+"use client";
+import { FilterSheet } from "./FilterSheet";
 import Link from "next/link";
 import { CHANNELS } from "@/lib/channels";
 import { categories } from "@/lib/categories";
@@ -77,7 +79,7 @@ export function ContentFilters({
     !!sp.days && sp.days !== "all",
   ].filter(Boolean).length;
   return (
-    <form
+    <FilterSheet count={count}><form
       key={JSON.stringify(sp) + channel}
       action={path}
       className="filter-bar"
@@ -127,6 +129,6 @@ export function ContentFilters({
       >
         Clear
       </Link>
-    </form>
+    </form></FilterSheet>
   );
 }

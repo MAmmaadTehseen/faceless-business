@@ -1,3 +1,4 @@
+import { SeriesReport } from "@/components/SeriesReport";
 import { Section } from "@/components/Section";
 import Link from "next/link";
 import { db } from "@/lib/supabase";
@@ -6,7 +7,7 @@ import { Cost, Run } from "@/lib/types";
 import { fmtDate, fmtUsd } from "@/lib/format";
 import { getChannelFilter } from "@/lib/channel-filter";
 import { CHANNELS, channelMeta } from "@/lib/channels";
-import { ChannelBadge, ChannelDot } from "@/components/ChannelBadge";
+import { ChannelBadge } from "@/components/ChannelBadge";
 import { PageHeader } from "@/components/PageHeader";
 
 export default async function CostsPage() {
@@ -146,84 +147,53 @@ export default async function CostsPage() {
 
       {all && (
         <Section title="By channel (this month)">
-          <table className="responsive-table w-full text-sm">
-            <tbody>
-              {channelRows.map((r) => (
-                <tr key={r.key} className="border-t border-border">
-                  <td className="py-1">
-                    <span className="inline-flex items-center gap-1.5">
-                      {r.meta && <ChannelDot meta={r.meta} />}
-                      {r.meta?.name ?? r.key}
-                    </span>
-                  </td>
-                  <td data-label="Calls" className="py-1 text-right text-muted">
-                    {r.n} calls
-                  </td>
-                  <td data-label="Spend" className="py-1 text-right">
-                    {fmtUsd(r.usd)}
-                  </td>
-                </tr>
-              ))}
-              <tr className="border-t border-border font-medium">
-                <td className="py-1">Total</td>
-                <td />
-                <td data-label="Spend" className="py-1 text-right">
-                  {fmtUsd(mtd)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <SeriesReport
+            name="costs-by-channel"
+            chart={false}
+            columns={[
+              { key: "calls", label: "Calls" },
+              { key: "spend", label: "Spend", format: "usd", share: true },
+            ]}
+            rows={channelRows.map((r) => ({
+              id: r.key,
+              title: r.meta?.name ?? r.key,
+              values: { calls: r.n, spend: r.usd },
+            }))}
+          />
         </Section>
       )}
 
       <Section title="By step (this month)">
-        {steps.length === 0 && (
-          <p className="text-sm text-muted">No costs this month.</p>
-        )}
-        <table className="responsive-table w-full text-sm">
-          <tbody>
-            {steps.map(([step, e]) => (
-              <tr key={step} className="border-t border-border">
-                <td className="py-1">{step}</td>
-                <td data-label="Calls" className="py-1 text-right text-muted">
-                  {e.n} calls
-                </td>
-                <td data-label="Spend" className="py-1 text-right">
-                  {fmtUsd(e.usd)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <SeriesReport
+          name="costs-by-step"
+          chart={false}
+          columns={[
+            { key: "calls", label: "Calls" },
+            { key: "spend", label: "Spend", format: "usd", share: true },
+          ]}
+          rows={steps.map(([step, e]) => ({
+            id: step,
+            title: step,
+            values: { calls: e.n, spend: e.usd },
+          }))}
+        />
       </Section>
 
       <Section title="Per content (last 30)">
-        {recent.length === 0 && (
-          <p className="text-sm text-muted">No content yet.</p>
-        )}
-        <table className="responsive-table w-full text-sm">
-          <tbody>
-            {recent.map((c) => (
-              <tr key={c.id} className="border-t border-border">
-                <td className="py-1 pr-2">
-                  {all && (
-                    <span className="mr-1">
-                      <ChannelBadge channel={c.channel} />
-                    </span>
-                  )}
-                  <span className="badge mr-1 uppercase">{c.kind}</span>
-                  <span className="line-clamp-1">{c.title}</span>
-                  <span className="text-xs text-muted">
-                    {fmtDate(c.created_at)}
-                  </span>
-                </td>
-                <td data-label="Spend" className="py-1 text-right align-top">
-                  {fmtUsd(perContent.get(c.id) ?? c.claude_cost_usd ?? 0)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <SeriesReport
+          name="costs-per-content"
+          chart={false}
+          columns={[
+            { key: "spend", label: "Spend", format: "usd", share: true },
+          ]}
+          rows={recent.map((c) => ({
+            id: c.id,
+            title: c.title,
+            href: `/content?q=${encodeURIComponent(c.title)}`,
+            subtitle: `${channelMeta(c.channel)?.short ?? c.channel} · ${c.kind} · ${fmtDate(c.created_at)}`,
+            values: { spend: perContent.get(c.id) ?? c.claude_cost_usd ?? 0 },
+          }))}
+        />
       </Section>
 
       <Section title="Last 20 runs">

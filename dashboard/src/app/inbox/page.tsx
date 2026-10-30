@@ -1,3 +1,4 @@
+import { FilterSheet } from "@/components/FilterSheet";
 import Link from "next/link";
 import { db } from "@/lib/supabase";
 import { isOwner } from "@/lib/role";
@@ -88,7 +89,7 @@ export default async function InboxPage({
           </div>
         }
       />
-      <form className="flex gap-2 mb-4">
+      <FilterSheet count={Number(!!platform)}><form className="filter-bar mb-4">
         <input type="hidden" name="tab" value={tab} />
         <select name="platform" aria-label="Platform" defaultValue={platform}>
           <option value="">All platforms</option>
@@ -97,7 +98,7 @@ export default async function InboxPage({
           ))}
         </select>
         <button className="btn">Apply</button>
-      </form>
+      </form></FilterSheet>
       {comments.length === 0 && (
         <div className="card text-sm text-ok-fg">
           No comments in this tab. Try another tab or platform.

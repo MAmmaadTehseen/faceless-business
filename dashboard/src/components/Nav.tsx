@@ -75,6 +75,7 @@ export function Shell({
   children: React.ReactNode;
 }) {
   const path = usePathname();
+  const [more, setMore] = useState(false);
   const router = useRouter();
   const isPublic = PUBLIC.has(path);
 
@@ -159,21 +160,15 @@ export function Shell({
         </div>
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="sticky top-0 z-20 border-b border-border bg-bg-2/90 backdrop-blur md:hidden">
-        <div className="flex items-center justify-between px-4 pt-3">
-          <Brand compact />
-          <button onClick={logout} className="text-xs text-muted hover:text-fg">
-            Log out
-          </button>
-        </div>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-2 pt-2 [scrollbar-width:none]">
-          {navItems}
-        </nav>
-        <div className="overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
-          <ChannelSwitcher key={channel} current={channel} layout="pills" />
-        </div>
+      <header className="mobile-header md:hidden">
+        <Brand compact />
+        <div className="overflow-x-auto"><ChannelSwitcher key={channel} current={channel} layout="pills" /></div>
       </header>
+      <nav className="mobile-tabs md:hidden" aria-label="Main navigation">
+        {[links[0], links[1], links[3], links[2]].map(([href, label, d]) => <Link key={href} href={href} onClick={() => setMore(false)} aria-current={path === href ? "page" : undefined}><Icon d={d} />{href === "/" ? "Home" : label}</Link>)}
+        <button onClick={() => setMore(!more)} aria-expanded={more} aria-controls="more-menu"><Icon d="M4 12h16M4 6h16M4 18h16" />More</button>
+      </nav>
+      {more && <div className="sheet-backdrop md:hidden" onClick={() => setMore(false)}><section id="more-menu" className="mobile-sheet" role="dialog" aria-modal="true" aria-label="More navigation" onClick={e => e.stopPropagation()}><button className="btn float-right" autoFocus onClick={() => setMore(false)}>Close</button><h2>More</h2>{[links[4], links[6], links[5]].map(([href, label]) => <Link className="sheet-link" key={href} href={href} onClick={() => setMore(false)}>{label}</Link>)}<button className="sheet-link" onClick={logout}>Log out</button></section></div>}
 
       <main className="md:pl-60">
         <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8">

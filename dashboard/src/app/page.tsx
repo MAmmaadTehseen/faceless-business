@@ -1,3 +1,6 @@
+import { SeriesReport } from "@/components/SeriesReport";
+import { getAnalytics } from "@/lib/analytics";
+import { getHubAnalytics } from "@/lib/hub-analytics";
 import { ContentFilters } from "@/components/ContentFilters";
 import { filterContent } from "@/lib/content-filters";
 import { parseChannelFilter } from "@/lib/channels";
@@ -26,34 +29,70 @@ export default async function Home({
     getContent(channel, true, sp.days),
     isOwner(),
   ]);
+  const analytics = await getAnalytics(channel, 7);
+  const attention =
+    Number(ov.paused) +
+    Number(!!ov.failedRun) +
+    ov.failedPubs.length +
+    ov.failedContent.length +
+    Number(ov.costs.pct >= 80);
+  const hub = await getHubAnalytics(channel, 7);
   const configured = !!process.env.GITHUB_TOKEN;
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Overview"
-        action={
-          owner && (
-            <div className="flex gap-2">
-              <ActionButton
-                action="sync"
-                label="Sync now"
-                configured={configured}
-              />
-              <ActionButton
-                action="engage"
-                label="Reply now"
-                configured={configured}
-              />
+    <div className="space-y-6 home-stack">
+      <div className="mobile-today">
+        <h1 className="text-xl font-semibold mb-4">Today</h1>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            ["Views · 7d", analytics.total.views.toLocaleString()],
+            ["Likes · 7d", analytics.total.likes.toLocaleString()],
+            ["Pending replies", ov.pending.length],
+            [
+              "Month / budget",
+              `${fmtUsd(ov.costs.mtd)} / ${fmtUsd(ov.costs.budget)}`,
+            ],
+          ].map(([label, value]) => (
+            <div className="card" key={label}>
+              <p className="text-sm text-muted">{label}</p>
+              <p className="stat-value mt-2">{value}</p>
             </div>
-          )
-        }
-      />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          ))}
+        </div>
+      </div>
+
+      <div className="home-title">
+        <PageHeader
+          title="Overview"
+          action={
+            owner && (
+              <div className="flex gap-2">
+                <ActionButton
+                  action="sync"
+                  label="Sync now"
+                  configured={configured}
+                />
+                <ActionButton
+                  action="engage"
+                  label="Reply now"
+                  configured={configured}
+                />
+              </div>
+            )
+          }
+        />
+      </div>
+      <div className="desktop-home-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           ["Uploads this week", ov.publishedWeek],
           ["Queued uploads", ov.queuedUploads.length],
           ["Pending replies", ov.pending.length],
           ["Month spend", fmtUsd(ov.costs.mtd)],
+          ...(hub && hub.total.views > 0
+            ? [
+                ["Hub views · 7d", hub.total.views],
+                ["Hub YouTube click-throughs · 7d", hub.total.youtube],
+              ]
+            : []),
         ].map(([label, value]) => (
           <div className="card" key={label}>
             <div className="text-xs text-muted">{label}</div>
@@ -66,50 +105,74 @@ export default async function Home({
           </div>
         ))}
       </div>
-      {(ov.paused ||
-        ov.failedRun ||
-        ov.failedPubs.length > 0 ||
-        ov.failedContent.length > 0 ||
-        ov.costs.pct >= 80) && (
-        <Section title="Needs attention">
-          {ov.paused && <p className="text-warn-fg">Pipeline paused</p>}
-          {ov.failedRun && (
-            <Link href="/costs" className="text-alert-fg">
-              Latest run failed · View log
-            </Link>
-          )}
-          {ov.failedPubs.map((p) => (
-            <p key={p.id} className="text-alert-fg">
-              {p.title}: {p.platform} upload failed
-            </p>
-          ))}
-          {ov.failedContent.map((c) => (
-            <p key={c.id} className="text-alert-fg">
-              {c.title}: production or QA failed
-            </p>
-          ))}
-          {ov.costs.pct >= 80 && (
-            <p className="text-warn-fg">
-              Budget {ov.costs.pct.toFixed(0)}% used
-            </p>
-          )}
-        </Section>
-      )}
-      <Section title="Pipeline queue">
-        {!ov.queuedUploads.length && (
-          <p className="text-sm text-muted">
-            No queued uploads. Uploads awaiting quota will appear here.
-          </p>
-        )}
-        {ov.queuedUploads.map((p) => (
-          <p key={p.id} className="text-sm text-muted">
-            {p.title} · {p.platform} · Queued
-            {p.error ? ` (last attempt: ${p.error.slice(0, 120)})` : ""}
-          </p>
-        ))}
+      <Section title="Views over the last 7 days">
+        <SeriesReport
+          name="overview-channels"
+          dates={analytics.daily.map((d) => d.date)}
+          columns={[{ key: "views", label: "Views", share: true }]}
+          rows={analytics.channels.map((c) => ({
+            id: c.name,
+            title: CHANNELS.find((m) => m.key === c.name)?.short ?? c.name,
+            daily: c.daily,
+            values: { views: c.views },
+          }))}
+        />
       </Section>
+      {
+        <details className="card attention">
+          <summary className="cursor-pointer min-h-11 flex items-center">
+            Needs attention{" "}
+            <span
+              className={`badge ${attention ? "badge-alert" : "badge-ok"} ml-2`}
+            >
+              {attention}
+            </span>
+          </summary>
+          <div className="space-y-2 pt-3">
+            {!attention && (
+              <p className="text-muted">Everything looks clear.</p>
+            )}
+            {ov.paused && <p className="text-warn-fg">Pipeline paused</p>}
+            {ov.failedRun && (
+              <Link href="/costs" className="text-alert-fg">
+                Latest run failed · View log
+              </Link>
+            )}
+            {ov.failedPubs.map((p) => (
+              <p key={p.id} className="text-alert-fg">
+                {p.title}: {p.platform} upload failed
+              </p>
+            ))}
+            {ov.failedContent.map((c) => (
+              <p key={c.id} className="text-alert-fg">
+                {c.title}: production or QA failed
+              </p>
+            ))}
+            {ov.costs.pct >= 80 && (
+              <p className="text-warn-fg">
+                Budget {ov.costs.pct.toFixed(0)}% used
+              </p>
+            )}
+          </div>
+        </details>
+      }
+      <div className="home-pipeline">
+        <Section title="Pipeline queue">
+          {!ov.queuedUploads.length && (
+            <p className="text-sm text-muted">
+              No queued uploads. Uploads awaiting quota will appear here.
+            </p>
+          )}
+          {ov.queuedUploads.map((p) => (
+            <p key={p.id} className="text-sm text-muted">
+              {p.title} · {p.platform} · Queued
+              {p.error ? ` (last attempt: ${p.error.slice(0, 120)})` : ""}
+            </p>
+          ))}
+        </Section>
+      </div>
       <Section title="Channels">
-        <div className="divide-y divide-border">
+        <div className="home-channels divide-y divide-border">
           {CHANNELS.filter((c) => channel === "all" || channel === c.key).map(
             (c) => {
               const h = ov.health.find((h) => h.key === c.key);
@@ -171,7 +234,11 @@ export default async function Home({
         }
       >
         <ContentFilters sp={sp} channel={channel} path="/" />
-        <ContentList items={filterContent(items, sp)} limit={12} />
+        <ContentList
+          items={filterContent(items, sp)}
+          sort={sp.sort ?? "newest"}
+          limit={12}
+        />
       </Section>
     </div>
   );
