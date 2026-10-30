@@ -166,7 +166,7 @@ export function Shell({
 
       <header className="mobile-header md:hidden">
         <Brand compact />
-        <div className="overflow-x-auto"><ChannelSwitcher key={channel} current={channel} layout="pills" /></div>
+        <details className="mobile-channel-switcher"><summary className="flex items-center min-h-11 cursor-pointer text-sm">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"} · Channels & platforms</summary><ChannelSwitcher key={channel} current={channel} layout="list" /></details>
       </header>
       <nav className="mobile-tabs md:hidden" aria-label="Main navigation">
         {[links[0], links[1], links[3], links[2]].map(([href, label, d]) => <Link key={href} href={scopedHref(href)} onClick={() => setMore(false)} aria-current={path === href ? "page" : undefined}><Icon d={d} />{href === "/" ? "Home" : label}</Link>)}

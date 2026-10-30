@@ -157,7 +157,7 @@ export default async function Analytics({
       <PageHeader
         title="Analytics"
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 analytics-periods">
             {["1", "7", "28", "30", "90", "all"].map((d) => {
               const q = new URLSearchParams(sp);
               q.set("days", d);

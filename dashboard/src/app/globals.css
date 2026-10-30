@@ -857,3 +857,56 @@ nav[aria-label="Analytics sections"] .btn {
     font-size: 28px;
   }
 }
+
+.analytics-periods .btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.mobile-channel-switcher[open] {
+  max-height: 65dvh;
+  overflow-y: auto;
+}
+.mobile-sheet {
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+@media (max-width: 767px) {
+  .mobile-today .stat-value {
+    font-size: clamp(1.3rem, 5.7vw, 1.7rem);
+  }
+  main > div {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .attention:not([open]) {
+    align-self: flex-start;
+    border-radius: 999px;
+    padding: 0 16px;
+  }
+}
+@media (max-width: 767px) {
+  .home-channels > div {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr);
+    align-content: start;
+  }
+  .home-channels > div > :nth-child(n + 3) {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+/* Reports scroll within their card on narrow desktop layouts. */
+@media (min-width: 768px) {
+  .series-report {
+    overflow-x: auto;
+  }
+}
+@media (max-width: 767px) {
+  .report-table td {
+    flex-wrap: wrap;
+  }
+  .report-table td > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}

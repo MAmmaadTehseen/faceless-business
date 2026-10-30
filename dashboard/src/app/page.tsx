@@ -111,7 +111,14 @@ export default async function Home({
           </div>
         ))}
       </div>
-      <Section title="Views over the last 7 days">
+      <div className="mobile-today card">
+        <p className="text-sm text-muted mb-2">Views over the last 7 days</p>
+        <svg viewBox="0 0 320 72" className="w-full h-20" role="img" aria-label={`Daily views: ${analytics.daily.map(d => d.views).join(", ")}`}>
+          <polyline fill="none" stroke="var(--accent-fg)" strokeWidth="3" strokeLinejoin="round" points={analytics.daily.map((d, i, days) => `${8 + i * 304 / Math.max(1, days.length - 1)},${64 - d.views / Math.max(1, ...days.map(day => day.views)) * 56}`).join(" ")} />
+        </svg>
+        <div className="flex justify-between text-xs text-muted"><span>{analytics.daily[0]?.date}</span><span>{analytics.daily.at(-1)?.date}</span></div>
+      </div>
+      <div className="hidden md:block"><Section title="Views over the last 7 days">
         <SeriesReport
           name="overview-channels"
           dates={analytics.daily.map((d) => d.date)}
@@ -123,7 +130,7 @@ export default async function Home({
             values: { views: c.views },
           }))}
         />
-      </Section>
+      </Section></div>
       {
         <details className="card attention">
           <summary className="cursor-pointer min-h-11 flex items-center">

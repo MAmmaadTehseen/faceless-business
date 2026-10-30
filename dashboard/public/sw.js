@@ -1,8 +1,8 @@
-const STATIC = 'faceless-static-v1';
+const STATIC = 'faceless-static-v2';
 const SHELL = ['/offline.html', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/maskable-512.png', '/icons/apple-touch-icon.png'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(STATIC).then(cache => cache.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', event => { event.waitUntil(Promise.all([self.clients.claim(), caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('faceless-') && k !== STATIC).map(k => caches.delete(k))))])); });
-const isStatic = url => url.origin === self.location.origin && (url.pathname.startsWith('/_next/static/') || SHELL.includes(url.pathname));
+const isStatic = url => url.origin === self.location.origin && !url.pathname.startsWith('/api/') && (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/') || SHELL.includes(url.pathname) || /\.(?:css|js|png|jpe?g|webp|avif|svg|ico|woff2?|ttf)$/i.test(url.pathname));
 self.addEventListener('message', event => {
   if (event.data?.type !== 'ASSETS' || !Array.isArray(event.data.urls)) return;
   event.waitUntil(caches.open(STATIC).then(cache => Promise.all(event.data.urls.filter(u => { try { return isStatic(new URL(u)); } catch { return false; } }).map(u => cache.add(u).catch(() => {})))));
