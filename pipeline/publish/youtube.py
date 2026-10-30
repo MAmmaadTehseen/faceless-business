@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -48,6 +49,34 @@ def configured() -> bool:
     return bool(os.getenv("YT_CLIENT_ID") and os.getenv("YT_CLIENT_SECRET") and _token())
 
 
+QUOTA_REASONS = {"uploadLimitExceeded", "rateLimitExceeded", "quotaExceeded"}
+
+
+def error_details(exc):
+    """Extract safe API diagnostics without logging requests or credentials."""
+    status = getattr(getattr(exc, "resp", None), "status", None)
+    response = getattr(exc, "response", None)
+    data = {}
+    try:
+        data = json.loads(getattr(exc, "content", b"{}"))
+        if response is not None:
+            status = response.status_code
+            data = response.json()
+    except (ValueError, TypeError, AttributeError):
+        pass
+    error = data.get("error", {}) if isinstance(data, dict) else {}
+    if not isinstance(error, dict):
+        error = {}
+    reasons = [e.get("reason") for e in error.get("errors", []) if isinstance(e, dict) and e.get("reason")]
+    reason = ",".join(reasons) or error.get("type") or error.get("status") or type(exc).__name__
+    details = {"error": type(exc).__name__, "http_status": status, "reason": reason}
+    if error.get("code") is not None:
+        details["code"] = error["code"]
+    if error.get("error_subcode") is not None:
+        details["subcode"] = error["error_subcode"]
+    return details
+
+
 def upload(video: Path, title: str, description: str, tags: list[str], privacy: str = "private",
            publish_at: datetime | None = None, thumbnail: Path | None = None, is_short: bool = False, category_id: str = "28") -> dict:
     body = {
@@ -61,7 +90,11 @@ def upload(video: Path, title: str, description: str, tags: list[str], privacy: 
     req = yt().videos().insert(part="snippet,status", body=body, media_body=media)
     resp = None
     while resp is None:
-        status, resp = req.next_chunk()
+        try:
+            status, resp = req.next_chunk()
+        except Exception as exc:
+            log.error("youtube upload API error: %s", json.dumps(error_details(exc)))
+            raise
     vid = resp["id"]
     if thumbnail and thumbnail.exists():
         try:

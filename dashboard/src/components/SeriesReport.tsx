@@ -14,6 +14,7 @@ export type ReportRow = {
   title: string;
   status?: string;
   subtitle?: string;
+  actions?: React.ReactNode;
   links?: { label: string; href: string }[];
   color?: string;
   href?: string;
@@ -405,6 +406,7 @@ export function SeriesReport({
                           {r.status === "published" ? "live" : r.status}
                         </span>
                       )}
+                      {r.actions}
                       {<details className="row-details"><summary>Details</summary>                      {r.subtitle && (
                         <p className="text-xs text-muted mt-1">{r.subtitle}</p>
                       )}

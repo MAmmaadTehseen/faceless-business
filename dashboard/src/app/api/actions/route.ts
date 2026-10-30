@@ -3,6 +3,7 @@ import { isOwner } from "@/lib/role";
 import { isChannelKey } from "@/lib/channels";
 const workflows: Record<string, string> = {
   sync: "sync.yml",
+  retry: "retry.yml",
   engage: "engage.yml",
   produce: "produce.yml",
   shorts: "shorts.yml",
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
   if (!file)
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   const inputs: Record<string, string> = {};
+  const requestId = b.action === "retry" ? crypto.randomUUID() : undefined;
   if (["produce", "shorts"].includes(b.action)) {
     if (!isChannelKey(b.channel))
       return NextResponse.json({ error: "Invalid channel" }, { status: 400 });
@@ -49,13 +51,27 @@ export async function POST(req: Request) {
       );
     inputs.privacy = "private";
   }
+  if (b.action === "retry") {
+    inputs.request_id = requestId!;
+    if (b.ids != null && (typeof b.ids !== "string" || !/^\d+(,\d+)*$/.test(b.ids) || b.ids.length > 5000))
+      return NextResponse.json({ error: "Invalid publication IDs" }, { status: 400 });
+    if (b.content_id != null && (typeof b.content_id !== "string" || !/^[a-zA-Z0-9_-]{1,200}$/.test(b.content_id)))
+      return NextResponse.json({ error: "Invalid content ID" }, { status: 400 });
+    if (!b.ids && !b.content_id)
+      return NextResponse.json({ error: "Select publications to retry" }, { status: 400 });
+    if (b.platform && !["youtube", "instagram", "facebook"].includes(b.platform))
+      return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
+    if (b.ids) inputs.ids = b.ids;
+    if (b.content_id) inputs.content_id = b.content_id;
+    if (b.platform) inputs.platform = b.platform;
+  }
   try {
     const res = await github(`${file}/dispatches`, {
       method: "POST",
       body: JSON.stringify({ ref: "main", inputs }),
     });
     if (res.ok)
-      return NextResponse.json({ ok: true, startedAt: new Date().toISOString() });
+      return NextResponse.json({ ok: true, requestId, startedAt: new Date().toISOString() });
     const detail = await res
       .json()
       .then((j) => (typeof j?.message === "string" ? j.message : ""))
@@ -79,7 +95,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Invalid workflow" }, { status: 400 });
   try {
     const res = await github(
-      `${file}/runs?per_page=1&event=workflow_dispatch&branch=main`,
+      `${file}/runs?per_page=100&event=workflow_dispatch&branch=main`,
     );
     if (!res.ok)
       return NextResponse.json(
@@ -87,7 +103,8 @@ export async function GET(req: Request) {
         { status: 502 },
       );
     const j = await res.json();
-    const run = j.workflow_runs?.[0];
+    const requestId = new URL(req.url).searchParams.get("request_id");
+    const run = requestId ? j.workflow_runs?.find((r: {display_title: string}) => r.display_title === `retry ${requestId}`) : j.workflow_runs?.[0];
     return NextResponse.json(
       run
         ? {

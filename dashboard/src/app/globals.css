@@ -1158,3 +1158,6 @@ button,.btn { min-width:44px; }
  .video-details dl { grid-template-columns:minmax(0,1fr); gap:4px; }
  .video-details dd { margin-bottom:12px; }
 }
+
+.btn.btn-ghost { background: transparent; border-color: transparent; }
+.btn.btn-ghost:hover { background: var(--border); }

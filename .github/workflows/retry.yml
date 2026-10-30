@@ -1,0 +1,63 @@
+name: retry
+run-name: retry ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: Dashboard progress correlation
+        type: string
+      ids:
+        description: Comma-separated publication IDs
+        type: string
+      content_id:
+        description: Content ID (alternative to IDs)
+        type: string
+      platform:
+        description: Optional platform
+        type: string
+permissions:
+  contents: write
+  actions: read
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency: manual-publication-retry
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+      YT_REFRESH_TOKEN_TRADEWINDS: ${{ secrets.YT_REFRESH_TOKEN_TRADEWINDS }}
+      YT_REFRESH_TOKEN_ESCAPEVELOCITY: ${{ secrets.YT_REFRESH_TOKEN_ESCAPEVELOCITY }}
+      META_ACCESS_TOKEN_FUTUREWORK: ${{ secrets.META_ACCESS_TOKEN_FUTUREWORK }}
+      META_PAGE_ID_FUTUREWORK: ${{ secrets.META_PAGE_ID_FUTUREWORK }}
+      META_IG_USER_ID_FUTUREWORK: ${{ secrets.META_IG_USER_ID_FUTUREWORK }}
+      IG_ACCESS_TOKEN_FUTUREWORK: ${{ secrets.IG_ACCESS_TOKEN_FUTUREWORK }}
+      META_ACCESS_TOKEN_TRADEWINDS: ${{ secrets.META_ACCESS_TOKEN_TRADEWINDS }}
+      META_PAGE_ID_TRADEWINDS: ${{ secrets.META_PAGE_ID_TRADEWINDS }}
+      META_IG_USER_ID_TRADEWINDS: ${{ secrets.META_IG_USER_ID_TRADEWINDS }}
+      IG_ACCESS_TOKEN_TRADEWINDS: ${{ secrets.IG_ACCESS_TOKEN_TRADEWINDS }}
+      META_ACCESS_TOKEN_ESCAPEVELOCITY: ${{ secrets.META_ACCESS_TOKEN_ESCAPEVELOCITY }}
+      META_PAGE_ID_ESCAPEVELOCITY: ${{ secrets.META_PAGE_ID_ESCAPEVELOCITY }}
+      META_IG_USER_ID_ESCAPEVELOCITY: ${{ secrets.META_IG_USER_ID_ESCAPEVELOCITY }}
+      IG_ACCESS_TOKEN_ESCAPEVELOCITY: ${{ secrets.IG_ACCESS_TOKEN_ESCAPEVELOCITY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Retry selected publications
+        env:
+          RETRY_IDS: ${{ inputs.ids }}
+          RETRY_CONTENT: ${{ inputs.content_id }}
+          RETRY_PLATFORM: ${{ inputs.platform }}
+        run: |
+          args=(--force)
+          if [ -n "$RETRY_IDS" ]; then args+=(--ids "$RETRY_IDS"); fi
+          if [ -n "$RETRY_CONTENT" ]; then args+=(--content-id "$RETRY_CONTENT"); fi
+          if [ -n "$RETRY_PLATFORM" ]; then args+=(--platform "$RETRY_PLATFORM"); fi
+          python -m pipeline.retry "${args[@]}"
+

@@ -88,7 +88,7 @@ def _restore_queue(db, row, pub):
     return row
 
 
-def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queue=False):
+def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queue=False, force=False):
     existing = db.one("publications", {"content_id": row["id"], "platform": "youtube"})
     if existing and existing.get("status") == "live":
         return {"platform": "youtube", "content_id": row["id"], "id": existing["platform_id"], "url": existing["url"]}
@@ -98,12 +98,19 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
         raise RuntimeError("Refusing publication without passed QA")
     if draining:
         row = _restore_queue(db, dict(row), existing)
+    if existing and not force:
+        try:
+            retry_at = json.loads(existing.get("error") or "{}").get("retry_after")
+        except (ValueError, AttributeError):
+            retry_at = None
+        if retry_at and datetime.fromisoformat(retry_at) > datetime.now(timezone.utc):
+            return None
     video = Path(row["file_path"])
     if not video.exists():
         raise FileNotFoundError(f"Queued media missing for {row['id']}")
     thumbnail = Path(row["thumbnail_path"]) if row.get("thumbnail_path") else None
     units = THUMB_COST if thumbnail and thumbnail.exists() else 0
-    if not reserve(db, units, uploads=1):
+    if not (reserve(db, units, uploads=1, force=True) if force else reserve(db, units, uploads=1)):
         fields = {}
         if not draining:
             db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued",
@@ -159,9 +166,19 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
                 log.warning("queue media cleanup deferred for %s", row["id"])
         return {"platform": "youtube", "content_id": row["id"], **r}
     except Exception as e:
-        log.error("youtube upload failed for %s (%s)", row["id"], type(e).__name__)
-        db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "failed",
-            "error": type(e).__name__}, on="content_id,platform")
+        details = youtube.error_details(e)
+        quota = bool(set(details["reason"].split(",")) & youtube.QUOTA_REASONS) and not force
+        fields = {}
+        if quota:
+            details["retry_after"] = (datetime.now(timezone.utc) + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+            try:
+                fields = _persist_queue(db, row)
+            except Exception as storage_error:
+                quota = False
+                details["storage_error"] = type(storage_error).__name__
+        log.error("youtube upload failed for %s: %s", row["id"], json.dumps(details))
+        db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued" if quota else "failed",
+            "privacy": privacy, "publish_at": slot.isoformat(), "error": json.dumps(details), **fields}, on="content_id,platform")
         return None
 
 

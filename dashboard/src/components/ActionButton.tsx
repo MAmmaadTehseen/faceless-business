@@ -7,13 +7,18 @@ export function ActionButton({
   label,
   channel,
   configured,
+  inputs,
+  confirmation,
 }: {
   action: string;
   label: string;
   channel?: string;
   configured: boolean;
+  inputs?: Record<string, string>;
+  confirmation?: string;
 }) {
   const router = useRouter();
+  const [requestId, setRequestId] = useState("");
   const [message, setMessage] = useState("");
   const [since, setSince] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -21,7 +26,7 @@ export function ActionButton({
     if (!since) return;
     const timer = setInterval(async () => {
       try {
-        const r = await fetch(`/api/actions?status=${action}`);
+        const r = await fetch(`/api/actions?status=${action}&request_id=${encodeURIComponent(requestId)}`);
         const j = await r.json();
         if (!r.ok) {
           setMessage(j.error);
@@ -29,9 +34,10 @@ export function ActionButton({
           return;
         }
         if (j.created_at && Date.parse(j.created_at) >= since - 5000) {
+          if (j.status !== "completed") setMessage(j.status === "in_progress" ? "Running" : "Dispatched");
           if (j.status === "completed") {
             setMessage(
-              j.conclusion === "success" ? "Completed" : `Run ${j.conclusion}`,
+              j.conclusion === "success" ? "Done" : `Failed (${j.conclusion})`,
             );
             setSince(0);
             router.refresh();
@@ -47,8 +53,9 @@ export function ActionButton({
       }
     }, 15000);
     return () => clearInterval(timer);
-  }, [since, action, router]);
+  }, [since, action, router, requestId]);
   async function trigger() {
+    if (confirmation && !confirm(confirmation)) return;
     if (
       channel &&
       !confirm(
@@ -61,16 +68,16 @@ export function ActionButton({
       const r = await fetch("/api/actions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, channel, privacy: "private" }),
+        body: JSON.stringify({ action, channel, privacy: "private", ...inputs }),
       });
       const j = await r.json();
-      setMessage(r.ok ? "Started, numbers refresh in ~3 min" : j.error);
+      setMessage(r.ok ? "Dispatched" : j.error);
       toast(
         r.ok
           ? `${label}: workflow started`
           : (j.error ?? "Could not start workflow"),
       );
-      if (r.ok) setSince(Date.now());
+      if (r.ok) { setRequestId(j.requestId ?? ""); setSince(Date.now()); }
     } catch {
       setMessage("Could not start workflow");
     } finally {
@@ -80,7 +87,7 @@ export function ActionButton({
   return (
     <span className="inline-flex flex-col gap-1">
       <button
-        className="btn"
+        className={action === "retry" ? "btn btn-ghost" : "btn"}
         title={configured ? label : "not configured"}
         disabled={!configured || busy || !!since}
         onClick={trigger}

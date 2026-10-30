@@ -114,10 +114,18 @@ def _github_release_url(video: Path, tag: str) -> str:
     return f"https://github.com/{repo}/releases/download/{tag}/{video.name}"
 
 
+def _publish_response(response):
+    data = response.json()
+    if not response.ok or (isinstance(data, dict) and data.get("error")):
+        # Keep the response for structured status/reason extraction, never the URL/token.
+        raise requests.HTTPError("Meta publishing API error", response=response)
+    return data
+
+
 def _wait_container(container_id: str, timeout: int = 600) -> None:
     t0 = time.time()
     while time.time() - t0 < timeout:
-        r = requests.get(f"{IG}/{container_id}", params={"fields": "status_code,status", "access_token": _ig_tok()}, timeout=30).json()
+        r = _publish_response(requests.get(f"{IG}/{container_id}", params={"fields": "status_code,status", "access_token": _ig_tok()}, timeout=30))
         if r.get("status_code") == "FINISHED":
             return
         if r.get("status_code") == "ERROR":
@@ -128,33 +136,33 @@ def _wait_container(container_id: str, timeout: int = 600) -> None:
 
 def publish_instagram_reel(video_url: str, caption: str, thumb_offset_ms: int = 2000) -> dict:
     ig = _current.env("META_IG_USER_ID")
-    r = requests.post(f"{IG}/{ig}/media", data={"media_type": "REELS", "video_url": video_url, "caption": caption[:2200],
-                                              "share_to_feed": "true", "thumb_offset": thumb_offset_ms, "access_token": _ig_tok()}, timeout=60).json()
+    r = _publish_response(requests.post(f"{IG}/{ig}/media", data={"media_type": "REELS", "video_url": video_url, "caption": caption[:2200],
+                                              "share_to_feed": "true", "thumb_offset": thumb_offset_ms, "access_token": _ig_tok()}, timeout=60))
     if "id" not in r:
         raise RuntimeError(f"instagram container failed: {r}")
     _wait_container(r["id"])
-    p = requests.post(f"{IG}/{ig}/media_publish", data={"creation_id": r["id"], "access_token": _ig_tok()}, timeout=60).json()
+    p = _publish_response(requests.post(f"{IG}/{ig}/media_publish", data={"creation_id": r["id"], "access_token": _ig_tok()}, timeout=60))
     if "id" not in p:
         raise RuntimeError(f"instagram publish failed: {p}")
-    perm = requests.get(f"{IG}/{p['id']}", params={"fields": "permalink", "access_token": _ig_tok()}, timeout=30).json().get("permalink")
+    perm = _publish_response(requests.get(f"{IG}/{p['id']}", params={"fields": "permalink", "access_token": _ig_tok()}, timeout=30)).get("permalink")
     log.info("instagram: reel %s", p["id"])
     return {"id": p["id"], "url": perm}
 
 
 def publish_facebook_reel(video_path: Path, description: str) -> dict:
     page = _current.env("META_PAGE_ID")
-    s = requests.post(f"{G}/{page}/video_reels", data={"upload_phase": "start", "access_token": _tok()}, timeout=60).json()
+    s = _publish_response(requests.post(f"{G}/{page}/video_reels", data={"upload_phase": "start", "access_token": _tok()}, timeout=60))
     if "video_id" not in s:
         raise RuntimeError(f"facebook reel start failed: {s}")
     vid = s["video_id"]
     size = video_path.stat().st_size
     with open(video_path, "rb") as f:
-        up = requests.post(f"https://rupload.facebook.com/video-upload/v21.0/{vid}",
-                           headers={"Authorization": f"OAuth {_tok()}", "offset": "0", "file_size": str(size)}, data=f, timeout=600).json()
+        up = _publish_response(requests.post(f"https://rupload.facebook.com/video-upload/v21.0/{vid}",
+                           headers={"Authorization": f"OAuth {_tok()}", "offset": "0", "file_size": str(size)}, data=f, timeout=600))
     if not up.get("success"):
         raise RuntimeError(f"facebook reel upload failed: {up}")
-    fin = requests.post(f"{G}/{page}/video_reels", data={"upload_phase": "finish", "video_id": vid, "video_state": "PUBLISHED",
-                                                         "description": description[:5000], "access_token": _tok()}, timeout=60).json()
+    fin = _publish_response(requests.post(f"{G}/{page}/video_reels", data={"upload_phase": "finish", "video_id": vid, "video_state": "PUBLISHED",
+                                                         "description": description[:5000], "access_token": _tok()}, timeout=60))
     if not fin.get("success"):
         raise RuntimeError(f"facebook reel finish failed: {fin}")
     log.info("facebook: reel %s", vid)

@@ -1,4 +1,5 @@
 "use client";
+import { RetryButton } from "./RetryButton";
 import { useSearchParams } from "next/navigation";
 import { contentHref } from "@/lib/content-link";
 import { SeriesReport } from "./SeriesReport";
@@ -12,6 +13,7 @@ export function views(c: ContentItem) {
 }
 export function ContentList({
   items,
+  owner = false,
   allItems,
   initialChartVisible = true,
   limit = Infinity,
@@ -20,6 +22,7 @@ export function ContentList({
   sort = "newest",
 }: {
   items: ContentItem[];
+  owner?: boolean;
   allItems?: ContentItem[];
   initialChartVisible?: boolean;
   limit?: number;
@@ -53,6 +56,7 @@ export function ContentList({
       ]}
       rows={shown.map((c) => ({
         id: c.id,
+        actions: owner ? <span className="flex gap-2">{c.publications.filter(p => ["failed", "queued"].includes(p.status)).map(p => <RetryButton key={p.id} publications={[p]} label={`Retry ${p.platform}`}/>)}</span> : undefined,
         title: c.title,
         status: c.status === "killed" ? "killed" :
           c.status === "failed" ||
