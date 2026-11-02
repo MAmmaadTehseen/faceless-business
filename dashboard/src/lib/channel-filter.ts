@@ -1,3 +1,3 @@
 import "server-only";
-import { ChannelFilter } from "./channels";
-export async function getChannelFilter(): Promise<ChannelFilter> { return "all"; }
+import { getScope } from "./server-scope";
+export async function getChannelFilter() { return (await getScope()).channel; }

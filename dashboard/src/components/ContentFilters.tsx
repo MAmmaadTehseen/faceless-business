@@ -70,7 +70,7 @@ export function ContentFilters({
         ["all", "All time"],
       ],
     ],
-    ["sort", "Sort", Object.entries(sorts)],
+    ["sort", "Sort", Object.entries(sorts).filter(([key]) => key !== "watch" || !sp.platform || sp.platform === "youtube")],
   ] as [string, string, string[][]][];
   const count = [
     !!sp.q?.trim(),
@@ -128,7 +128,7 @@ export function ContentFilters({
       <Link
         className="badge"
         scroll={false}
-        href={`${path}?channel=all${analytics ? "&tab=" + (sp.tab ?? "overview") : ""}`}
+        href={`${path}?channel=all&platform=all${analytics ? "&tab=" + (sp.tab ?? "overview") : ""}`}
       >
         Clear
       </Link>

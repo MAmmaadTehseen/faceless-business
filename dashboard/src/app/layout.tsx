@@ -1,3 +1,4 @@
+import { getScope } from "@/lib/server-scope";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Pwa } from "@/components/Pwa";
@@ -35,8 +36,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const channel = await getChannelFilter();
-  const unread = await getPendingComments("all").then(rows=>rows.length).catch(()=>0);
+  const scope = await getScope();
+  const channel = scope.channel;
+  const unread = await getPendingComments(channel, 200, scope.platform === "all" ? "" : scope.platform).then(rows=>rows.length).catch(()=>0);
   return (
     <html lang="en">
       <body className="min-h-screen">

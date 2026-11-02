@@ -1,9 +1,10 @@
 "use client";
-import Link from "next/link";
+import { parseScope, saveScope, PLATFORMS } from "@/lib/scope";
+import Link from "@/components/ScopeLink";
 import { BottomSheet } from "./BottomSheet";
 import { Density } from "./Density";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { CHANNELS, ChannelFilter, accentCss, parseChannelFilter } from "@/lib/channels";
 
 const links = [
@@ -81,8 +82,15 @@ export function Shell({
   const path = usePathname();
   const params = useSearchParams();
   channel = parseChannelFilter(params.get("channel") ?? "all");
-  const platform = params.get("platform") ?? "";
-  const scopedHref = (href: string) => { const q = new URLSearchParams(); q.set("channel", channel); if (platform) q.set("platform", platform); return `${href}?${q}`; };
+  const platform = parseScope(Object.fromEntries(params)).platform;
+  useEffect(() => { if (!PUBLIC.has(path)) saveScope({ channel, platform }); }, [channel, platform, path]);
+  const scopedHref = (href: string) => { const q = new URLSearchParams(); q.set("channel", channel); q.set("platform", platform); return `${href}?${q}`; };
+  const [badge, setBadge] = useState(unread);
+  useEffect(() => {
+    const abort = new AbortController();
+    fetch(`/api/scope?channel=${channel}&platform=${platform}`, {signal:abort.signal}).then(r => r.ok ? r.json() : null).then(data => { if(data) setBadge(data.unread); }).catch(() => {});
+    return () => abort.abort();
+  }, [channel, platform]);
   const [more, setMore] = useState(false);
   const [scope, setScope] = useState(false);
   const router = useRouter();
@@ -158,7 +166,8 @@ export function Shell({
         </div>
         <nav className="flex flex-col gap-1 px-3">{navItems}</nav>
         <div className="mt-6 px-3">
-          <div className="section-title px-3 pb-2">Channel</div>
+          <div className="section-title px-3 pb-2">Platform</div><PlatformSwitcher />
+          <div className="section-title px-3 pb-2 mt-4">Channel</div>
           <ChannelSwitcher key={channel} current={channel} layout="list" />
         </div>
         <div className="mt-auto border-t border-border p-3">
@@ -173,11 +182,11 @@ export function Shell({
       </aside>
 
       <header className="mobile-header lg:hidden">
-        <button className="scope-chip" onClick={() => setScope(true)} aria-haspopup="dialog">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"}{platform ? ` · ${platform}` : ""} <span aria-hidden>⌄</span></button>
+        <button className="scope-chip" onClick={() => setScope(true)} aria-haspopup="dialog">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"}{` / ${platform === "all" ? "All platforms" : platform === "youtube" ? "YouTube" : platform === "instagram" ? "Instagram" : platform === "facebook" ? "Facebook" : "Hub"}`} <span aria-hidden>⌄</span></button>
       </header>
-      <BottomSheet open={scope} close={() => setScope(false)} title="Channels & platforms"><ChannelSwitcher key={channel} current={channel} layout="list" /></BottomSheet>
+      <BottomSheet open={scope} close={() => setScope(false)} title="Channels & platforms"><h2 className="section-title">Channel</h2><ChannelSwitcher key={channel} current={channel} layout="list" /><h2 className="section-title mt-4">Platform</h2><PlatformSwitcher /></BottomSheet>
       <nav className="mobile-tabs lg:hidden" aria-label="Main navigation">
-        {[links[0], links[1], links[3], links[2]].map(([href, label, d]) => <Link key={href} href={scopedHref(href)} onClick={() => setMore(false)} aria-current={path === href ? "page" : undefined}><Icon d={d} /><span>{href === "/" ? "Home" : label}{href === "/inbox" && unread > 0 && <b className="unread-badge">{unread > 99 ? "99+" : unread}</b>}</span></Link>)}
+        {[links[0], links[1], links[3], links[2]].map(([href, label, d]) => <Link key={href} href={scopedHref(href)} onClick={() => setMore(false)} aria-current={path === href ? "page" : undefined}><Icon d={d} /><span>{href === "/" ? "Home" : label}{href === "/inbox" && badge > 0 && <b className="unread-badge">{badge > 99 ? "99+" : badge}</b>}</span></Link>)}
         <button onClick={() => setMore(!more)} aria-current={["/queue", "/costs", "/automation"].includes(path) ? "page" : undefined} aria-expanded={more}><Icon d="M4 12h16M4 6h16M4 18h16" />More</button>
       </nav>
       <BottomSheet open={more} close={() => setMore(false)} title="More">{[links[4], links[6], links[5]].map(([href, label]) => <Link className="sheet-link" key={href} href={scopedHref(href)} onClick={() => setMore(false)}>{label}</Link>)}<Density /><button className="sheet-link" onClick={logout}>Log out</button></BottomSheet>
@@ -185,7 +194,7 @@ export function Shell({
       <main className="lg:pl-60">
         <div className="workspace">
           <div className="workspace-header hidden lg:flex"><div>{banners}</div><Density /></div>
-          {platform && <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"} / <span className="capitalize">{platform}</span><button className="badge" onClick={() => { const q = new URLSearchParams(params); q.delete("platform"); router.replace(`${path}?${q}`, { scroll: false }); }}>Clear platform ×</button></div>}
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"} / <span className="capitalize">{platform === "all" ? "All platforms" : platform === "youtube" ? "YouTube" : platform === "instagram" ? "Instagram" : platform === "facebook" ? "Facebook" : "Hub"}</span><Link className="badge" href={`${path}?${new URLSearchParams({ ...Object.fromEntries(params), channel: "all", platform: "all" })}`} replace scroll={false} onClick={() => saveScope({channel:"all", platform:"all"})}>Clear scope ×</Link></div>
           <div className="lg:hidden">{banners}</div>
           {children}
         </div>
@@ -206,12 +215,13 @@ function ChannelSwitcher({
   const [selected, setSelected] = useState<ChannelFilter>(current);
   const [pending, startTransition] = useTransition();
 
-  function choose(next: ChannelFilter, platform = "") {
+  function choose(next: ChannelFilter, platform = search.get("platform") ?? "all") {
     setSelected(next);
     startTransition(() => {
       const url = new URL(window.location.href);
       url.searchParams.set("channel", next);
-      if (platform) url.searchParams.set("platform", platform); else url.searchParams.delete("platform");
+      url.searchParams.set("platform", platform);
+      saveScope(parseScope(Object.fromEntries(url.searchParams)));
       if (platform) url.searchParams.delete("tab");
       router.replace(url.pathname + url.search, { scroll: false });
     });
@@ -243,7 +253,7 @@ function ChannelSwitcher({
             onClick={() => choose(p.key)}
             className={
               list
-                ? `flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm transition ${active ? "bg-card-2 text-fg" : "text-muted hover:bg-card-2 hover:text-fg"}`
+                ? `flex items-center gap-2.5 min-h-11 rounded-lg px-3 py-1.5 text-left text-sm transition ${active ? "bg-card-2 text-fg" : "text-muted hover:bg-card-2 hover:text-fg"}`
                 : `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs ${active ? "border-accent bg-accent-soft text-fg" : "border-border text-muted"}`
             }
           >
@@ -263,9 +273,16 @@ function ChannelSwitcher({
               />
             )}
             {p.label}
-          </button>{list && p.key !== "all" && <details open={active || undefined} className="ml-6 text-xs text-muted"><summary className="cursor-pointer py-1">Platforms</summary>{["youtube", "instagram", "facebook", "hub"].map(platform => <button key={platform} onClick={() => choose(p.key, platform)} className={`block rounded px-3 py-1.5 capitalize hover:bg-card-2 ${search.get("platform") === platform && active ? "text-fg bg-accent-soft" : ""}`}>{platform}</button>)}</details>}</div>
+          </button>{list && p.key !== "all" && <details open={active || undefined} className="ml-6 text-xs text-muted"><summary className="cursor-pointer py-1">Platforms</summary>{["youtube", "instagram", "facebook", "hub"].map(platform => <button key={platform} onClick={() => choose(p.key, platform)} className={`block min-h-11 rounded px-3 py-1.5 capitalize hover:bg-card-2 ${search.get("platform") === platform && active ? "text-fg bg-accent-soft" : ""}`}>{platform}</button>)}</details>}</div>
         );
       })}
     </div>
   );
+}
+
+function PlatformSwitcher() {
+  const search = useSearchParams();
+  const router = useRouter();
+  const scope = parseScope(Object.fromEntries(search));
+  return <div role="radiogroup" aria-label="Platform scope" className="flex flex-col">{PLATFORMS.filter(p => p !== "hub" || scope.platform === "hub").map(p => <button key={p} role="radio" aria-checked={scope.platform === p} className={`min-h-11 rounded-lg px-3 text-left text-sm ${scope.platform === p ? "bg-card-2 text-fg" : "text-muted hover:bg-card-2"}`} onClick={() => { const q = new URLSearchParams(search); q.set("channel",scope.channel); q.set("platform",p); q.delete("tab"); saveScope({...scope,platform:p}); router.replace(`${window.location.pathname}?${q}`, {scroll:false}); }}>{p === "all" ? "All" : p === "youtube" ? "YouTube" : p === "instagram" ? "Instagram" : p === "facebook" ? "Facebook" : "Hub"}</button>)}</div>;
 }

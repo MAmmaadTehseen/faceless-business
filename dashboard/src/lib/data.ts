@@ -250,6 +250,7 @@ async function getPublicationsByStatus(
   channel: ChannelFilter,
   limit = 10,
   status = "failed",
+  platform = "",
 ): Promise<FailedPublication[]> {
   let q = db()
     .from("publications")
@@ -258,6 +259,7 @@ async function getPublicationsByStatus(
     .order("id", { ascending: false })
     .limit(limit);
   if (channel !== "all") q = q.eq("content.channel", channel);
+  if (platform) q = q.eq("platform", platform);
   const { data, error } = await q;
   if (error) throw error;
   type C = { title: string; channel: string | null };
@@ -274,11 +276,11 @@ async function getPublicationsByStatus(
   });
 }
 
-export function getFailedPublications(channel: ChannelFilter, limit = 10) {
-  return getPublicationsByStatus(channel, limit, "failed");
+export function getFailedPublications(channel: ChannelFilter, limit = 10, platform = "") {
+  return getPublicationsByStatus(channel, limit, "failed", platform);
 }
-export function getQueuedPublications(channel: ChannelFilter, limit = 1000) {
-  return getPublicationsByStatus(channel, limit, "queued");
+export function getQueuedPublications(channel: ChannelFilter, limit = 1000, platform = "") {
+  return getPublicationsByStatus(channel, limit, "queued", platform);
 }
 
 /** Content rows whose pipeline or QA failed. Killed rows are deliberate (see AGENTS.md) and skipped. */
@@ -326,9 +328,9 @@ export async function getOverview(channel: ChannelFilter, platform = "") {
       daysInMonth: 30,
     } as CostSummary),
     safe(getChannelHealth(), [] as ChannelHealth[]),
-    safe(getFailedPublications(channel), [] as FailedPublication[]),
+    safe(getFailedPublications(channel, 10, platform), [] as FailedPublication[]),
     safe(getFailedContent(channel), [] as Content[]),
-    safe(getQueuedPublications(channel), [] as FailedPublication[]),
+    safe(getQueuedPublications(channel, 1000, platform), [] as FailedPublication[]),
     getBannerState(),
   ]);
   return {

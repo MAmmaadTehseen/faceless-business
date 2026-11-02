@@ -1,3 +1,4 @@
+import { scopedSearch } from "@/lib/server-scope";
 import { videoShorts } from "@/lib/video-detail";
 import { AutoFilters } from "@/components/AutoFilters";
 import { CHANNELS, parseChannelFilter } from "@/lib/channels";
@@ -17,7 +18,7 @@ export default async function InboxPage({
 }: {
   searchParams: Promise<Record<string, string>>;
 }) {
-  const sp = await searchParams;
+  const sp = await scopedSearch(await searchParams);
   const { platform = "", tab = "pending", days = "all" } = sp;
   const channel = parseChannelFilter(sp.channel);
   // Channel lives on content, two joins away; over-fetch when filtering and trim in code.
@@ -110,7 +111,7 @@ export default async function InboxPage({
         <input name="q" aria-label="Search comments" placeholder="Search comments…" defaultValue={sp.q ?? ""} />
         <select name="platform" aria-label="Platform" defaultValue={platform}><option value="">All platforms</option>{PLATFORMS.map(p => <option key={p}>{p}</option>)}</select>
         <select name="days" aria-label="Date range" defaultValue={days}>{[["1", "Last 24 hours"], ["7", "7 days"], ["30", "30 days"], ["all", "All time"]].map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select>
-        <span className="badge">{[platform, sp.q, days !== "all", channel !== "all"].filter(Boolean).length} active</span><Link className="badge" scroll={false} href={`/inbox?channel=all&tab=${tab}`}>Clear</Link>
+        <span className="badge">{[platform, sp.q, days !== "all", channel !== "all"].filter(Boolean).length} active</span><Link className="badge" scroll={false} href={`/inbox?channel=all&platform=all&tab=${tab}`}>Clear</Link>
       </AutoFilters></FilterSheet>
       {comments.length === 0 && (
         <div className="card text-sm text-ok-fg">

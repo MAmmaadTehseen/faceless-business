@@ -1,3 +1,4 @@
+import { filterPublications } from "./scope";
 import type { ContentItem } from "./content-data";
 import { category } from "./categories";
 export type Filters = Record<string, string | undefined>;
@@ -14,7 +15,7 @@ export function formatKind(c: { kind: string; parent_id: string | null }) {
   return c.kind === "long" ? "long" : c.parent_id ? "short" : "daily";
 }
 export function metric(c: ContentItem, key: string): number {
-  const ms = c.publications.map((p) => p.metric).filter((m) => m != null);
+  const ms = c.publications.filter(p => key !== "watch" || p.platform === "youtube").map((p) => p.metric).filter((m) => m != null);
   if (key === "watch") {
     const valid = ms.filter((m) => m.ctr != null && m.views > 0);
     const weight = valid.reduce((n, m) => n + m.views, 0);
@@ -35,10 +36,11 @@ export function filterContent(
   defaultSort = "newest",
   useDate = true,
 ) {
+  sp = { ...sp, platform: sp.platform === "all" ? "" : sp.platform };
   const days = Number(sp.days);
   const query = (sp.q ?? "").trim().toLowerCase();
   return items
-    .map(c => sp.platform ? { ...c, publications: c.publications.filter(p => p.platform === sp.platform) } : c)
+    .map(c => sp.platform ? { ...c, publications: filterPublications(c.publications, sp.platform!) } : c)
     .filter((c) => {
       const pubs = c.publications.filter(
         (p) => !sp.platform || p.platform === sp.platform,
@@ -63,7 +65,7 @@ export function filterContent(
               )
             : ["private", "public"].includes(status)
               ? pubs.some((p) => p.privacy === status)
-              : c.status === status || pubs.some((p) => p.status === status));
+              : (!sp.platform && c.status === status) || pubs.some((p) => p.status === status));
       return (
         (!query || `${c.title} ${c.topic}`.toLowerCase().includes(query)) &&
         (!sp.channel || sp.channel === "all" || sp.channel === c.channel) &&

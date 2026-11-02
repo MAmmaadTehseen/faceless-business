@@ -1,0 +1,34 @@
+const ts = require('typescript');
+const fs = require('fs');
+const assert = require('node:assert/strict');
+function load(name) {
+ const source = fs.readFileSync(`${__dirname}/../src/lib/${name}.ts`, 'utf8');
+ const js = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React}}).outputText;
+ const module = {exports:{}};
+ new Function('require','module','exports',js)(id=>id.startsWith('./')?load(id.slice(2)):require(id),module,module.exports);
+ return module.exports;
+}
+const {parseScope,scopeHref,filterPublications} = load('scope');
+const saved = encodeURIComponent(JSON.stringify({channel:'tradewinds',platform:'facebook'}));
+assert.deepEqual(parseScope(),{channel:'all',platform:'all'});
+assert.deepEqual(parseScope({},saved),{channel:'tradewinds',platform:'facebook'});
+assert.deepEqual(parseScope({channel:'all',platform:'instagram'},saved),{channel:'all',platform:'instagram'});
+assert.deepEqual(parseScope({platform:'instagram'},saved),{channel:'tradewinds',platform:'instagram'});
+assert.deepEqual(parseScope({channel:'all',platform:''},saved),{channel:'all',platform:'all'});
+assert.deepEqual(parseScope({channel:'invalid',platform:'invalid'},saved),{channel:'all',platform:'all'});
+assert.deepEqual(parseScope({},'broken'),{channel:'all',platform:'all'});
+for(const channel of ['all','futurework','tradewinds','escapevelocity']) for(const platform of ['all','youtube','instagram','facebook']) assert.deepEqual(parseScope({channel,platform}),{channel,platform});
+assert.equal(scopeHref('/content?status=failed#x',{channel:'all',platform:'instagram'}),'/content?status=failed&channel=all&platform=instagram#x');
+assert.equal(scopeHref('https://example.com',{channel:'all',platform:'instagram'}),'https://example.com');
+assert.equal(filterPublications([{platform:'instagram'},{platform:'youtube'}],'instagram').length,1);
+console.log('Scope parsing, precedence, combinations, links and filtering: passed');
+const {filterContent, metric} = load('content-filters');
+const item = {id:'one',channel:'futurework',title:'Example',topic:'Example',kind:'long',parent_id:null,status:'failed',created_at:new Date().toISOString(),publications:[{platform:'youtube',status:'failed',metric:{views:100,ctr:40}},{platform:'instagram',status:'published',metric:{views:20,ctr:99}}]};
+assert.equal(filterContent([item],{channel:'all',platform:'all'}).length,1);
+assert.equal(filterContent([item],{platform:'instagram',status:'failed'}).length,0);
+assert.equal(metric(filterContent([item],{platform:'instagram'})[0],'views'),20);
+assert.equal(metric(item,'watch'),40);
+assert.equal(filterPublications(item.publications,'all').length,2);
+assert.deepEqual(parseScope({channel:['futurework'],platform:['instagram']},saved),{channel:'all',platform:'all'});
+assert.equal(scopeHref('/queue?channel=all&platform=all',{channel:'tradewinds',platform:'instagram'}),'/queue?channel=all&platform=all');
+console.log('All-platform filtering, platform statuses/metrics and YouTube-only watch values: passed');

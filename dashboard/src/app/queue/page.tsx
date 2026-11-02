@@ -1,3 +1,4 @@
+import { scopedSearch } from "@/lib/server-scope";
 import { ReplaceLink as Link } from "@/components/ReplaceLink";
 import { AutoFilters } from "@/components/AutoFilters";
 import { FilterSheet } from "@/components/FilterSheet";
@@ -6,6 +7,7 @@ import { ScheduledTopic } from "@/components/ScheduledTopic";
 import { Section } from "@/components/Section";
 import { isOwner } from "@/lib/role";
 import { db } from "@/lib/supabase";
+import { getPlatformContent } from "@/lib/content-data";
 import { TopicQueueRow } from "@/lib/types";
 import { AddTopicForm, QueueRowActions } from "@/components/QueueControls";
 import { fmtDate } from "@/lib/format";
@@ -14,7 +16,7 @@ import { ChannelBadge } from "@/components/ChannelBadge";
 import { PageHeader } from "@/components/PageHeader";
 
 export default async function QueuePage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  const sp = await searchParams;
+  const sp = await scopedSearch(await searchParams);
   const owner = await isOwner();
   const channel = parseChannelFilter(sp.channel);
   let q = db()
@@ -32,6 +34,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
     allRows.push(...((data ?? []) as TopicQueueRow[]));
     if ((data ?? []).length < 500) break;
   }
+  const scheduled = (await getPlatformContent(channel, undefined, sp.platform)).flatMap(c => c.publications.map(p => ({...p,title:c.title}))).filter(p => p.status !== "failed" && p.publish_at && Date.parse(p.publish_at) > Date.now()).sort((a,b) => Date.parse(a.publish_at!) - Date.parse(b.publish_at!));
   const schedules: Record<string, { days: number[]; hour: number }> = { futurework: { days: [1,3,5], hour: 6 }, tradewinds: { days: [2,4,6], hour: 11 }, escapevelocity: { days: [1,4,0], hour: 16 } };
   const positions = new Map<string, number>();
   const slots = new Map<number, { at: string; run: number }>();
@@ -51,13 +54,15 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-5">
+      <p className="text-xs text-muted">Topics apply to all platforms; scheduled publications follow the selected scope.</p>
+      <section><h2>Scheduled publications</h2>{scheduled.length ? scheduled.map(p => <p key={p.id}>{p.title} · {p.platform} · {fmtDate(p.publish_at!)}</p>) : <p className="text-muted">Nothing scheduled for this scope.</p>}</section>
       <PageHeader
         title="Topic queue"
         blurb="Topics the pipeline will turn into videos, highest priority first. +5 bumps a topic up; Kill drops it."
       />
       <div className="hero"><p className="hero-label">Topics ready for production</p><p className="hero-value">{rows.length}</p></div>
       <section aria-label="Next seven days" className="schedule-strip">{Array.from({length:7},(_,i)=>{const date=new Date(now+i*86400000);const day=date.toISOString().slice(0,10);const dayRows=rows.filter(r=>slots.get(r.id)?.at.slice(0,10)===day);return <div className="schedule-day" key={day}><p>{date.toLocaleDateString("en-US",{weekday:"short",day:"numeric",timeZone:"UTC"})}</p><strong>{dayRows.length}</strong><span className="text-xs text-muted"> planned</span>{dayRows.slice(0,2).map(r=><a href={`#topic-${r.id}`} key={r.id}>{r.topic}</a>)}</div>})}</section><details className="text-xs text-muted"><summary>Schedule details</summary><p>Estimates use each channel’s next UTC cron slots, one topic per run. Priority changes can move dates; these are topic plans, not confirmed publications.</p></details>
-      <FilterSheet count={count}><AutoFilters key={JSON.stringify({ ...sp, q: undefined })}><select name="channel" aria-label="Channel" defaultValue={channel}><option value="all">All channels</option>{CHANNELS.map(c => <option key={c.key} value={c.key}>{c.short}</option>)}</select><select name="source" aria-label="Source" defaultValue={sp.source ?? ""}><option value="">All sources</option>{[...new Set(allRows.map(r => r.added_by))].map(v => <option key={v}>{v}</option>)}</select><input name="q" aria-label="Search topics" placeholder="Search topics…" defaultValue={sp.q ?? ""}/><span className="badge">{count} active</span><Link href="/queue?channel=all" scroll={false} className="badge">Clear</Link></AutoFilters></FilterSheet>
+      <FilterSheet count={count}><AutoFilters key={JSON.stringify({ ...sp, q: undefined })}><select name="channel" aria-label="Channel" defaultValue={channel}><option value="all">All channels</option>{CHANNELS.map(c => <option key={c.key} value={c.key}>{c.short}</option>)}</select><select name="source" aria-label="Source" defaultValue={sp.source ?? ""}><option value="">All sources</option>{[...new Set(allRows.map(r => r.added_by))].map(v => <option key={v}>{v}</option>)}</select><input name="q" aria-label="Search topics" placeholder="Search topics…" defaultValue={sp.q ?? ""}/><span className="badge">{count} active</span><Link href="/queue?channel=all&platform=all" scroll={false} className="badge">Clear</Link></AutoFilters></FilterSheet>
       {owner && (
         <details><summary className="btn">+ Add topic</summary><Section title="New topic">
           <AddTopicForm
@@ -68,7 +73,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
       )}
       {rows.length === 0 && (
         <div className="card border-warn/50 text-sm text-warn-fg">
-          No topics in this view.<Link className="btn ml-2" href="/queue?channel=all">View all topics →</Link>
+          No topics in this view.<Link className="btn ml-2" href="/queue?channel=all&platform=all">View all topics →</Link>
         </div>
       )}
       <ol className="card divide-y divide-border">

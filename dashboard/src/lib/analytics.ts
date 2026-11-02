@@ -1,4 +1,5 @@
 import "server-only";
+import { filterPublications } from "./scope";
 import { db } from "./supabase";
 import { getContent } from "./content-data";
 import { ChannelFilter } from "./channels";
@@ -17,7 +18,8 @@ export async function getAnalytics(
   allTime = false,
   platform = "",
 ) {
-  const items = (await getContent(channel, false)).map(c => ({ ...c, publications: c.publications.filter(p => !platform || p.platform === platform) })).filter(c => !platform || c.publications.length > 0);
+  platform = platform === "all" ? "" : platform;
+  const items = (await getContent(channel, false)).map(c => ({ ...c, publications: filterPublications(c.publications, platform) })).filter(c => !platform || c.publications.length > 0);
   const pubs = items.flatMap((c) =>
     c.publications.map((p) => ({
       ...p,
@@ -84,7 +86,7 @@ export async function getAnalytics(
       views += v;
       likes += Math.max(0, (b?.likes ?? 0) - (a?.likes ?? 0));
       comments += Math.max(0, (b?.comments ?? 0) - (a?.comments ?? 0));
-      if (b?.ctr != null && v > 0) {
+      if (p.platform === "youtube" && b?.ctr != null && v > 0) {
         watchTotal += b.ctr * v;
         weight += v;
       }

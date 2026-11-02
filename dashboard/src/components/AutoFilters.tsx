@@ -1,4 +1,5 @@
 "use client";
+import { parseScope, saveScope } from "@/lib/scope";
 import { useRef, useTransition, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 export function AutoFilters({ children, className = "filter-bar", ...props }: React.ComponentProps<"form">) {
@@ -22,8 +23,10 @@ export function AutoFilters({ children, className = "filter-bar", ...props }: Re
       if (changedName === "sort") params.delete("sortDirection");
       for (const [key, value] of new FormData(form)) {
         if (typeof value === "string" && value) params.set(key, value);
+        else if (key === "platform") params.set(key, "all");
         else params.delete(key);
       }
+      saveScope(parseScope(Object.fromEntries(params)));
       start(() => router.replace(`${path}?${params}`, { scroll: false }));
     };
     if (delay) timer.current = setTimeout(navigate, delay); else navigate();

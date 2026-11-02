@@ -1,8 +1,9 @@
+import { scopedSearch } from "@/lib/server-scope";
 import { AutoFilters } from "@/components/AutoFilters";
 import { parseChannelFilter } from "@/lib/channels";
 import { SeriesReport } from "@/components/SeriesReport";
 import { Section } from "@/components/Section";
-import Link from "next/link";
+import Link from "@/components/ScopeLink";
 import { db } from "@/lib/supabase";
 import { getSettings } from "@/lib/data";
 import { Cost, Run } from "@/lib/types";
@@ -13,7 +14,7 @@ import { ChannelBadge } from "@/components/ChannelBadge";
 import { PageHeader } from "@/components/PageHeader";
 
 export default async function CostsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  const sp = await searchParams;
+  const sp = await scopedSearch(await searchParams);
   const days = sp.days ?? "month";
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -123,6 +124,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-muted">Costs are recorded by channel and include all platforms.</p>
       <PageHeader
         title="Costs"
         blurb="Claude API spend logged by every pipeline step, plus the last runs and their logs."

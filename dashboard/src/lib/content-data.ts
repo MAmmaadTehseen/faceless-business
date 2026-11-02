@@ -1,4 +1,5 @@
 import "server-only";
+import { filterPublications } from "./scope";
 import { db } from "./supabase";
 import { Content, Publication, Metric } from "./types";
 import { ChannelFilter } from "./channels";
@@ -73,7 +74,7 @@ export async function getContent(
 /** Hub articles are publications in the articles table, rather than social uploads. */
 export async function getPlatformContent(channel: ChannelFilter, days?: string, platform?: string): Promise<ContentItem[]> {
   const items = await getContent(channel, true, days);
-  if (platform !== "hub") return items;
+  if (platform !== "hub") return items.map(c => ({...c, publications: filterPublications(c.publications, platform ?? "")})).filter(c => !platform || platform === "all" || c.publications.length > 0);
   let query = db().from("articles").select("id,content_id,slug,published_at").not("published_at", "is", null);
   if (channel !== "all") query = query.eq("channel", channel);
   const { data, error } = await query;

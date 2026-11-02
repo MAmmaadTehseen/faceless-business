@@ -34,6 +34,16 @@ export function ContentList({
   daily?: Record<string, number[]>;
 }) {
   const params = useSearchParams();
+  const scoped = !!params.get("platform") && params.get("platform") !== "all";
+  function status(c: ContentItem) {
+    if (!scoped && c.status === "killed") return "killed";
+    if ((!scoped && (c.status === "failed" || c.qa_status === "failed")) || c.publications.some(p => p.status === "failed")) return "failed";
+    if (c.publications.some(p => p.status === "queued")) return "queued";
+    if (c.publications.some(p => p.status === "scheduled" || p.privacy === "scheduled" || (p.publish_at && Date.parse(p.publish_at) > Date.now()))) return "scheduled";
+    if (c.publications.some(p => ["published","live"].includes(p.status) && p.privacy === "public")) return "live";
+    if (c.publications.some(p => p.privacy === "private")) return "private";
+    return scoped ? c.publications[0]?.status ?? "No publication" : c.status;
+  }
   const [visible,setVisible] = useState(20);
   const shown = items.slice(0, limit);
   const analyticsReport = dates.length > 0 && initialChartVisible;
@@ -55,29 +65,14 @@ export function ContentList({
         { key: "views", label: "Views", share: true },
         { key: "likes", label: "Likes", share: true },
         { key: "comments", label: "Comments", share: true },
-        { key: "watch", label: "Watch %", format: "percent" },
+        ...(!params.get("platform") || ["all","youtube"].includes(params.get("platform")!) ? [{ key: "watch", label: "Watch %", format: "percent" as const }] : []),
         { key: "published", label: "Created (UTC)", format: "date", detailOnly:true },
       ]}
       rows={shown.map((c) => ({
         id: c.id,
         actions: owner ? <span className="flex gap-2">{recoveryAction(c, c.publications) !== "retry" ? <RebuildButton id={c.id}/> : c.publications.filter(p => ["failed", "queued"].includes(p.status)).map(p => <RetryButton key={p.id} publications={[p]} label={`Retry ${p.platform}`}/>)}</span> : undefined,
         title: c.title,
-        status: c.status === "killed" ? "killed" :
-          c.status === "failed" ||
-          c.qa_status === "failed" ||
-          c.publications.some((p) => p.status === "failed")
-            ? "failed"
-            : c.publications.some((p) => p.status === "queued")
-              ? "queued"
-              : c.publications.some(
-                    (p) =>
-                      p.status === "scheduled" ||
-                      p.privacy === "scheduled" ||
-                      (p.publish_at && Date.parse(p.publish_at) > Date.now()),
-                  )
-                ? "scheduled"
-                : c.publications.some(p => ["published","live"].includes(p.status) && p.privacy === "public") ? "live"
-                : c.publications.some(p => p.privacy === "private") ? "private" : c.status,
+        status: status(c),
         subtitle: `${channelMeta(c.channel)?.short ?? c.channel} · ${fmtDate(c.created_at)} · ${category(c)} · QA ${c.qa_status}`,
         links: (allItems?.find(item => item.id === c.id) ?? c).publications
           .filter((p) => p.url)
@@ -102,6 +97,6 @@ export function ContentList({
       }))}
     />);
   return (
-    <><div className={`mobile-content-list ${analyticsReport ? "mobile-content-hidden" : ""}`}>{!shown.length && <div className="py-6"><p className="text-muted">No videos match this view.</p><a className="btn mt-3" href="/content">Clear filters</a></div>}{shown.slice(0,visible).map(c=><a key={c.id} className="mobile-content-row" href={contentHref(c,params.toString())}>{/^https?:\/\//.test(c.thumbnail_path ?? "") ? <img src={c.thumbnail_path!} alt=""/> : <span className="content-thumbnail-empty" aria-hidden>▶</span>}<span className="mobile-content-copy"><strong>{c.title}</strong><span><span className="status-chip">{c.publications.some(p=>p.status==="failed") || c.qa_status==="failed" ? "failed" : c.publications.some(p=>p.status==="queued") ? "queued" : c.publications.some(p=>p.status==="scheduled") ? "scheduled" : c.status}</span><span>{views(c).toLocaleString()} views</span></span></span></a>)}{shown.length>visible && <button className="btn w-full" onClick={()=>setVisible(n=>n+20)}>Load more</button>}</div><div className={`desktop-content-list ${analyticsReport ? "analytics-report" : ""}`}>{report}</div>{!analyticsReport && <details className="mobile-content-tools"><summary>Trends and export</summary>{report}</details>}</>
+    <><div className={`mobile-content-list ${analyticsReport ? "mobile-content-hidden" : ""}`}>{!shown.length && <div className="py-6"><p className="text-muted">No videos match this view.</p><a className="btn mt-3" href="/content">Clear filters</a></div>}{shown.slice(0,visible).map(c=><a key={c.id} className="mobile-content-row" href={contentHref(c,params.toString())}>{/^https?:\/\//.test(c.thumbnail_path ?? "") ? <img src={c.thumbnail_path!} alt=""/> : <span className="content-thumbnail-empty" aria-hidden>▶</span>}<span className="mobile-content-copy"><strong>{c.title}</strong><span><span className="status-chip">{status(c)}</span><span>{views(c).toLocaleString()} views</span></span></span></a>)}{shown.length>visible && <button className="btn w-full" onClick={()=>setVisible(n=>n+20)}>Load more</button>}</div><div className={`desktop-content-list ${analyticsReport ? "analytics-report" : ""}`}>{report}</div>{!analyticsReport && <details className="mobile-content-tools"><summary>Trends and export</summary>{report}</details>}</>
   );
 }

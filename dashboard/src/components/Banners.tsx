@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ScopeLink";
 import { headers } from "next/headers";
 import { getBannerState } from "@/lib/data";
 import { fmtDate } from "@/lib/format";

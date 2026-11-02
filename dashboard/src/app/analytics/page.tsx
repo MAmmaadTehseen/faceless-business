@@ -1,3 +1,4 @@
+import { scopedSearch } from "@/lib/server-scope";
 import { AutoFilters } from "@/components/AutoFilters";
 import { SeriesReport, type ReportColumn } from "@/components/SeriesReport";
 import { getHubAnalytics } from "@/lib/hub-analytics";
@@ -48,11 +49,13 @@ function Table({
   dates,
   format = false,
   engagement = false,
+  watch = true,
 }: {
   rows: Group[];
   dates: string[];
   format?: boolean;
   engagement?: boolean;
+  watch?: boolean;
   sparks?: boolean;
 }) {
   const columns: ReportColumn[] = engagement
@@ -65,7 +68,7 @@ function Table({
         { key: "views", label: "Views", share: true },
         { key: "count", label: "Items", share: true },
         ...(format ? [{ key: "average", label: "Avg views / item" }] : []),
-        { key: "watch", label: "Watch %", format: "percent" },
+        ...(watch ? [{ key: "watch", label: "Watch %", format: "percent" as const }] : []),
       ];
   return (
     <SeriesReport
@@ -93,7 +96,7 @@ export default async function Analytics({
 }: {
   searchParams: Promise<Record<string, string>>;
 }) {
-  const sp = await searchParams;
+  const sp = await scopedSearch(await searchParams);
   const channel = sp.channel
     ? parseChannelFilter(sp.channel)
     : await getChannelFilter();
@@ -171,7 +174,7 @@ export default async function Analytics({
                 ["Comments", "comments"],
                 ["Average watch %", "watch"],
               ] as const
-            ).map(([title, key]) => {
+            ).filter(([,key]) => key !== "watch" || !sp.platform || sp.platform === "youtube").map(([title, key]) => {
               const v = a.total[key];
               const old = a.previous[key];
               return (
@@ -216,7 +219,8 @@ export default async function Analytics({
         })}
       </nav>
 
-      {tab === "hub" && <HubAnalytics data={hub} />}
+      {tab !== "hub" && sp.platform && sp.platform !== "youtube" && sp.platform !== "hub" && <p className="text-xs text-muted">Watch percentage is available for YouTube only.</p>}
+      {tab === "hub" && (sp.platform && sp.platform !== "hub" ? <p className="text-muted">Hub analytics do not apply to the selected platform.</p> : <HubAnalytics data={hub} />)}
       {tab !== "hub" && tab !== "overview" && <ContentFilters sp={sp} channel={channel} path="/analytics" defaultSort="views" analytics />}
       {tab === "overview" && (
         <>
@@ -240,36 +244,36 @@ export default async function Analytics({
       {tab === "platforms" && (
         <>
           <Section title="By platform">
-            <Table dates={a.daily.map((d) => d.date)} rows={a.platforms} />
+            <Table watch={!sp.platform || sp.platform === "youtube"} dates={a.daily.map((d) => d.date)} rows={a.platforms} />
           </Section>
         </>
       )}
       {tab === "channels" && (
         <Section title="By channel">
-          <Table dates={a.daily.map((d) => d.date)} rows={a.channels} sparks />
+          <Table watch={!sp.platform || sp.platform === "youtube"} dates={a.daily.map((d) => d.date)} rows={a.channels} sparks />
         </Section>
       )}
       {tab === "formats" && (
         <Section title="By format">
-          <Table dates={a.daily.map((d) => d.date)} rows={a.formats} format />
+          <Table watch={!sp.platform || sp.platform === "youtube"} dates={a.daily.map((d) => d.date)} rows={a.formats} format />
         </Section>
       )}
       {tab === "categories" && (
         <Section title="By category">
-          <Table dates={a.daily.map((d) => d.date)} rows={a.categories} />
+          <Table watch={!sp.platform || sp.platform === "youtube"} dates={a.daily.map((d) => d.date)} rows={a.categories} />
         </Section>
       )}
       {tab === "engagement" && (
         <>
           <Section title="By channel">
-            <Table
+            <Table watch={!sp.platform || sp.platform === "youtube"}
               dates={a.daily.map((d) => d.date)}
               rows={a.channels}
               engagement
             />
           </Section>
           <Section title="By format">
-            <Table
+            <Table watch={!sp.platform || sp.platform === "youtube"}
               dates={a.daily.map((d) => d.date)}
               rows={a.formats}
               engagement

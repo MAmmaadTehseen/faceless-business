@@ -1,4 +1,5 @@
 "use client";
+import Link from "./ScopeLink";
 import { toast } from "./Toast";
 import { RelativeTime } from "./RelativeTime";
 import { useEffect, useRef, useState } from "react";
@@ -89,7 +90,7 @@ export function InboxItem({
         </span>
         <RelativeTime value={comment.posted_at} />
         <span>{comment.platform}</span>
-        {contentId && <a className="btn" href={`/content/${encodeURIComponent(contentId)}`}>View video →</a>}
+        {contentId && <Link className="btn" href={`/content/${encodeURIComponent(contentId)}`}>View video →</Link>}
         {comment.flagged && (
           <details><summary className="status-chip badge-alert">needs review</summary><p>{comment.flag_reason || "Review this reply before sending."}</p></details>
         )}

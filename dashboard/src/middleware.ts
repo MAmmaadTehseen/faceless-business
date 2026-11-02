@@ -1,3 +1,4 @@
+import { parseScope, SCOPE_COOKIE } from "@/lib/scope";
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
@@ -16,16 +17,34 @@ export async function middleware(req: NextRequest) {
     /\.(png|ico|svg)$/.test(pathname)
   )
     return NextResponse.next();
+  // Canonical scopes make even plain internal anchors preserve the saved selection.
+  const scope = parseScope(Object.fromEntries(req.nextUrl.searchParams), req.cookies.get(SCOPE_COOKIE)?.value);
+  function scopedNext(role: string) {
+    const headers = new Headers(req.headers);
+    headers.set("x-dashboard-role", role);
+    headers.set("x-dashboard-search", req.nextUrl.search);
+    const response = NextResponse.next({ request: { headers } });
+    if (!pathname.startsWith("/api/") && !req.headers.has("rsc") && !req.headers.has("next-router-prefetch")) response.cookies.set(SCOPE_COOKIE, encodeURIComponent(JSON.stringify(scope)), { path: "/", maxAge: 31536000, sameSite: "lax", secure: req.nextUrl.protocol === "https:" });
+    return response;
+  }
+  if (!pathname.startsWith("/api/") && (!req.nextUrl.searchParams.has("channel") || !req.nextUrl.searchParams.has("platform"))) {
+    const url = new URL(req.nextUrl.pathname + req.nextUrl.search, req.url);
+    url.searchParams.set("channel", scope.channel);
+    url.searchParams.set("platform", scope.platform);
+    url.host = req.headers.get("host") ?? url.host;
+    const redirect = NextResponse.redirect(url);
+    redirect.headers.set("Cache-Control", "private, no-store");
+    redirect.headers.set("Vary", "Cookie");
+    return redirect;
+  }
   // Local visual QA is read-only and cannot bypass production authentication.
   if (
     process.env.NODE_ENV !== "production" &&
     process.env.DASHBOARD_QA_BYPASS === "1" &&
     req.method === "GET" &&
-    !pathname.startsWith("/api/")
+    (!pathname.startsWith("/api/") || pathname === "/api/scope")
   ) {
-    const headers = new Headers(req.headers);
-    headers.set("x-dashboard-role", "reviewer");
-    return NextResponse.next({ request: { headers } });
+    return scopedNext("reviewer");
   }
   const role = await verifySessionToken(req.cookies.get(COOKIE_NAME)?.value);
   if (role) {
@@ -43,9 +62,7 @@ export async function middleware(req: NextRequest) {
         { status: 403 },
       );
     }
-    const headers = new Headers(req.headers);
-    headers.set("x-dashboard-role", role);
-    return NextResponse.next({ request: { headers } });
+    return scopedNext(role);
   }
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

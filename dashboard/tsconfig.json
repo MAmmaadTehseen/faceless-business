@@ -31,9 +31,10 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-qa-mobile/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-qa-mobile/types/**/*.ts"
+    ".next-qa-scope/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
