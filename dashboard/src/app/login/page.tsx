@@ -34,8 +34,7 @@ export default function LoginPage() {
         <label className="block text-sm">
           <span className="mb-1 block text-muted">Password</span>
           <input
-            type="password"
-            autoFocus
+            type="password" name="password" autoComplete="current-password"
             placeholder="Password"
             className="w-full"
             value={password}

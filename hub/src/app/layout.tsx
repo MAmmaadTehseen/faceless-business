@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
+import { MobileHeader } from '@/components/MobileReading';
 import localFont from 'next/font/local';
 import { channels } from '@/lib/channels';
 import { ThemeToggle } from '@/components/ReadingTools';
@@ -34,5 +35,5 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return <html lang="en" className={serif.variable} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html: `try{var t=localStorage.getItem('plainsight-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch{}`}}/></head><body><a className="skip" href="#main">Skip to content</a>
     <header><Link className="brand" href="/" aria-label="Plainsight Media home"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12 Q12 1 21 12 M3 12 Q12 23 21 12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg><span className="brand-wordmark">PLAIN<span>SIGHT</span><small>MEDIA</small></span></Link><nav aria-label="Main"><Link href="/">Stories</Link><Link href="/about">About</Link><ThemeToggle/></nav></header>
     <main id="main">{children}</main><footer><div><Link className="footer-brand" href="/">Plainsight Media</Link><p>A clearer view of what comes next.</p></div><nav aria-label="Our channels">{channels.map(c => <Link key={c.key} href={`/c/${c.key}`}>{c.name}</Link>)}</nav><nav aria-label="Legal"><Link href="/about">About</Link><Link href="/privacy">Privacy</Link><Link href="/feed.xml">RSS</Link></nav></footer>
-  <MotionRuntime/><Tracker/></body></html>;
+  <MobileHeader/><MotionRuntime/><Tracker/></body></html>;
 }

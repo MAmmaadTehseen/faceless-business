@@ -15,7 +15,7 @@ export function ThemeToggle() {
   return <MotionButton className="theme-toggle" aria-label={label} title={label} onClick={(event) => {
     const value = dark ? 'light' : 'dark';
     const apply = () => { document.documentElement.dataset.theme = value; try { localStorage.setItem('plainsight-theme', value); } catch {} flushSync(() => setDark(!dark)); };
-    if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) { apply(); return; }
+    if (!document.startViewTransition || matchMedia('(hover:none)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) { apply(); return; }
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = event.clientX || bounds.left + bounds.width/2, y = event.clientY || bounds.top + bounds.height/2;
     document.documentElement.classList.add('theme-transition');
@@ -51,7 +51,7 @@ export function ReadingProgress() {
     return ()=>{observer.disconnect();endObserver.disconnect()};
   },[]);
   useEffect(()=>{
-    if(!finished || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    if(!finished || matchMedia('(hover:none)').matches || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
     const button=document.querySelector<HTMLElement>('.back-top');
     const marker=document.querySelector<HTMLElement>('.reading-progress');
     if(!button || !marker) return;

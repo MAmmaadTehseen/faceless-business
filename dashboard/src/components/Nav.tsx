@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BottomSheet } from "./BottomSheet";
 import { Density } from "./Density";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -20,7 +21,7 @@ const links = [
 ] as const;
 
 const PUBLIC = new Set(["/login", "/privacy", "/terms"]);
-const SIDEBAR = "md:w-60";
+const SIDEBAR = "lg:w-60";
 
 function Icon({ d }: { d: string }) {
   return (
@@ -68,10 +69,12 @@ function Brand({ compact = false }: { compact?: boolean }) {
  */
 export function Shell({
   channel,
+  unread = 0,
   banners,
   children,
 }: {
   channel: ChannelFilter;
+  unread?: number;
   banners: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -81,6 +84,7 @@ export function Shell({
   const platform = params.get("platform") ?? "";
   const scopedHref = (href: string) => { const q = new URLSearchParams(); q.set("channel", channel); if (platform) q.set("platform", platform); return `${href}?${q}`; };
   const [more, setMore] = useState(false);
+  const [scope, setScope] = useState(false);
   const router = useRouter();
   const isPublic = PUBLIC.has(path);
 
@@ -147,7 +151,7 @@ export function Shell({
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-20 hidden ${SIDEBAR} overflow-y-auto flex-col border-r border-border bg-bg-2 md:flex`}
+        className={`fixed inset-y-0 left-0 z-20 hidden ${SIDEBAR} overflow-y-auto flex-col border-r border-border bg-bg-2 lg:flex`}
       >
         <div className="px-5 pb-4 pt-5">
           <Brand />
@@ -168,21 +172,21 @@ export function Shell({
         </div>
       </aside>
 
-      <header className="mobile-header md:hidden">
-        <div className="flex items-center justify-between"><Brand compact /><Density /></div>
-        <details className="mobile-channel-switcher"><summary className="flex items-center min-h-11 cursor-pointer text-sm">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"} · Channels & platforms</summary><ChannelSwitcher key={channel} current={channel} layout="list" /></details>
+      <header className="mobile-header lg:hidden">
+        <button className="scope-chip" onClick={() => setScope(true)} aria-haspopup="dialog">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"}{platform ? ` · ${platform}` : ""} <span aria-hidden>⌄</span></button>
       </header>
-      <nav className="mobile-tabs md:hidden" aria-label="Main navigation">
-        {[links[0], links[1], links[3], links[2]].map(([href, label, d]) => <Link key={href} href={scopedHref(href)} onClick={() => setMore(false)} aria-current={path === href ? "page" : undefined}><Icon d={d} />{href === "/" ? "Home" : label}</Link>)}
-        <button onClick={() => setMore(!more)} aria-expanded={more} aria-controls="more-menu"><Icon d="M4 12h16M4 6h16M4 18h16" />More</button>
+      <BottomSheet open={scope} close={() => setScope(false)} title="Channels & platforms"><ChannelSwitcher key={channel} current={channel} layout="list" /></BottomSheet>
+      <nav className="mobile-tabs lg:hidden" aria-label="Main navigation">
+        {[links[0], links[1], links[3], links[2]].map(([href, label, d]) => <Link key={href} href={scopedHref(href)} onClick={() => setMore(false)} aria-current={path === href ? "page" : undefined}><Icon d={d} /><span>{href === "/" ? "Home" : label}{href === "/inbox" && unread > 0 && <b className="unread-badge">{unread > 99 ? "99+" : unread}</b>}</span></Link>)}
+        <button onClick={() => setMore(!more)} aria-current={["/queue", "/costs", "/automation"].includes(path) ? "page" : undefined} aria-expanded={more}><Icon d="M4 12h16M4 6h16M4 18h16" />More</button>
       </nav>
-      {more && <div className="sheet-backdrop md:hidden" onClick={() => setMore(false)}><section id="more-menu" className="mobile-sheet" role="dialog" aria-modal="true" aria-label="More navigation" onClick={e => e.stopPropagation()}><button className="btn float-right" autoFocus onClick={() => setMore(false)}>Close</button><h2>More</h2>{[links[4], links[6], links[5]].map(([href, label]) => <Link className="sheet-link" key={href} href={scopedHref(href)} onClick={() => setMore(false)}>{label}</Link>)}<button className="sheet-link" onClick={logout}>Log out</button></section></div>}
+      <BottomSheet open={more} close={() => setMore(false)} title="More">{[links[4], links[6], links[5]].map(([href, label]) => <Link className="sheet-link" key={href} href={scopedHref(href)} onClick={() => setMore(false)}>{label}</Link>)}<Density /><button className="sheet-link" onClick={logout}>Log out</button></BottomSheet>
 
-      <main className="md:pl-60">
+      <main className="lg:pl-60">
         <div className="workspace">
-          <div className="workspace-header hidden md:flex"><div>{banners}</div><Density /></div>
+          <div className="workspace-header hidden lg:flex"><div>{banners}</div><Density /></div>
           {platform && <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted">{CHANNELS.find(c => c.key === channel)?.short ?? "All channels"} / <span className="capitalize">{platform}</span><button className="badge" onClick={() => { const q = new URLSearchParams(params); q.delete("platform"); router.replace(`${path}?${q}`, { scroll: false }); }}>Clear platform ×</button></div>}
-          <div className="md:hidden">{banners}</div>
+          <div className="lg:hidden">{banners}</div>
           {children}
         </div>
       </main>

@@ -1,4 +1,5 @@
 "use client";
+import { BottomSheet } from "./BottomSheet";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CHANNELS, ChannelKey, DEFAULT_CHANNEL } from "@/lib/channels";
@@ -38,6 +39,7 @@ export function AddTopicForm({ defaultChannel }: { defaultChannel?: ChannelKey }
 }
 
 export function QueueRowActions({ id }: { id: number }) {
+  const [open,setOpen] = useState(false);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function act(action: "bump" | "kill") {
@@ -48,10 +50,5 @@ export function QueueRowActions({ id }: { id: number }) {
     if (!res.ok) alert((await res.json().catch(() => ({}))).error ?? "Failed");
     router.refresh();
   }
-  return (
-    <div className="queue-row-actions flex gap-1">
-      <button className="btn" disabled={busy} title="Increase priority by 5" aria-label="Increase priority by 5" onClick={() => act("bump")}>↑</button>
-      <button className="btn btn-danger" disabled={busy} title="Kill topic" aria-label="Kill topic" onClick={() => act("kill")}>×</button>
-    </div>
-  );
+  return <div className="queue-row-actions"><span className="desktop-queue-actions"><button className="btn" aria-label="Increase priority by 5" disabled={busy} onClick={()=>act("bump")}>↑</button><button className="btn btn-danger" aria-label="Kill topic" disabled={busy} onClick={()=>act("kill")}>×</button></span><button className="btn mobile-action-trigger" aria-label="Topic actions" onClick={()=>setOpen(true)}>•••</button><BottomSheet open={open} close={()=>setOpen(false)} title="Topic actions"><div className="grid gap-2"><button className="btn" disabled={busy} onClick={()=>act("bump")}>Increase priority +5</button><button className="btn btn-danger" disabled={busy} onClick={()=>act("kill")}>Kill topic</button></div></BottomSheet></div>;
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { RebuildButton } from "./RebuildButton";
 import { recoveryAction } from "@/lib/recovery";
 import { RetryButton } from "./RetryButton";
@@ -33,9 +34,10 @@ export function ContentList({
   daily?: Record<string, number[]>;
 }) {
   const params = useSearchParams();
+  const [visible,setVisible] = useState(20);
   const shown = items.slice(0, limit);
-  return (
-    <SeriesReport
+  const analyticsReport = dates.length > 0 && initialChartVisible;
+  const report = (<SeriesReport
       key={sort}
       name="content"
       initialSort={
@@ -98,6 +100,8 @@ export function ContentList({
           watch: metric(c, "watch") < 0 ? null : metric(c, "watch"),
         },
       }))}
-    />
+    />);
+  return (
+    <><div className={`mobile-content-list ${analyticsReport ? "mobile-content-hidden" : ""}`}>{!shown.length && <div className="py-6"><p className="text-muted">No videos match this view.</p><a className="btn mt-3" href="/content">Clear filters</a></div>}{shown.slice(0,visible).map(c=><a key={c.id} className="mobile-content-row" href={contentHref(c,params.toString())}>{/^https?:\/\//.test(c.thumbnail_path ?? "") ? <img src={c.thumbnail_path!} alt=""/> : <span className="content-thumbnail-empty" aria-hidden>▶</span>}<span className="mobile-content-copy"><strong>{c.title}</strong><span><span className="status-chip">{c.publications.some(p=>p.status==="failed") || c.qa_status==="failed" ? "failed" : c.publications.some(p=>p.status==="queued") ? "queued" : c.publications.some(p=>p.status==="scheduled") ? "scheduled" : c.status}</span><span>{views(c).toLocaleString()} views</span></span></span></a>)}{shown.length>visible && <button className="btn w-full" onClick={()=>setVisible(n=>n+20)}>Load more</button>}</div><div className={`desktop-content-list ${analyticsReport ? "analytics-report" : ""}`}>{report}</div>{!analyticsReport && <details className="mobile-content-tools"><summary>Trends and export</summary>{report}</details>}</>
   );
 }

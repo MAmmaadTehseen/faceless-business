@@ -158,7 +158,7 @@ export default async function Analytics({
       <PageHeader
         title="Analytics"
         action={
-          <AutoFilters className="analytics-periods flex justify-end"><select name="days" aria-label="Analytics date range" defaultValue={sp.days ?? "28"}>{["1","7","28","30","90","all"].map(d=><option key={d} value={d}>{d === "1" ? "Last 24 hours" : d === "all" ? "All time" : `${d} days`}</option>)}</select></AutoFilters>
+          <><nav className="mobile-period-chips" aria-label="Time range">{["1","7","28","90","all"].map(d=>{const q=new URLSearchParams(sp);q.set("days",d);return <Link key={d} href={`?${q}`} aria-current={(sp.days??"28")===d ? "page" : undefined}>{d==="1"?"24h":d==="all"?"All time":`${d} days`}</Link>})}</nav><AutoFilters className="analytics-periods flex justify-end"><select name="days" aria-label="Analytics date range" defaultValue={sp.days ?? "28"}>{["1","7","28","30","90","all"].map(d=><option key={d} value={d}>{d === "1" ? "Last 24 hours" : d === "all" ? "All time" : `${d} days`}</option>)}</select></AutoFilters></>
         }
       />
       {tab !== "hub" && (

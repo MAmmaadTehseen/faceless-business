@@ -37,8 +37,11 @@ export function InboxItem({
         if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     }
+    const viewport = window.visualViewport;
+    const resize = () => { if(drawer.current && viewport) {drawer.current.style.setProperty("--reply-height", `${viewport.height}px`);drawer.current.style.setProperty("--reply-top", `${viewport.offsetTop}px`);} };
+    resize(); viewport?.addEventListener("resize",resize); viewport?.addEventListener("scroll",resize);
     document.addEventListener("keydown", keyboard);
-    return () => {document.body.style.overflow = previous; document.removeEventListener("keydown",keyboard); opener.current?.focus();};
+    return () => {viewport?.removeEventListener("resize",resize);viewport?.removeEventListener("scroll",resize);document.body.style.overflow = previous; document.removeEventListener("keydown",keyboard); opener.current?.focus();};
   }, [open]);
   const [text, setText] = useState(comment.draft_reply ?? "");
   const [busy, setBusy] = useState<string | null>(null);
@@ -88,9 +91,7 @@ export function InboxItem({
         <span>{comment.platform}</span>
         {contentId && <a className="btn" href={`/content/${encodeURIComponent(contentId)}`}>View video →</a>}
         {comment.flagged && (
-          <span className="status-chip badge-alert" title={comment.flag_reason ?? ""}>
-            needs review
-          </span>
+          <details><summary className="status-chip badge-alert">needs review</summary><p>{comment.flag_reason || "Review this reply before sending."}</p></details>
         )}
         {url && <details className="row-details"><summary>Details</summary><p>{videoTitle || "Unknown video"}</p>
           <a
@@ -123,7 +124,7 @@ export function InboxItem({
         <>
           <button ref={opener} className="btn" onClick={() => setOpen(true)}>Reply →</button>
           {open && <div className="reply-backdrop" onClick={() => setOpen(false)}><section ref={drawer} className="reply-drawer" role="dialog" aria-modal="true" aria-label="Reply to comment" onClick={e => e.stopPropagation()}><button autoFocus className="btn float-right" onClick={() => setOpen(false)}>Close ×</button><h2 className="text-base font-semibold">{comment.author ?? "Viewer"}</h2><p className="text-muted text-sm mt-6">{comment.text}</p>
-          <textarea
+          <div className="reply-composer"><textarea
             className="w-full"
             rows={3}
             value={text}
@@ -144,7 +145,7 @@ export function InboxItem({
               disabled={!!busy}
               onClick={() => call("skip")}
             >
-              Skip
+              Dismiss
             </button>
             <button
               className="btn"
@@ -153,7 +154,7 @@ export function InboxItem({
             >
               {busy === "like" ? "..." : liked ? "Liked" : "Like"}
             </button>
-          </div></section></div>}
+          </div></div></section></div>}
         </>
       ) : null}
     </div></div>

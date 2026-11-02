@@ -57,7 +57,7 @@ export function MotionRuntime() {
     const closeAnswer = (event: MouseEvent) => {
       const summary = (event.target as Element).closest('summary');
       const details = summary?.parentElement as HTMLDetailsElement | null;
-      if (!details || reduced.matches) return;
+      if (!details || reduced.matches || matchMedia("(hover:none)").matches) return;
       event.preventDefault();
       const old = faqAnimations.get(details);
       const from = details.getBoundingClientRect().height;

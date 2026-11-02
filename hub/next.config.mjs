@@ -1,4 +1,5 @@
 const nextConfig = {
+  distDir: process.env.HUB_QA_DIST || ".next",
   trailingSlash: false,
   devIndicators: false,
   compress: true,

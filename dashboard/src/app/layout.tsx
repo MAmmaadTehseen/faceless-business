@@ -4,6 +4,7 @@ import { Pwa } from "@/components/Pwa";
 import { ToastHost } from "@/components/Toast";
 import { Shell } from "@/components/Nav";
 import { Banners } from "@/components/Banners";
+import { getPendingComments } from "@/lib/data";
 import { getChannelFilter } from "@/lib/channel-filter";
 
 export const metadata: Metadata = {
@@ -35,12 +36,13 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const channel = await getChannelFilter();
+  const unread = await getPendingComments("all").then(rows=>rows.length).catch(()=>0);
   return (
     <html lang="en">
       <body className="min-h-screen">
         <ToastHost />
         <Pwa />
-        <Shell channel={channel} banners={<Banners />}>
+        <Shell unread={unread} channel={channel} banners={<Banners />}>
           {children}
         </Shell>
       </body>

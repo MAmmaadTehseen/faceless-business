@@ -82,7 +82,7 @@ export function ContentFilters({
     !!sp.days && sp.days !== "all",
   ].filter(Boolean).length;
   return (
-    <FilterSheet count={count}><AutoFilters
+    <div className="search-filter-toolbar"><AutoFilters action={path} className="mobile-search"><input aria-label="Search title or topic" name="q" placeholder="Search content…" defaultValue={sp.q ?? ""}/>{Object.entries({...sp,channel}).filter(([k])=>k!=="q").map(([k,v])=><input type="hidden" key={k} name={k} value={v ?? ""}/>)}</AutoFilters><FilterSheet count={count}><AutoFilters
       key={JSON.stringify({ ...sp, q: undefined }) + channel}
       action={path}
       className="filter-bar"
@@ -132,6 +132,6 @@ export function ContentFilters({
       >
         Clear
       </Link>
-    </AutoFilters></FilterSheet>
+    </AutoFilters></FilterSheet></div>
   );
 }

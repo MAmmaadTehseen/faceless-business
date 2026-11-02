@@ -73,6 +73,7 @@ export function SeriesReport({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const [mobileLimit, setMobileLimit] = useState(20);
   const [pending, start] = useTransition();
   const [excluded, setExcluded] = useState<string[]>([]);
   const [show, setShow] = useState(initialChartVisible);
@@ -153,6 +154,7 @@ export function SeriesReport({
           Download CSV
         </button>
       </div>}
+      {hasChart && show && <div className="mobile-series-chips" aria-label="Chart series">{colored.map(r=><button key={r.id} aria-pressed={!excluded.includes(r.id)} onClick={()=>setExcluded(excluded.includes(r.id)?excluded.filter(id=>id!==r.id):[...excluded,r.id])}>{r.title}</button>)}</div>}
       {hasChart && show && (
         <div
           id={id}
@@ -170,8 +172,11 @@ export function SeriesReport({
                   No activity recorded for this period.
                 </p>
               )}
+              <p className="mobile-chart-readout" aria-live="polite">{dates[hover ?? dates.length-1]} · {selected.map(r=>`${r.title}: ${number.format(r.daily?.[hover ?? dates.length-1] ?? 0)}`).join(" · ")}</p>
               <svg
+                onTouchMove={e => {const rect=e.currentTarget.getBoundingClientRect();setHover(Math.max(0,Math.min(dates.length-1,Math.round((e.touches[0].clientX-rect.left)/rect.width*(dates.length-1)))));}}
                 viewBox="0 0 1000 254"
+                preserveAspectRatio="none"
                 role="img"
                 aria-label={`${name}: daily values`}
                 className="w-full"
@@ -317,7 +322,7 @@ export function SeriesReport({
       {chartOnly ? null : !rows.length ? (
         <div className="py-6"><p className="text-sm text-muted">No data for this period.</p><button className="btn mt-3" onClick={() => {const q = new URLSearchParams(params); ["q","status","kind","category"].forEach(k => q.delete(k)); q.set("days","all"); router.replace(`${pathname}?${q}`,{scroll:false});}}>Widen date range</button></div>
       ) : (
-        <table className="report-table w-full text-sm">
+        <><table className="report-table w-full text-sm">
           <thead>
             <tr>
               <th
@@ -355,8 +360,8 @@ export function SeriesReport({
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r) => (
-              <tr key={r.id} style={{ borderLeft: "none" }}>
+            {sorted.map((r, rowIndex) => (
+              <tr key={r.id} className={rowIndex >= mobileLimit ? "mobile-row-hidden" : ""} style={{ borderLeft: "none" }}>
                 <td>
                   <div className="report-title">
                     {hasChart && show && <i className="series-dot" style={{background:r.color}}/>}
@@ -447,7 +452,7 @@ export function SeriesReport({
               </tr>
             ))}
           </tbody>
-        </table>
+        </table>{sorted.length > mobileLimit && <button className="btn mobile-load-more" onClick={()=>setMobileLimit(n=>n+20)}>Load more</button>}</>
       )}
     </div>
   );
