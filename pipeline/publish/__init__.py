@@ -90,8 +90,21 @@ def _restore_queue(db, row, pub):
 
 def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queue=False, force=False):
     existing = db.one("publications", {"content_id": row["id"], "platform": "youtube"})
-    if existing and existing.get("status") == "live":
-        return {"platform": "youtube", "content_id": row["id"], "id": existing["platform_id"], "url": existing["url"]}
+    if existing and existing.get("platform_id"):
+        # A known remote ID remains authoritative even if a later DB write failed.
+        if row.get("status") != "killed" and row.get("qa_status") == "passed" and not row.get("placeholder"):
+            db.update("content", {"id": row["id"]}, {"status": "published"})
+        return {"platform": "youtube", "content_id": row["id"], "id": existing["platform_id"],
+                "url": existing.get("url") or f"https://youtu.be/{existing['platform_id']}"}
+    if existing and existing.get("status") in ("live", "uploading"):
+        raise RuntimeError("Publication needs reconciliation before another upload")
+    if existing:
+        try:
+            uncertain = json.loads(existing.get("error") or "{}").get("upload_uncertain")
+        except (ValueError, AttributeError):
+            uncertain = False
+        if uncertain:
+            raise RuntimeError("Previous upload outcome uncertain; reconcile in Studio before retry")
     if row.get("placeholder"):
         raise RuntimeError("Refusing to publish placeholder footage")
     if row.get("qa_status") != "passed":
@@ -105,6 +118,11 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             retry_at = None
         if retry_at and datetime.fromisoformat(retry_at) > datetime.now(timezone.utc):
             return None
+    # The compliance audit must be explicitly recorded as passed before new
+    # unscheduled/public uploads are allowed. Existing remote videos are untouched.
+    if privacy != "private" and db.setting("youtube_compliance_audit_passed", False) is not True:
+        privacy = "private"
+        log.info("youtube: retaining private scheduled upload until compliance audit passes")
     video = Path(row["file_path"])
     if not video.exists():
         raise FileNotFoundError(f"Queued media missing for {row['id']}")
@@ -113,16 +131,27 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
     if not (reserve(db, units, uploads=1, force=True) if force else reserve(db, units, uploads=1)):
         fields = {}
         if not draining:
-            db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued",
-                      "privacy": privacy, "publish_at": slot.isoformat()}, on="content_id,platform")
+            queued = {"content_id": row["id"], "platform": "youtube", "status": "queued",
+                      "privacy": privacy, "publish_at": slot.isoformat()}
+            if existing:
+                db.update("publications", {"content_id": row["id"], "platform": "youtube",
+                          "status": existing["status"]}, queued)
+            else:
+                try:
+                    db.insert("publications", queued)
+                except Exception:
+                    # Another runner may already be uploading this unique item.
+                    if db.one("publications", {"content_id": row["id"], "platform": "youtube"}):
+                        return None
+                    raise
             try:
                 fields = _persist_queue(db, row)
             except Exception as e:
-                db.update("publications", {"content_id": row["id"], "platform": "youtube"},
+                db.update("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued"},
                           {"error": "Queue storage failed: " + type(e).__name__})
                 raise
-        db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued",
-                  "privacy": privacy, "publish_at": slot.isoformat(), **fields}, on="content_id,platform")
+        db.update("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued"},
+                  {"privacy": privacy, "publish_at": slot.isoformat(), **fields})
         day = datetime.now(timezone.utc).date().isoformat()
         usage = db.one("quota_log", {"day": day}) or {}
         used_units, used_uploads = usage.get("units", 0), usage.get("uploads", 0)
@@ -137,15 +166,33 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
                  row["id"], ",".join(buckets) or "reservation rejected (concurrent usage)",
                  used_units, units, unit_limit, used_uploads, upload_limit)
         return None
+    claim = None
+    acquired = False
+    remote = None
     try:
         # Preserve order but move an expired scheduling slot into the future.
         if slot < datetime.now(timezone.utc) + timedelta(hours=1):
             parent = db.one("publications", {"content_id": row.get("parent_id"), "platform": "youtube"}) if row.get("parent_id") else None
             slot = _next_slot(db, row["kind"], channel, content_id=row["id"],
                               parent_slot=datetime.fromisoformat(parent["publish_at"].replace("Z", "+00:00")) if parent and parent.get("publish_at") else None)
+        # Claim the unique publication before videos.insert. Concurrent runners must
+        # not both upload; a crashed claim requires explicit owner reconciliation.
+        import uuid
+        claim = json.dumps({"upload_attempt": uuid.uuid4().hex, "upload_uncertain": True})
+        if existing:
+            db.update("publications", {"content_id": row["id"], "platform": "youtube",
+                      "status": existing["status"]}, {"status": "uploading", "error": claim})
+        else:
+            db.insert("publications", {"content_id": row["id"], "platform": "youtube",
+                      "status": "uploading", "privacy": privacy, "publish_at": slot.isoformat(), "error": claim})
+        claimed = db.one("publications", {"content_id": row["id"], "platform": "youtube"})
+        if not claimed or claimed.get("error") != claim:
+            return None
+        acquired = True
         r = youtube.upload(video, row["title"], row.get("description") or "", row.get("tags") or [],
             privacy=privacy, publish_at=slot if privacy == "private" else None, thumbnail=thumbnail,
             is_short=row["kind"] == "short", category_id=channel.cfg.get("category_id", "28"))
+        remote = r
         db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "platform_id": r["id"],
             "url": r["url"], "privacy": privacy, "publish_at": slot.isoformat(), "status": "live",
             "published_at": now_iso(), "error": None}, on="content_id,platform")
@@ -166,7 +213,20 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
                 log.warning("queue media cleanup deferred for %s", row["id"])
         return {"platform": "youtube", "content_id": row["id"], **r}
     except Exception as e:
+        if claim and not acquired:
+            # Unique-key conflict or lost claim: another runner owns this upload.
+            raise RuntimeError("Upload already claimed; refusing duplicate") from e
+        if remote:
+            # Never erase the ID when content/status persistence fails afterward.
+            db.upsert("publications", {"content_id": row["id"], "platform": "youtube",
+                      "platform_id": remote["id"], "url": remote["url"], "status": "live",
+                      "privacy": privacy, "publish_at": slot.isoformat()}, on="content_id,platform")
+            raise
         details = youtube.error_details(e)
+        # Transport errors may occur after YouTube accepted the upload. Fail closed.
+        http_status = details.get("http_status")
+        if acquired and (not http_status or http_status == 408 or http_status >= 500):
+            details["upload_uncertain"] = True
         daily_cap = "uploadLimitExceeded" in details["reason"].split(",")
         quota = daily_cap or (bool(set(details["reason"].split(",")) & youtube.QUOTA_REASONS) and not force)
         if daily_cap:
@@ -249,6 +309,11 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
     s = dict(short_row)
     if s.get("placeholder") or s.get("qa_status") != "passed":
         raise RuntimeError("Refusing to publish placeholder or unapproved Short")
+    if db.sb and not s.get("media_url") and s.get("file_path") and Path(s["file_path"]).is_file():
+        try:
+            _media_url(db, s)
+        except Exception as exc:
+            log.warning("short media persistence deferred for %s (%s)", s["id"], type(exc).__name__)
     desc = (s.get("description") or "").replace("{LONG_URL}", long_url or "")
     s["description"] = desc
     db.update("content", {"id": s["id"]}, {"description": desc})
@@ -268,7 +333,7 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
         try:
             if not meta.ig_configured():
                 raise RuntimeError("instagram not configured for this channel")
-            if ig and ig.get("status") == "live":
+            if ig and ig.get("platform_id"):
                 r = {"id": ig["platform_id"], "url": ig.get("url")}
             else:
                 url = _media_url(db, s)
@@ -282,7 +347,7 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
         try:
             if not meta.fb_configured():
                 raise RuntimeError("facebook not configured for this channel")
-            if fb and fb.get("status") == "live":
+            if fb and fb.get("platform_id"):
                 r = {"id": fb["platform_id"], "url": fb.get("url")}
             else:
                 r = meta.publish_facebook_reel(_local_file(db, s), caption)
@@ -344,12 +409,19 @@ def drain_youtube_queue(db, channel):
             try:
                 r = _youtube_publish(db, rows[p["content_id"]], channel, p.get("privacy") or "private", slot, draining=True)
             except Exception as e:
+                current = db.one("publications", {"id": p["id"]}) or {}
+                if current.get("platform_id") or current.get("status") != "queued":
+                    # Another worker may have claimed or completed this item.
+                    continue
                 try:
-                    attempts = json.loads(p.get("error") or "{}").get("drain_attempts", 0)
+                    previous = json.loads(current.get("error") or "{}")
+                    if previous.get("upload_uncertain"):
+                        continue
+                    attempts = previous.get("drain_attempts", 0)
                 except (ValueError, AttributeError):
                     attempts = 0
                 attempts += 1
-                db.update("publications", {"id": p["id"]}, {
+                db.update("publications", {"id": p["id"], "status": "queued", "error": current.get("error")}, {
                     "status": "failed" if attempts >= 3 else "queued",
                     "error": json.dumps({"drain_attempts": attempts, "error": "Queue drain failed: " + type(e).__name__})})
                 log.error("youtube queue drain failed for %s (%s)", p["content_id"], type(e).__name__)

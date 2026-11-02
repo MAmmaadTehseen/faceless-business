@@ -70,8 +70,9 @@ def test_forced_youtube_failure_stays_failed(monkeypatch, tmp_path):
     import pipeline.publish as publish
     video = tmp_path / "v.mp4"
     video.write_bytes(b"video")
-    db = Mock(sb=None)
-    db.one.return_value = None
+    from test_schedule import MemoryDB
+    db = MemoryDB()
+    db.upsert = Mock(wraps=db.upsert)
     row = dict(id="video", kind="long", file_path=str(video), title="Title", qa_status="passed")
     exc = Exception()
     exc.resp = Mock(status=403)
@@ -91,8 +92,9 @@ def test_automatic_quota_failure_queues(monkeypatch, tmp_path):
     import pipeline.publish as publish
     video = tmp_path / "v.mp4"
     video.write_bytes(b"video")
-    db = Mock(sb=None)
-    db.one.return_value = None
+    from test_schedule import MemoryDB
+    db = MemoryDB()
+    db.upsert = Mock(wraps=db.upsert)
     row = dict(id="video", kind="long", file_path=str(video), title="Title", qa_status="passed")
     exc = Exception()
     exc.resp = Mock(status=403)
@@ -209,8 +211,9 @@ def test_forced_daily_cap_queues_with_explanation(monkeypatch, tmp_path):
     import pipeline.publish as publish
     video = tmp_path / 'v.mp4'
     video.write_bytes(b'video')
-    db = Mock(sb=None)
-    db.one.return_value = None
+    from test_schedule import MemoryDB
+    db = MemoryDB()
+    db.upsert = Mock(wraps=db.upsert)
     exc = Exception()
     exc.content = b'{"error":{"errors":[{"reason":"uploadLimitExceeded"}]}}'
     monkeypatch.setattr(publish, 'reserve', Mock(return_value=True))

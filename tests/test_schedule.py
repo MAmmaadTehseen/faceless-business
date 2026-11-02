@@ -26,6 +26,15 @@ class MemoryDB:
             if all(row.get(k) == v for k, v in filters.items()):
                 row.update(fields)
 
+    def setting(self, key, default=None):
+        return default
+
+    def insert(self, table, row):
+        if table == "publications" and self.one(table, {k: row[k] for k in ("content_id", "platform")}):
+            raise RuntimeError("unique publication")
+        self.tables[table].append({"id": str(len(self.tables[table])), **row})
+        return self.tables[table][-1]
+
     def upsert(self, table, row, on):
         filters = {k: row[k] for k in on.split(',')}
         if self.one(table, filters):

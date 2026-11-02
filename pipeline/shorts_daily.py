@@ -49,6 +49,27 @@ def fresh_topic(db, channel):
     raise RuntimeError("No fresh topic outside this channel's last 14 days")
 
 
+def saved_daily_script(row):
+    if not row:
+        return None
+    path = OUT_DIR / row["id"] / "script.json"
+    if path.is_file():
+        return json.loads(path.read_text())
+    try:
+        notes = json.loads(row.get("qa_notes") or "{}")
+    except (ValueError, TypeError):
+        return None
+    return notes.get("daily_script") if isinstance(notes, dict) else None
+
+
+def daily_production_notes(issues, channel, data):
+    notes = json.loads(production_notes(issues, channel, "shorts"))
+    if not isinstance(notes, dict):
+        notes = {"issues": notes}
+    notes["daily_script"] = data
+    return json.dumps(notes)
+
+
 def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=False, privacy=None):
     if db.setting("pipeline_paused", False) and not dry_run:
         log.info("daily short: pipeline paused")
@@ -69,6 +90,12 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
         fixture = json.loads(FIXTURE.read_text())
         data = {**fixture["shorts"][0], "description": "Standalone fixture Short. #shorts", "tags": fixture.get("tags", []), "facts_check": []}
         topic = {"topic": data["hook_title"], "queue_id": None}
+    elif existing and saved_daily_script(existing):
+        # Failed validation/render retries reuse the paid response, including a
+        # response needing owner correction. Never silently buy it again.
+        content_id = existing["id"]
+        topic = {"topic": existing["topic"], "queue_id": None}
+        data = saved_daily_script(existing)
     else:
         topic, recent = fresh_topic(db, channel)
         content_id = f"{prefix}{slugify(topic['topic'], 40)}"
@@ -83,12 +110,20 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
             "Include attributable source URLs in facts_check and description. Use a generic physical footage query. "
             f"Do not repeat any of these recent topics or titles: {json.dumps(recent)}"
         )
+        db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "short", "parent_id": None,
+                              "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
         data, _ = claude.run("short_daily", prompt, schema=DAILY_SCHEMA, effort="medium", web_search=True,
                              max_searches=3, max_tokens=2500, retries=0, content_id=content_id)
-        if not 120 <= len(data["script"].split()) <= 160:
-            raise RuntimeError("Daily Short script outside 120-160 word range")
+        saved = OUT_DIR / content_id
+        saved.mkdir(parents=True, exist_ok=True)
+        write_json(saved / "script.json", data)
+        db.update("content", {"id": content_id}, {"script": data["script"], "qa_notes": json.dumps({"daily_script": data})})
+    if not dry_run:
+        words = len(data["script"].split())
+        if not 120 <= words <= 160:
+            raise RuntimeError(f"Daily Short script outside 120-160 word range ({words}); paid response saved for correction")
         if any(f["confidence"] == "unverified" for f in data["facts_check"]):
-            raise RuntimeError("Daily Short contains unverified claims")
+            raise RuntimeError("Daily Short contains unverified claims; paid response saved for correction")
     data = strip_script_dashes(data)
     if BANNED_TITLE.search(data["hook_title"]):
         raise RuntimeError("Daily Short title failed policy guardrail")
@@ -105,7 +140,7 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
            "topic": topic["topic"], "title": data["hook_title"], "description": data["description"],
            "tags": data["tags"], "script": data["script"], "duration_sec": res["duration"],
            "file_path": str(res["file"]), "status": "rendered" if qa["pass"] else "qa_failed", "placeholder": footage.placeholder, "qa_status": "passed" if qa["pass"] else "failed",
-           "qa_notes": production_notes(qa["issues"], channel, "shorts")}
+           "qa_notes": daily_production_notes(qa["issues"], channel, data)}
     db.upsert("content", row, on="id")
     if not qa["pass"]:
         raise RuntimeError(f"Daily Short QA failed: {qa['issues']}")
@@ -140,7 +175,11 @@ def main():
         db.update("runs", {"id": run["id"]}, {"status": "ok" if result else "skipped", "finished_at": now_iso(), "log": json.dumps(result)})
         print(json.dumps(result, indent=2))
     except Exception as e:
-        db.update("runs", {"id": run["id"]}, {"status": "failed", "finished_at": now_iso(), "log": type(e).__name__})
+        detail = {"error": type(e).__name__}
+        # Keep useful validation diagnostics without persisting request/credential errors.
+        if str(e).startswith(("Daily Short script outside", "Daily Short contains unverified", "Daily Short title failed")):
+            detail["reason"] = str(e)[:250]
+        db.update("runs", {"id": run["id"]}, {"status": "failed", "finished_at": now_iso(), "log": json.dumps(detail)})
         raise
 
 

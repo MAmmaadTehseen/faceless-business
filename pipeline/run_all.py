@@ -177,6 +177,12 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         sid = f"{content_id}-short-{i+1}"
         existing = db.one("content", {"id": sid}) if resume else None
         if not rerender and existing and existing.get("qa_status") == "passed" and Path(existing.get("file_path") or "").is_file():
+            if publish and not existing.get("media_url") and not existing.get("placeholder"):
+                try:
+                    from .publish import _media_url
+                    _media_url(db, existing)
+                except Exception as exc:
+                    log.warning("resumed short media persistence deferred for %s (%s)", sid, type(exc).__name__)
             shorts.append({"id": sid, "file": Path(existing["file_path"])})
             continue
         try:

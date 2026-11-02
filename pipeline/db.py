@@ -100,12 +100,13 @@ class DB:
         if self.sb:
             q = self.sb.table(table).update(fields)
             for k, v in match.items():
-                q = q.eq(k, v)
+                q = q.eq(k, v) if v is not None else q.is_(k, "null")
             q.execute()
             return
         sets = ", ".join(f"{k}=?" for k in fields)
-        where = " and ".join(f"{k}=?" for k in match)
-        self.conn.execute(f"update {table} set {sets} where {where}", [*fields.values(), *match.values()])
+        where = " and ".join(f"{k} is null" if v is None else f"{k}=?" for k, v in match.items())
+        self.conn.execute(f"update {table} set {sets} where {where}",
+                          [*fields.values(), *(v for v in match.values() if v is not None)])
         self.conn.commit()
 
     def select(self, table: str, match: dict | None = None, order: str | None = None, desc: bool = False,

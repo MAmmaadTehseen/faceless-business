@@ -38,7 +38,7 @@ def test_unrestorable_row_retries_three_times_and_continues(tmp_path, monkeypatc
     monkeypatch.setattr(publish.youtube, 'upload', upload)
     for attempt in range(1, 4):
         # A new healthy row on every sync proves continuing past the broken head.
-        db.update('publications', {'content_id': 'good'}, {'status': 'queued'})
+        db.update('publications', {'content_id': 'good'}, {'status': 'queued', 'platform_id': None, 'url': None})
         assert publish.drain_youtube_queue(db, channel) == 1
         bad = db.one('publications', {'content_id': 'bad'})
         assert json.loads(bad['error'])['drain_attempts'] == attempt

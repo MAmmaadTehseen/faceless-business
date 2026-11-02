@@ -169,7 +169,7 @@ def temporal_findings(video: Path, duration: float | None = None) -> list[dict]:
         result = subprocess.run([
             "ffmpeg", "-hide_banner", "-nostats", "-v", "info", "-i", str(video), "-vf",
             "blackdetect=d=0:pix_th=0.10,freezedetect=n=-60dB:d=0.1", "-an", "-f", "null", "-",
-        ], capture_output=True, text=True, check=True)
+        ], capture_output=True, text=True, check=True, timeout=min(600, max(60, duration * 3)))
         return parse_temporal_output(result.stderr, duration)
     except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
         return [{"severity": "minor", "text": f"temporal detector unavailable: {type(exc).__name__}: {exc}"}]

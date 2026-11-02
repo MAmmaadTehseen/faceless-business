@@ -156,6 +156,14 @@ def retry_one(db, pub, force=False):
         channel = Channel(row.get("channel") or "futurework")
         youtube.use_channel(channel)
         meta.use_channel(channel)
+        current = db.one("publications", {"id": pub["id"]}) or pub
+        if current.get("platform_id"):
+            # Stale retry requests must not upload a second copy after success.
+            return True
+        if pub["platform"] == "youtube" and (current.get("status") == "uploading" or _json(current.get("error")).get("upload_uncertain")):
+            # Leave the claim intact. Replacing its error with a retry failure
+            # would remove the uncertainty guard and permit a later duplicate.
+            return False
         row = restore(db, row, pub)
         if pub["platform"] == "youtube":
             if not youtube.configured():
@@ -180,6 +188,11 @@ def retry_one(db, pub, force=False):
         db.update("content", {"id": row["id"]}, {"status": "published"})
         return True
     except Exception as exc:
+        current = db.one("publications", {"id": pub["id"]}) or {}
+        if current.get("platform_id"):
+            return True
+        if pub["platform"] == "youtube" and (current.get("status") == "uploading" or _json(current.get("error")).get("upload_uncertain")):
+            return False
         details = retry_error_details(exc)
         db.update("publications", {"id": pub["id"]}, {"status": "failed", "error": json.dumps(details)})
         print(f"Publication {pub['id']} failed: {json.dumps(details)}")

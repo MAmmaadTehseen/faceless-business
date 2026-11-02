@@ -197,16 +197,16 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
     if not content or content["kind"] != "long":
         raise ValueError("Article requires an existing long content row")
     channel = Channel(content.get("channel") or "futurework")
-    script = json.loads((OUT_DIR / content_id / "script.json").read_text())
     publication = db.one("publications", {"content_id": content_id, "platform": "youtube"}) or {}
     existing = db.one("articles", {"id": content_id})
     thumbnail_path = article_thumbnail(db, content_id, existing, dry_run)
-    youtube_id = publication.get("platform_id") if publication.get("status") == "live" else None
+    youtube_id = publication.get("platform_id") or (existing or {}).get("youtube_id")
     # Keep reruns cheap, but pick up a newly available YouTube ID.
     if existing and existing.get("published_at") and not dry_run and not force:
         updates = {"thumbnail_path": thumbnail_path, "youtube_id": youtube_id, "summary_for_og": sharing_summary(existing.get("excerpt") or "")}
         db.update("articles", {"id": content_id}, updates)
         return {**existing, **updates}
+    script = json.loads((OUT_DIR / content_id / "script.json").read_text())
     if dry_run:
         # Offline fixture path deliberately avoids API calls and research claims.
         data = {"title": script["title"], "excerpt": "Local preview article from the fixture script.",
