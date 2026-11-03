@@ -56,6 +56,8 @@ export async function GET(req: NextRequest) {
     }
     const state = JSON.parse(await fs.readFile(path.join(directory, "state.json"), "utf8"));
     delete state.source;
+    try { Object.assign(state, JSON.parse(await worker(["spend", "--id", state.id]))); }
+    catch { state.spend_usd = null; }
     state.rights = JSON.parse(await fs.readFile(path.join(directory, "rights.json"), "utf8"));
     return NextResponse.json(state, { headers: { "Cache-Control": "no-store" } });
   } catch { return NextResponse.json({ error: "Project or output not found" }, { status: 404 }); }
@@ -87,9 +89,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(JSON.parse(output.trim().split("\n").at(-1)!));
     }
     const directory = await project(body.id);
-    if (!["generate", "regenerate", "review", "upload"].includes(body.action)) throw new Error("Invalid action");
+    if (!["generate", "regenerate", "rerender", "review", "upload"].includes(body.action)) throw new Error("Invalid action");
     if (["regenerate", "review"].includes(body.action) && !pieces.includes(body.piece)) throw new Error("Invalid piece");
     const args = [body.action, "--id", body.id];
+    if (body.excludeScene !== undefined) {
+      if (body.action !== "rerender" || !Number.isInteger(body.excludeScene) || body.excludeScene < 0) throw new Error("Invalid excluded scene");
+      args.push("--exclude-scene", String(body.excludeScene));
+    }
+    if (body.piece && !pieces.includes(body.piece)) throw new Error("Invalid piece");
     if (body.piece) args.push("--piece", body.piece);
     if (body.action !== "review") {
       // Atomically reserve a launch. Python holds the project lock throughout work.

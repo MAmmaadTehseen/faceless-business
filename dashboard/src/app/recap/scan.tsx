@@ -16,15 +16,17 @@ export default function Batch() {
   }
   useEffect(()=>{const saved=localStorage.getItem("recap-folder"); if(saved) setFolder(saved);},[]);
   useEffect(()=>{if(!report)return; const t=setInterval(()=>void action("scan"),5000);return()=>clearInterval(t);},[report,folder]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <details><summary>Scan folder / batch review queue</summary>
+  return <section className="recap-batch"><h2>Batch folder</h2><p>Scan a folder, check the films below, then approve its estimate.</p>
     <label>Absolute folder <input value={folder} onChange={e=>{setFolder(e.target.value);setReport(undefined);localStorage.setItem("recap-folder",e.target.value);}}/></label>
     <button className="btn" onClick={()=>action("scan")}>Scan folder</button>
     {error&&<p role="alert">{error}</p>}
     {report&&<><p>Batch estimate: ${report.estimate_usd.toFixed(2)}. {report.note}</p>
-      <label><input type="checkbox" checked={autoNew} onChange={e=>setAutoNew(e.target.checked)}/>Allow new eligible files on later batch runs after this approval (additional costs)</label>
+      <label><input type="checkbox" checked={autoNew} onChange={e=>setAutoNew(e.target.checked)}/>Automatically include new films later (off by default)</label>
+      <p>Warning: turning this on lets later batch runs spend money on new eligible films without another estimate approval.</p>
       <button className="btn" onClick={()=>action("batch-start")}>Approve estimate and process sequentially</button>
       <button className="btn" onClick={()=>action("batch-resume")}>Resume approved batch</button>
       <p>Missing rights and possible duplicates wait. Failures require Retry and renewed cost approval. Reopen this folder after a restart and Resume.</p>
+      <div className="recap-table"><table><thead><tr><th>Film</th><th>Status</th><th>Review</th></tr></thead><tbody>{report.films.map((film,i)=><tr key={film.id||i}><td>{film.filename}</td><td>{film.status}</td><td>{film.project_id ? <a href={`/recap?id=${film.project_id}`}>Open review</a> : "Waiting"}</td></tr>)}</tbody></table></div>
       {report.films.map((film,i)=><section key={film.id||i} style={{borderBottom:"1px solid #777",padding:12}}>
         <p>{film.filename} · {film.status} {film.title_warning&&"· Warning: title already reviewed on this channel"}</p>
         {film.project_id&&<a href={`/recap?id=${film.project_id}`}>Open review / approve / upload</a>}
@@ -38,5 +40,5 @@ export default function Batch() {
         </form>}
       </section>)}
     </>}
-  </details>;
+  </section>;
 }

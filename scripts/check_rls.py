@@ -126,6 +126,7 @@ def main():
     marker = 'rls-probe-' + uuid.uuid4().hex
     numeric_id = -int(uuid.uuid4().hex[:14], 16)
     rows = {
+        'recap_films': {'id': marker, 'filename': marker, 'source': marker, 'normalized_title': marker, 'file_size': 0, 'duration': 0, 'content_hash': marker, 'status': 'probe'},
         'content': {'id': marker, 'kind': 'short', 'topic': marker, 'title': marker},
         'publications': {'id': numeric_id, 'platform': marker},
         'metrics': {'id': numeric_id, 'views': 0},

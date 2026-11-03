@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import Batch from "./scan";
+import "./recap.css";
 
-type Item = {title: string; description: string; segments: {text: string; scene: number}[]; approved: boolean; discarded: boolean; uploaded: boolean; duration?: number; qa?: {pass: boolean; issues: {text: string}[]}};
-type Job = {id: string; status: string; stage: string; piece?: string; percent: number; error?: string; rights: Record<string,string>; plan: {estimate_usd: number; estimate_note: string}; items: Record<string,Item>};
+type Item = {accuracy_check?: string[]; title: string; description: string; segments: {text: string; scene: number}[]; approved: boolean; discarded: boolean; uploaded: boolean; duration?: number; qa?: {pass: boolean; issues: {text: string; severity?: string; time?: number; scene?: number}[]}};
+type Job = {spend_usd?: number | null; id: string; status: string; stage: string; piece?: string; percent: number; error?: string; rights: Record<string,string>; plan: {estimate_usd: number; estimate_note: string}; items: Record<string,Item>};
 export default function Recap() {
   const [job, setJob] = useState<Job>();
   const [error, setError] = useState("");
@@ -19,6 +20,8 @@ export default function Recap() {
     return () => clearInterval(timer);
   }, [job?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   async function action(payload: object) {
+    const p = payload as {action?:string;piece?:string};
+    if (["rerender", "regenerate"].includes(p.action || "") && !window.confirm(p.action === "rerender" ? `Re-render ${p.piece || "all unuploaded pieces"} using saved script and narration? Only QA costs apply: estimated $${p.piece ? "0.10" : "0.50"}. This is not a price cap. Approval will be cleared.` : "Buy a new script and narration for this piece? Generation and QA cost extra; the project generation estimate is shown above. Approval will be cleared.")) return;
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/recap", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
@@ -28,9 +31,9 @@ export default function Recap() {
     } catch (e) { setError(String(e)); }
     finally { setBusy(false); }
   }
-  return <main style={{maxWidth:1000, margin:"2rem auto", padding:24}}>
+  return <main className="recap">
     <h1>Local film review</h1>
-    <Batch />
+    <ol className="recap-steps" aria-label="Review steps">{["Choose film","Generate","Review","Upload"].map((step,i)=><li key={step} aria-current={i === (!job ? 0 : job.status === "estimated" || job.status === "running" ? 1 : Object.values(job.items).some(x=>x.approved) ? 3 : 2) ? "step" : undefined}>{i+1}. {step}</li>)}</ol>
     <p>Rights basis is your responsibility. Source film audio is removed unless you select a low audio bed. Review all five pieces before uploading.</p>
     {error && <p role="alert">{error}</p>}
     {!job && <form onSubmit={e=>{
@@ -47,24 +50,27 @@ export default function Recap() {
       <button className="btn" disabled={busy}>Validate and estimate</button>
     </form>}
     {job && <>
-      <p>Project: {job.id}</p><p>Rights: {Object.entries(job.rights).map(([k,v])=>`${k}: ${v}`).join(" · ")}</p>
+      <p className="recap-spend">{job.spend_usd == null ? "Spend unavailable" : `$${job.spend_usd.toFixed(2)} spent so far`}</p><details><summary>Project and rights</summary><p>{job.id}</p><p>Rights: {Object.entries(job.rights).map(([k,v])=>`${k}: ${v}`).join(" · ")}</p></details>
       <p>Estimated generation cost: ${job.plan.estimate_usd.toFixed(2)}. {job.plan.estimate_note}</p>
       <p role="status" style={{fontSize:18,fontWeight:600}}>{job.status === "estimated" ? "Not started. Click the button below to begin." : job.status === "running" ? `Generating: ${job.stage} ${job.piece || ""} (${job.percent}%). You can leave this page open.` : job.status === "review" ? "Finished. Review each piece below, then upload." : job.status === "error" ? "Stopped with an error." : job.status}</p>{job.status === "running" && <progress max={100} value={job.percent} style={{width:"100%"}}/>}
       {job.error && <p role="alert">{job.error}</p>}
       {(job.status === "estimated" || job.status === "error") && <button className="btn btn-primary" disabled={busy} onClick={()=>action({action:"generate",id:job.id})}>{busy ? "Starting…" : `Start generating (about $${job.plan.estimate_usd.toFixed(2)})`}</button>}
+      {Object.keys(job.items).length > 0 && <button className="btn" disabled={busy || job.status === "running"} onClick={()=>action({action:"rerender",id:job.id})}>Re-render all pieces · QA costs only</button>}
       {Object.entries(job.items).map(([name,item])=><Piece key={name} name={name} item={item} job={job} disabled={busy || job.status === "running"} action={action}/>)}
       {job.status !== "estimated" && <button className="btn" disabled={busy || job.status === "running" || !Object.values(job.items).some(i=>i.approved && !i.discarded)} onClick={()=>action({action:"upload",id:job.id})}>Upload approved items privately with calendar schedule</button>}
       <p>Regeneration incurs additional cost and clears that piece’s approval. Upload retries reuse existing YouTube publications.</p>
     </>}
+    <Batch />
   </main>;
 }
 function Piece({name,item,job,disabled,action}:{name:string;item:Item;job:Job;disabled:boolean;action:(v:object)=>Promise<void>}) {
   const [title,setTitle] = useState(item.title), [description,setDescription] = useState(item.description);
   useEffect(()=>{setTitle(item.title);setDescription(item.description);},[item.title,item.description]);
-  return <section style={{border:"1px solid #777",padding:16,margin:"24px 0"}}>
+  return <section className="recap-piece">
     <h2>{name} {item.approved ? "· Approved" : item.discarded ? "· Discarded" : "· Needs review"} {item.uploaded && "· Uploaded"}</h2>
     {item.duration && <><video controls preload="metadata" style={{maxWidth:"100%",maxHeight:500}} src={`/api/recap?id=${job.id}&file=${name}/video.mp4`}/><p><a href={`/api/recap?id=${job.id}&file=${name}/captions.srt`}>SRT captions</a></p></>}
-    <p>QA: {item.qa ? (item.qa.pass ? "passed" : "blocked") : "pending"}</p>{item.qa?.issues.map((v,i)=><p key={i}>{v.text}</p>)}
+    <p>QA: {item.qa ? (item.qa.pass ? "passed" : "blocked") : "pending"}</p>{item.qa?.issues.map((v,i)=><div key={i}><p>{v.severity === "blocking" ? "Blocked: " : "Note: "}{v.text}{v.time !== undefined && ` · Frame ${v.time.toFixed(1)}s`}</p>{v.scene !== undefined && <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"rerender",id:job.id,piece:name,excludeScene:v.scene})}>Avoid this shot · re-render</button>}</div>)}
+    <h3>Accuracy check</h3><p>Verify these plot claims against the film before approving.</p>{item.accuracy_check?.length ? <ul>{item.accuracy_check.map((claim,i)=><li key={i}>{claim}</li>)}</ul> : <p>No claim list saved. Check the script manually; paid regeneration adds this list.</p>}
     <details><summary>Read script</summary>{item.segments.map((s,i)=><p key={i}>{s.text}</p>)}</details>
     <label>Title <input value={title} maxLength={100} onChange={e=>setTitle(e.target.value)} disabled={item.uploaded}/></label>
     <label>Description <textarea value={description} maxLength={4900} onChange={e=>setDescription(e.target.value)} disabled={item.uploaded}/></label>
@@ -72,7 +78,8 @@ function Piece({name,item,job,disabled,action}:{name:string;item:Item;job:Job;di
       <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"review",id:job.id,piece:name,title,description})}>Save edits</button>
       <button className="btn" disabled={disabled || item.uploaded || !item.qa?.pass} onClick={()=>action({action:"review",id:job.id,piece:name,title,description,approved:true})}>Approve</button>
       <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"review",id:job.id,piece:name,title,description,discarded:true})}>Discard</button>
-      <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"regenerate",id:job.id,piece:name})}>Regenerate this piece (paid)</button>
+      <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"rerender",id:job.id,piece:name})}>Re-render · saved script · QA costs only</button>
+      <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"regenerate",id:job.id,piece:name})}>Regenerate · buy new script (paid)</button>
     </div>
   </section>;
 }

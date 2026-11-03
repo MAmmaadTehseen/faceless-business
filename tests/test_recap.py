@@ -151,6 +151,14 @@ def test_lavfi_end_to_end_mocked_paid_services(video, monkeypatch):
     assert state["items"]["long"]["approved"]
     assert (work / "long" / "video.mp4").stat().st_mtime_ns == before
     assert not state["items"]["short2"]["approved"]
+    paid_calls = claude.run.call_count
+    monkeypatch.setattr(worker, "narrate", lambda *_: pytest.fail("Re-render must reuse narration"))
+    worker.generate(work, state, only="short2", db=db, claude=claude, rerender=True)
+    assert claude.run.call_count == paid_calls
+    assert "text still visible" in claude.vision.call_args.args[1]
+    assert "Transcript language:" in claude.run.call_args.args[1][-1]["text"]
+    assert "accuracy_check" in claude.run.call_args.kwargs["schema"]["properties"]["short2"]["required"]
+
 
 
 def test_local_channel_never_discovered_by_crons():
@@ -240,3 +248,73 @@ def test_usable_scene_rejects_black_and_flat():
     assert not usable_scene("x", scene, reader=lambda c: bytes(2304))
     assert not usable_scene("x", scene, reader=lambda c: b"\x80" * 2304)
     assert usable_scene("x", scene, reader=lambda c: bytes(range(0, 240, 5)) * 48)
+
+
+def test_excluded_scenes_never_walked():
+    scenes = [{"start": i*5, "end": (i+1)*5} for i in range(10)]
+    assert 3 not in worker.scene_walk(scenes, 3, {2, 3}, [3])
+    assert worker.scene_walk(scenes, 0, set(), list(range(10))) == []
+
+
+def test_findings_map_frame_to_actual_scene(tmp_path):
+    core.dump(tmp_path / "shots.json", [{"start": 0, "end": 4, "scene": 8}])
+    qa = {"issues": [{"text": "Subtitles remain at 2.5 seconds", "severity": "blocking"}, {"text": "Unknown frame"}]}
+    worker.annotate_findings(qa, tmp_path)
+    assert qa["issues"][0]["scene"] == 8
+    assert qa["issues"][0]["time"] == 2.5
+    assert "scene" not in qa["issues"][1]
+
+
+def test_spend_is_project_scoped():
+    db = Mock()
+    db.select.return_value = [{"content_id": "filmreview-abc", "usd": .2}, {"content_id": "filmreview-abc-short1", "usd": .1}, {"content_id": "filmreview-abcd", "usd": 9}]
+    assert worker.project_spend(db, "abc") == pytest.approx(.3)
+
+
+def test_rerender_requires_saved_narration(video):
+    from pipeline.db import DB
+    state = core.create(payload(video))
+    with pytest.raises(ValueError, match="Saved script and narration"):
+        worker.generate(core.job_dir(state["id"]), state, only="long", rerender=True, db=DB(), claude=Mock())
+
+
+def test_recap_rls_fixture_is_schema_complete(monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("recap_rls_probe", core.ROOT / "scripts/check_rls.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setenv("SUPABASE_URL", "https://example.invalid")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "anon-fixture")
+    monkeypatch.setenv("RLS_MEDIA_OBJECT", "fixture.mp4")
+    monkeypatch.setattr(module, "table_names", lambda: ["recap_films"])
+    calls = []
+    def request(self, method, path, payload=None, **kwargs):
+        calls.append((method, path, payload))
+        if path.endswith("/list/media"):
+            return 200, []
+        if kwargs.get("public"):
+            return 206, None
+        return 403, {"code": "42501"}
+    monkeypatch.setattr(module.Checker, "request", request)
+    assert module.main() == 0
+    row = next(payload for method, path, payload in calls if method == "POST" and path == "/rest/v1/recap_films")
+    assert row["id"].startswith("rls-probe-")
+    assert {"filename", "source", "normalized_title", "file_size", "duration", "content_hash", "status"} <= row.keys()
+
+
+def test_recap_review_flow_contract():
+    page = (core.ROOT / "dashboard/src/app/recap/review.tsx").read_text()
+    batch = (core.ROOT / "dashboard/src/app/recap/scan.tsx").read_text()
+    assert '["Choose film","Generate","Review","Upload"]' in page
+    assert "window.confirm" in page and "QA costs apply" in page
+    assert "Avoid this shot" in page and "Accuracy check" in page
+    assert "spend_usd" in page
+    assert "useState(false)" in batch and "<table>" in batch and "without another estimate approval" in batch
+
+
+def test_legacy_narration_reuse(tmp_path, monkeypatch):
+    (tmp_path / "voice.mp3").write_bytes(b"fixture")
+    core.dump(tmp_path / "voice_timings.json", [{"start": 0, "end": 2}])
+    monkeypatch.setattr(worker, "probe", lambda _: {"duration": 2})
+    voice = worker.saved_voice(tmp_path)
+    assert voice["duration"] == 2 and voice["timings"][0]["start"] == 0
