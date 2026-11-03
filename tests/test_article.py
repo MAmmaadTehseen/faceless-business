@@ -69,7 +69,7 @@ class ArticleChecks(unittest.TestCase):
         bad = copy.deepcopy(good)
         bad['faqs'] = []
         claude.run.side_effect = [(bad, 0), (good, 0)]
-        result = write_article(db, 'fixture', claude=claude)
+        result = write_article(db, 'fixture', claude=claude, script_data={'title': 'A Focused Explainer'})
         self.assertEqual(claude.run.call_count, 2)
         self.assertEqual(guard.return_value.check.call_count, 2)
         self.assertIn('Use exactly 5 FAQs', claude.run.call_args.args[1])
@@ -108,7 +108,7 @@ class ArticleChecks(unittest.TestCase):
         bad['faqs'] = []
         claude.run.side_effect = [(copy.deepcopy(bad), 0), (copy.deepcopy(bad), 0)]
         with self.assertRaisesRegex(ValueError, 'Article validation failed'):
-            write_article(db, 'fixture', claude=claude)
+            write_article(db, 'fixture', claude=claude, script_data={'title': 'A Focused Explainer'})
         self.assertEqual(claude.run.call_count, 2)
         db.upsert.assert_not_called()
 

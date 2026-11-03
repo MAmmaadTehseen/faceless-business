@@ -107,7 +107,7 @@ def backfill(db, *, apply=False, limit=None, sources=None):
                 print('  saved')
             except Exception as exc:
                 failed.append(cid)
-                print(f'  failed: {type(exc).__name__}; continuing')
+                print(f'  failed: {type(exc).__name__}: {exc}; continuing')
     print(f'Recoverable: {found}; estimated cost ${found * .60:.2f}')
     print('No script source: ' + (', '.join(missing) or 'none'))
     for error in sources.errors:
