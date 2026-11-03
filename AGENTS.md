@@ -109,6 +109,7 @@ Open, in order:
 5. Phase 2: TikTok (funnel only, no payout in Pakistan). X skipped.
 
 ## TODO (owner-approved, not started; give to Codex)
+- LinkedIn: one automated daily post per channel from its own Company Page, official API only (organization posting needs LinkedIn app approval; owner creates Pages and app first).
 - Dashboard: live progress for runs in flight. Show each running produce/shorts job as a card with stage (ideate, script, voice, footage, render, QA, upload, article), percent done and an estimated time left based on median durations of past runs; progress bar on Content and home. Source: `runs` table rows (pipeline writes stage + timestamp per step) and/or GitHub Actions run status via /api/actions.
 - Comments: fetch reply threads (YouTube `commentThreads.list` part=snippet,replies; IG/FB replies) so viewer replies to our
   replies are seen; continue a thread for at most 3 turns.
