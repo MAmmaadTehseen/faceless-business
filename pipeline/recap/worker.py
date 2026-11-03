@@ -306,7 +306,7 @@ def main():
         state = json.loads((work / "state.json").read_text())
         try:
             if args.action in {"generate", "regenerate"}:
-                if args.action == "generate" and state["status"] != "estimated":
+                if args.action == "generate" and state["status"] not in ("estimated", "error"):
                     raise ValueError("Use Regenerate for an existing review")
                 generate(work, state, args.piece if args.action == "regenerate" else None)
             elif args.action == "upload":
