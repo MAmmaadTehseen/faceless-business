@@ -86,20 +86,70 @@ def narrate(item, work, channel):
 RENDER_SIZES = {True: (1080, 1920), False: (1920, 1080)}
 
 
+MAX_SHOT = 4.0
+
+
+def scene_walk(scenes, first, used):
+    """Scene indices from the chosen one onward, wrapping; unused first, credits and opening excluded."""
+    total = len(scenes)
+    if not total:
+        return []
+    last = scenes[-1]["end"]
+    body = [i for i, s in enumerate(scenes) if last * 0.01 <= s["start"] <= last * 0.92] or list(range(total))
+    ordered = sorted(body, key=lambda i: (i - first) % total)
+    return [i for i in ordered if i not in used] + [i for i in ordered if i in used]
+
+
+def usable_scene(source, scene, *, reader=None):
+    """False for black or nearly flat frames, sampled cheaply mid-scene."""
+    import numpy as np
+    middle = (scene["start"] + scene["end"]) / 2
+    command = ["ffmpeg", "-v", "error", "-ss", str(middle), "-i", str(source), "-frames:v", "1", "-vf", "scale=64:36,format=gray", "-f", "rawvideo", "-"]
+    raw = reader(command) if reader else subprocess.run(command, stdout=subprocess.PIPE, timeout=60).stdout
+    if not raw:
+        return False
+    frame = np.frombuffer(raw, dtype=np.uint8)
+    return bool(frame.mean() >= 28 and frame.std() >= 14)
+
+
 def assemble(source, scenes, item, voice, work, short, bed=0):
     width, height = RENDER_SIZES[short]
     clips = []
     timings = voice["timings"]
+    # Shorts fill the 9:16 frame around the centre; long videos keep the whole frame.
+    fit = (f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1,fps=24" if short else
+           f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24")
+    used, usable_cache = set(), {}
     for i, segment in enumerate(item["segments"]):
         start = timings[i]["start"]
         end = timings[i+1]["start"] if i+1 < len(timings) else voice["duration"]
-        scene = scenes[segment["scene"]]
-        clip = work / f"clip-{i}.mp4"
-        # Letterbox: preserves the whole source frame in both aspect ratios.
-        run(["ffmpeg", "-y", "-v", "error", "-ss", str(scene["start"]), "-t", str(min(8, scene["end"]-scene["start"])), "-i", str(source), "-an", "-vf",
-             f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24", "-c:v", "libx264", "-preset", "fast", "-threads", "2", "-pix_fmt", "yuv420p", str(clip)])
+        need = end - start
+        pieces = []
+        # Cut through consecutive usable scenes from the chosen point instead of looping one clip.
+        for index in scene_walk(scenes, segment["scene"], used):
+            if need <= 0:
+                break
+            if index not in usable_cache:
+                usable_cache[index] = usable_scene(source, scenes[index])
+            if not usable_cache[index]:
+                continue
+            scene = scenes[index]
+            take = min(MAX_SHOT, scene["end"] - scene["start"] - 0.1, need + 0.1)
+            if take < 0.4:
+                continue
+            clip = work / f"clip-{i}-{len(pieces)}.mp4"
+            run(["ffmpeg", "-y", "-v", "error", "-ss", str(scene["start"] + 0.05), "-t", str(take), "-i", str(source), "-an", "-vf", fit,
+                 "-c:v", "libx264", "-preset", "fast", "-threads", "2", str(clip)])
+            used.add(index)
+            pieces.append(clip)
+            need -= take
+        if not pieces:
+            raise ValueError("No usable film scenes for a segment")
+        chain = work / f"chain-{i}.txt"
+        chain.write_text("\n".join(f"file '{p.name}'" for p in pieces))
         part = work / f"part-{i}.mp4"
-        run(["ffmpeg", "-y", "-v", "error", "-stream_loop", "-1", "-i", str(clip), "-t", str(end-start), "-an", "-c:v", "libx264", "-preset", "fast", "-threads", "2", str(part)])
+        run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-stream_loop", "-1", "-i", str(chain), "-t", str(end-start), "-an",
+             "-c:v", "libx264", "-preset", "fast", "-threads", "2", str(part)])
         clips.append(part)
     listing = work / "concat.txt"
     listing.write_text("\n".join(f"file '{p.name}'" for p in clips))

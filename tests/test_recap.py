@@ -224,3 +224,19 @@ def test_mocked_upload_reuses_guard_and_inserts_captions(video, monkeypatch):
     worker.upload(work, state)
     assert mocked.captions.return_value.insert.call_count == 5
     assert all(i["captions_uploaded"] for i in state["items"].values())
+
+
+def test_scene_walk_skips_credits_and_prefers_unused():
+    from pipeline.recap.worker import scene_walk
+    scenes = [{"start": i * 10.0, "end": i * 10.0 + 10} for i in range(100)]
+    walk = scene_walk(scenes, 50, {51})
+    assert walk[0] == 50 and walk[1] == 52 and walk[-1] == 51
+    assert 99 not in walk and 0 not in walk
+
+
+def test_usable_scene_rejects_black_and_flat():
+    from pipeline.recap.worker import usable_scene
+    scene = {"start": 0, "end": 2}
+    assert not usable_scene("x", scene, reader=lambda c: bytes(2304))
+    assert not usable_scene("x", scene, reader=lambda c: b"\x80" * 2304)
+    assert usable_scene("x", scene, reader=lambda c: bytes(range(0, 240, 5)) * 48)
