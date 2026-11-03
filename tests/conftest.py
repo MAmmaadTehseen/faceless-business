@@ -1,4 +1,7 @@
 """All tests use disposable SQLite, even when local production config exists."""
+import os
+os.environ["PYTHON_DOTENV_DISABLED"] = "1"
+
 import pytest
 
 

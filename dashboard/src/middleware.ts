@@ -1,9 +1,16 @@
+import { recapRequestAllowed } from "@/lib/recap-local";
 import { parseScope, SCOPE_COOKIE } from "@/lib/scope";
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (pathname === "/recap" || pathname.startsWith("/recap/") || pathname === "/api/recap" || pathname.startsWith("/api/recap/")) {
+    if (!recapRequestAllowed(req)) return new NextResponse(null, { status: 404 });
+    const headers = new Headers(req.headers);
+    headers.set("x-local-recap", "1");
+    return NextResponse.next({ request: { headers } });
+  }
   if (
     pathname === "/login" ||
     pathname === "/api/login" ||

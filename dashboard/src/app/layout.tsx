@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { recapEnabled } from "@/lib/recap-local";
 import { getScope } from "@/lib/server-scope";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
@@ -36,6 +38,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (recapEnabled() && (await headers()).get("x-local-recap") === "1") {
+    return <html lang="en"><body className="min-h-screen">{children}</body></html>;
+  }
   const scope = await getScope();
   const channel = scope.channel;
   const unread = await getPendingComments(channel, 200, scope.platform === "all" ? "" : scope.platform).then(rows=>rows.length).catch(()=>0);

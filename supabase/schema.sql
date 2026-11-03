@@ -163,6 +163,25 @@ alter table articles enable row level security;
 create table if not exists quota_log (day text primary key, units int not null default 0, uploads int not null default 0);
 alter table quota_log add column if not exists uploads int not null default 0;
 alter table quota_log enable row level security;
+create table if not exists recap_films (
+    id text primary key,
+    channel text not null default 'filmreview',
+    filename text not null,
+    source text not null,
+    normalized_title text not null,
+    year int,
+    file_size bigint not null,
+    duration real not null,
+    content_hash text not null,
+    status text not null,
+    project_id text,
+    content_ids text not null default '[]',
+    rights text not null default '{}',
+    duplicate_confirmed boolean not null default false
+);
+create index if not exists recap_films_hash on recap_films(content_hash);
+create index if not exists recap_films_title on recap_films(normalized_title, year);
+
 -- First-party, cookie-free hub telemetry. No anonymous or authenticated access.
 create table if not exists public.hub_events (
  id bigserial primary key, ts timestamptz not null default now(),
@@ -510,3 +529,7 @@ begin
     has_schema_privilege('service_role', 'public', 'USAGE');
 end;
 $$;
+
+alter table recap_films enable row level security;
+revoke all on recap_films from anon, authenticated;
+grant all on recap_films to service_role;

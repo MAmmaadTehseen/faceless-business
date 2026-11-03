@@ -1,0 +1,83 @@
+{
+  "title": "What AI task exposure really measures",
+  "primary_keyword": "AI task exposure",
+  "slug": "AI Task Exposure: What It Measures",
+  "meta_title": "What AI task exposure really measures",
+  "meta_description": "Understand how task exposure differs from job replacement, why adoption takes time, and what teams should measure before changing a workflow. Evaluate complete processes with care.",
+  "excerpt": "Task exposure describes potential assistance rather than inevitable replacement.",
+  "intro_md": "AI task exposure measures which parts of a job software might assist with, rather than predicting whether the entire occupation will disappear. A role can contain writing, negotiation, physical work and responsibility for mistakes. Those activities respond differently to automation. Looking at individual tasks helps explain why two people with the same job title may experience different changes. This article separates technical capability from practical adoption, explains what exposure studies measure, and shows why employers still need evidence from their own workflows before changing staffing or training plans.",
+  "quick_answer": "Task exposure estimates where AI could assist particular activities. It does not predict job losses, because adoption depends on integration, oversight, cost and the responsibilities that remain with people.",
+  "key_takeaways": [
+    "Tasks differ within the same occupation.",
+    "Capability does not establish adoption speed.",
+    "Broad categories hide workplace differences.",
+    "Pilots should include review time."
+  ],
+  "sections": [
+    {
+      "heading": "What exposure measures",
+      "body_md": "Researchers compare task descriptions with the kinds of work a system can perform. That comparison provides a starting point for investigation, rather than a forecast of redundancies.\n\nA score cannot capture every informal responsibility. Teams should compare the task list with work people actually perform.",
+      "evidence": {
+        "label": "Important",
+        "text": "The source provides context for interpreting occupational research rather than an individual employment forecast.",
+        "source_name": "International Labour Organization",
+        "source_url": "https://www.ilo.org/publications"
+      }
+    },
+    {
+      "heading": "Why adoption takes time",
+      "body_md": "AI task exposure does not measure how quickly a company can change its processes. Deployment also depends on reliable data, compatible tools and clear responsibility when an output is wrong.\n\nA successful demonstration can still require extensive integration. Managers need to evaluate the whole process rather than one isolated response.",
+      "evidence": {
+        "label": "Important",
+        "text": "The source provides context for interpreting occupational research rather than an individual employment forecast.",
+        "source_name": "Organisation for Economic Co-operation and Development",
+        "source_url": "https://www.oecd.org/employment/"
+      }
+    },
+    {
+      "heading": "Where measurement falls short",
+      "body_md": "Occupational categories summarize many different workplaces. A single category can include workers using very different tools and serving very different customers.\n\nThese differences make broad estimates useful for discussion but less useful as individual predictions. Local observation remains necessary.",
+      "evidence": {
+        "label": "Important",
+        "text": "The source provides context for interpreting occupational research rather than an individual employment forecast.",
+        "source_name": "US Bureau of Labor Statistics",
+        "source_url": "https://www.bls.gov/ooh/"
+      }
+    },
+    {
+      "heading": "How teams can evaluate changes",
+      "body_md": "A small pilot can compare the existing process with an assisted version. Record time spent reviewing results as well as time spent producing them.\n\nReview should include mistakes, escalation and responsibility. Faster drafting alone does not demonstrate that the complete process has improved.",
+      "evidence": null
+    }
+  ],
+  "cta_md": "Watch the embedded video for examples of changing work.\n\nSubscribe to [Trade Winds](https://www.youtube.com/@TradeWindsReport).",
+  "faqs": [
+    {
+      "question": "Does a high score mean my job will vanish?",
+      "answer": "Treat the estimate as a starting point for examining actual work. Compare the activities described with your own responsibilities, including review and exception handling. A broad occupational score cannot determine what will happen in a particular team."
+    },
+    {
+      "question": "Can two teams have different outcomes?",
+      "answer": "Treat the estimate as a starting point for examining actual work. Compare the activities described with your own responsibilities, including review and exception handling. A broad occupational score cannot determine what will happen in a particular team."
+    },
+    {
+      "question": "Should a pilot count review time?",
+      "answer": "Treat the estimate as a starting point for examining actual work. Compare the activities described with your own responsibilities, including review and exception handling. A broad occupational score cannot determine what will happen in a particular team."
+    },
+    {
+      "question": "Are task lists complete?",
+      "answer": "Treat the estimate as a starting point for examining actual work. Compare the activities described with your own responsibilities, including review and exception handling. A broad occupational score cannot determine what will happen in a particular team."
+    },
+    {
+      "question": "How should workers use these estimates?",
+      "answer": "Treat the estimate as a starting point for examining actual work. Compare the activities described with your own responsibilities, including review and exception handling. A broad occupational score cannot determine what will happen in a particular team."
+    }
+  ],
+  "entities": [
+    "AI",
+    "an absent entity"
+  ],
+  "self_qa": [
+    "PASS: claims distinguished from inference"
+  ]
+}
