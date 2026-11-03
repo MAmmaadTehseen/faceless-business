@@ -117,8 +117,9 @@ def assemble(source, scenes, item, voice, work, short, bed=0):
     clips = []
     timings = voice["timings"]
     # Shorts fill the 9:16 frame around the centre; long videos keep the whole frame.
-    fit = (f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1,fps=24" if short else
-           f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24")
+    # Both reframes keep the upper picture so subtitles burned into a source fall outside the frame.
+    fit = (f"crop=iw:ih*0.8:0:0,scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1,fps=24" if short else
+           f"crop=iw*0.8:ih*0.8:iw*0.1:0,scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24")
     used, usable_cache = set(), {}
     for i, segment in enumerate(item["segments"]):
         start = timings[i]["start"]
