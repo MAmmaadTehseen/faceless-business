@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
+      JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
+      JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       GH_TOKEN: ${{ github.token }}

@@ -51,7 +51,7 @@ class DB:
         sql = "\n".join(l for l in sql.splitlines() if not l.strip().startswith("alter table"))
         # Includes articles from schema.sql; the same type coercion applies to its timestamps.
         self.conn.executescript(sql)
-        for stmt in ("alter table quota_log add column uploads int not null default 0",
+        for stmt in ("alter table publications add column status_changed_at text","alter table quota_log add column uploads int not null default 0",
                      "alter table content add column channel text not null default 'futurework'",
                      "alter table topic_queue add column channel text not null default 'futurework'",
                      "alter table content add column placeholder boolean default false",

@@ -1,3 +1,4 @@
+import { Count } from "./Count";
 import { HubAnalytics as Data } from "@/lib/hub-analytics";
 import { channelMeta } from "@/lib/channels";
 import { Section } from "./Section";
@@ -44,7 +45,7 @@ export function HubAnalytics({ data: a }: { data: Data | null }) {
         }).map(([k, v]) => (
           <div className="card" key={k}>
             <p className="text-xs text-muted">{k}</p>
-            <p className={`${k === "Page views" ? "hero-value" : "stat-value"} mt-2`}>{v}</p>
+            <p className={`${k === "Page views" ? "hero-value" : "stat-value"} mt-2`}>{k === "Avg seconds / page" ? v : <Count value={v}/>}</p>
           </div>
         ))}
       </div>
@@ -76,7 +77,7 @@ export function HubAnalytics({ data: a }: { data: Data | null }) {
           columns={[
             { key: "views", label: "Views", share: true },
             { key: "uniques", label: "Uniques" },
-            { key: "seconds", label: "Avg seconds" },
+            { key: "seconds", label: "Avg seconds", format: "decimal" },
             { key: "embeds", label: "Embed clicks" },
             { key: "ctr", label: "YouTube CTR", format: "percent" },
           ]}

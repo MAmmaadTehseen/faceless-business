@@ -14,6 +14,7 @@ export async function middleware(req: NextRequest) {
   if (
     pathname === "/login" ||
     pathname === "/api/login" ||
+    pathname === "/api/jarvis/summary" ||
     pathname === "/privacy" ||
     pathname === "/terms"
   )

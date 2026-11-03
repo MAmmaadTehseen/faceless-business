@@ -26,6 +26,8 @@ jobs:
       group: retry-${{ inputs.request_id || github.run_id }}
       cancel-in-progress: false
     env:
+      JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
+      JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       GH_TOKEN: ${{ github.token }}
@@ -53,6 +55,8 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Retry selected publications
         env:
+          JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
+          JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
           RETRY_IDS: ${{ inputs.ids }}
           RETRY_CONTENT: ${{ inputs.content_id }}
           RETRY_PLATFORM: ${{ inputs.platform }}

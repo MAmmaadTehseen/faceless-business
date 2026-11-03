@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .common import Channel, OUT_DIR, now_iso
 from .db import DB
+from .publish.jarvis import update as publication_update
 from .publish import (_restore_queue, _local_file, _media_url, _youtube_publish,
                       _next_slot, follow_youtube_to_reels, youtube, meta)
 
@@ -183,7 +184,7 @@ def retry_one(db, pub, force=False):
             result = meta.publish_instagram_reel(_media_url(db, row), caption)
         else:
             result = meta.publish_facebook_reel(Path(row["file_path"]), caption)
-        db.update("publications", {"id": pub["id"]}, {"status": "live", "platform_id": result["id"],
+        publication_update(db, {"id": pub["id"]}, {"status": "live", "platform_id": result["id"],
                   "url": result.get("url"), "privacy": "public", "published_at": now_iso(), "error": None})
         db.update("content", {"id": row["id"]}, {"status": "published"})
         return True
@@ -194,7 +195,7 @@ def retry_one(db, pub, force=False):
         if pub["platform"] == "youtube" and (current.get("status") == "uploading" or _json(current.get("error")).get("upload_uncertain")):
             return False
         details = retry_error_details(exc)
-        db.update("publications", {"id": pub["id"]}, {"status": "failed", "error": json.dumps(details)})
+        publication_update(db, {"id": pub["id"]}, {"status": "failed", "error": json.dumps(details)})
         print(f"Publication {pub['id']} failed: {json.dumps(details)}")
         return False
 

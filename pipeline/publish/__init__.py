@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ..common import Channel, log, now_iso
 from . import meta, youtube
+from .jarvis import record, update as publication_update
 from .quota import THUMB_COST, UPDATE_COST, reserve
 
 
@@ -193,7 +194,7 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             privacy=privacy, publish_at=slot if privacy == "private" else None, thumbnail=thumbnail,
             is_short=row["kind"] == "short", category_id=channel.cfg.get("category_id", "28"))
         remote = r
-        db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "platform_id": r["id"],
+        record(db, {"content_id": row["id"], "platform": "youtube", "platform_id": r["id"],
             "url": r["url"], "privacy": privacy, "publish_at": slot.isoformat(), "status": "live",
             "published_at": now_iso(), "error": None}, on="content_id,platform")
         db.update("content", {"id": row["id"]}, {"status": "published"})
@@ -218,7 +219,7 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             raise RuntimeError("Upload already claimed; refusing duplicate") from e
         if remote:
             # Never erase the ID when content/status persistence fails afterward.
-            db.upsert("publications", {"content_id": row["id"], "platform": "youtube",
+            record(db, {"content_id": row["id"], "platform": "youtube",
                       "platform_id": remote["id"], "url": remote["url"], "status": "live",
                       "privacy": privacy, "publish_at": slot.isoformat()}, on="content_id,platform")
             raise
@@ -240,7 +241,7 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
                 quota = daily_cap
                 details["storage_error"] = type(storage_error).__name__
         log.error("youtube upload failed for %s: %s", row["id"], json.dumps(details))
-        db.upsert("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued" if quota else "failed",
+        record(db, {"content_id": row["id"], "platform": "youtube", "status": "queued" if quota else "failed",
             "privacy": privacy, "publish_at": slot.isoformat(), "error": json.dumps(details), **fields}, on="content_id,platform")
         return None
 
@@ -338,12 +339,12 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
             else:
                 url = _media_url(db, s)
                 r = meta.publish_instagram_reel(url, caption)
-            db.upsert("publications", {"content_id": s["id"], "platform": "instagram", "platform_id": r["id"], "url": r.get("url"), "privacy": "public",
+            record(db, {"content_id": s["id"], "platform": "instagram", "platform_id": r["id"], "url": r.get("url"), "privacy": "public",
                                        "status": "live", "published_at": now_iso()}, on="content_id,platform")
             results.append({"platform": "instagram", "content_id": s["id"], **r})
         except Exception as e:
             log.error("instagram failed: %s", e)
-            db.upsert("publications", {"content_id": s["id"], "platform": "instagram", "status": "failed", "error": str(e)[:500]}, on="content_id,platform")
+            record(db, {"content_id": s["id"], "platform": "instagram", "status": "failed", "error": str(e)[:500]}, on="content_id,platform")
         try:
             if not meta.fb_configured():
                 raise RuntimeError("facebook not configured for this channel")
@@ -351,12 +352,12 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
                 r = {"id": fb["platform_id"], "url": fb.get("url")}
             else:
                 r = meta.publish_facebook_reel(_local_file(db, s), caption)
-            db.upsert("publications", {"content_id": s["id"], "platform": "facebook", "platform_id": r["id"], "url": r.get("url"), "privacy": "public",
+            record(db, {"content_id": s["id"], "platform": "facebook", "platform_id": r["id"], "url": r.get("url"), "privacy": "public",
                                        "status": "live", "published_at": now_iso()}, on="content_id,platform")
             results.append({"platform": "facebook", "content_id": s["id"], **r})
         except Exception as e:
             log.error("facebook failed: %s", e)
-            db.upsert("publications", {"content_id": s["id"], "platform": "facebook", "status": "failed", "error": str(e)[:500]}, on="content_id,platform")
+            record(db, {"content_id": s["id"], "platform": "facebook", "status": "failed", "error": str(e)[:500]}, on="content_id,platform")
     elif meta.configured():
         log.info("meta: skipping reels while publish_privacy is private (Reels cannot be scheduled private)")
 
@@ -421,7 +422,7 @@ def drain_youtube_queue(db, channel):
                 except (ValueError, AttributeError):
                     attempts = 0
                 attempts += 1
-                db.update("publications", {"id": p["id"], "status": "queued", "error": current.get("error")}, {
+                publication_update(db, {"id": p["id"], "status": "queued", "error": current.get("error")}, {
                     "status": "failed" if attempts >= 3 else "queued",
                     "error": json.dumps({"drain_attempts": attempts, "error": "Queue drain failed: " + type(e).__name__})})
                 log.error("youtube queue drain failed for %s (%s)", p["content_id"], type(e).__name__)

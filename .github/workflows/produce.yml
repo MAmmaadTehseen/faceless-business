@@ -44,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
+      JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
+      JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -87,6 +89,8 @@ jobs:
       - name: Pick channel
         id: pick
         env:
+          JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
+          JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
           INPUT_CHANNEL: ${{ github.event.inputs.channel }}
           RESUME_ID: ${{ github.event.inputs.resume_id }}
         run: |
@@ -110,6 +114,8 @@ jobs:
       - name: Restore rendered files
         if: github.event.inputs.resume_id != ''
         env:
+          JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
+          JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
           RESUME_ID: ${{ github.event.inputs.resume_id }}
           ARTIFACT_RUN_ID: ${{ github.event.inputs.artifact_run_id }}
           CHANNEL: ${{ steps.pick.outputs.channel }}
@@ -125,6 +131,8 @@ jobs:
           fi
       - name: Produce and publish
         env:
+          JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
+          JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
           RESUME_ID: ${{ github.event.inputs.resume_id }}
           CHANNEL: ${{ steps.pick.outputs.channel }}
           RERENDER: ${{ github.event.inputs.rerender }}

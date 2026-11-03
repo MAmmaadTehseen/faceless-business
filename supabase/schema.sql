@@ -35,6 +35,7 @@ create table if not exists publications (
   privacy text,                              -- private | public | scheduled
   publish_at timestamptz,
   published_at timestamptz,
+  status_changed_at timestamptz default now(),
   status text default 'pending',             -- pending | live | failed
   error text,
   unique (content_id, platform)

@@ -7,7 +7,7 @@ import { ReplaceLink as Link } from "@/components/ReplaceLink";
 import { getAnalytics, Totals } from "@/lib/analytics";
 import { getChannelFilter } from "@/lib/channel-filter";
 import { channelMeta, parseChannelFilter } from "@/lib/channels";
-import { fmtNum } from "@/lib/format";
+import { fmtCount } from "@/lib/format";
 import { filterContent } from "@/lib/content-filters";
 import { ContentFilters } from "@/components/ContentFilters";
 import { ContentList } from "@/components/ContentList";
@@ -31,10 +31,11 @@ function Delta({
   const d = value - old;
   return (
     <span
+      title={pp ? undefined : String(d)}
       className={`text-xs ${d < 0 ? "text-muted" : d > 0 ? "text-muted" : "text-muted"}`}
     >
       {d > 0 ? "+" : ""}
-      {pp ? d.toFixed(1) + " pp" : fmtNum(d)} vs previous
+      {pp ? d.toFixed(1) + " pp" : fmtCount(d)} vs previous
     </span>
   );
 }
@@ -180,12 +181,12 @@ export default async function Analytics({
               return (
                 <div className="card" key={key}>
                   <p className="text-xs text-muted">{title}</p>
-                  <p className={`${key === "views" ? "hero-value" : "stat-value"} mt-2 text-right`}>
+                  <p title={key === "watch" || v == null ? undefined : String(v)} className={`${key === "views" ? "hero-value" : "stat-value"} mt-2 text-right`}>
                     {v == null
                       ? "—"
                       : key === "watch"
                         ? `${v.toFixed(1)}%`
-                        : fmtNum(v)}
+                        : fmtCount(v)}
                   </p>
                   {v != null && old != null && sp.days !== "all" && (
                     <div className="text-right mt-2">

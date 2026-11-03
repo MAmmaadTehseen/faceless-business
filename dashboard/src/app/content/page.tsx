@@ -1,3 +1,4 @@
+import { Count } from "@/components/Count";
 import { scopedSearch } from "@/lib/server-scope";
 import { isOwner } from "@/lib/role";
 import { RetryButton } from "@/components/RetryButton";
@@ -31,7 +32,7 @@ export default async function ContentPage({
   return (
     <div className="space-y-5">
       <PageHeader title="Content" />
-      <div className="hero"><p className="hero-label">Videos in this view</p><p className="hero-value">{items.length}</p><p className="text-xs text-muted mt-2">{items.filter(c => c.publications.some(p => p.status === "failed") || (!sp.platform && c.qa_status === "failed")).length} need attention</p></div>
+      <div className="hero"><p className="hero-label">Videos in this view</p><p className="hero-value">{<Count value={items.length}/>}</p><p className="text-xs text-muted mt-2">{<Count value={items.filter(c => c.publications.some(p => p.status === "failed") || (!sp.platform && c.qa_status === "failed")).length}/>} need attention</p></div>
       <ContentFilters sp={sp} channel={channel} path="/content" />
       {owner && ["failed", "queued"].includes(sp.status) && <RetryButton publications={items.flatMap(c => c.publications)} label="Retry all failed"/>}
       <Section title="Videos">

@@ -1,3 +1,4 @@
+import { Count } from "@/components/Count";
 import { scopedSearch } from "@/lib/server-scope";
 import { videoShorts } from "@/lib/video-detail";
 import { AutoFilters } from "@/components/AutoFilters";
@@ -104,7 +105,7 @@ export default async function InboxPage({
           </div>
         }
       />
-<div className="hero"><p className="hero-label">{tab === "pending" ? "Awaiting a reply" : "Conversations in this view"}</p><p className="hero-value">{comments.length}</p></div>
+<div className="hero"><p className="hero-label">{tab === "pending" ? "Awaiting a reply" : "Conversations in this view"}</p><p className="hero-value">{<Count value={comments.length}/>}</p></div>
       <FilterSheet count={[platform, sp.q, days !== "all", channel !== "all"].filter(Boolean).length}><AutoFilters key={JSON.stringify({ ...sp, q: undefined })} className="filter-bar mb-4">
         {sp.video && <><input type="hidden" name="video" value={sp.video}/><span className="text-xs text-muted">Filtered to this video and its Shorts</span></>}
         <select name="channel" aria-label="Channel" defaultValue={channel}><option value="all">All channels</option>{CHANNELS.map(c => <option key={c.key} value={c.key}>{c.short}</option>)}</select>

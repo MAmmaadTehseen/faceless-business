@@ -1,11 +1,12 @@
 "use client";
+import { fmtCount } from "@/lib/format";
 import { useId, useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 export type ReportColumn = {
   key: string;
   label: string;
-  format?: "number" | "percent" | "usd" | "date";
+  format?: "number" | "decimal" | "percent" | "usd" | "date";
   share?: boolean;
   detailOnly?: boolean;
 };
@@ -15,7 +16,7 @@ export type ReportRow = {
   status?: string;
   subtitle?: string;
   actions?: React.ReactNode;
-  links?: { label: string; href: string }[];
+  links?: { label: string; href: string; title?: string }[];
   color?: string;
   href?: string;
   thumbnail?: string | null;
@@ -23,11 +24,6 @@ export type ReportRow = {
   values: Record<string, number | null>;
   daily?: number[];
 };
-const axisNumber = new Intl.NumberFormat("en-US", {
-  notation: "compact",
-  maximumFractionDigits: 0,
-});
-const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 function display(value: number | null, format?: ReportColumn["format"]) {
   return value == null
     ? "—"
@@ -42,7 +38,7 @@ function display(value: number | null, format?: ReportColumn["format"]) {
         ? `$${value.toFixed(2)}`
         : format === "percent"
           ? `${value.toFixed(1)}%`
-          : number.format(value);
+          : format === "decimal" ? String(value) : fmtCount(value);
 }
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
@@ -101,6 +97,8 @@ export function SeriesReport({
   );
   const hasChart =
     chart && dates.length > 0 && rows.some((r) => r.daily !== undefined);
+  const chartFormat = columns[0]?.format;
+  const chartDisplay = (value: number) => display(value, chartFormat);
   const max = Math.max(1, ...selected.flatMap((r) => r.daily ?? []));
   const x = (i: number) => 56 + (i * 888) / Math.max(1, dates.length - 1);
   const y = (v: number) => 210 - (v / max) * 174;
@@ -172,7 +170,7 @@ export function SeriesReport({
                   No activity recorded for this period.
                 </p>
               )}
-              <p className="mobile-chart-readout" aria-live="polite">{dates[hover ?? dates.length-1]} · {selected.map(r=>`${r.title}: ${number.format(r.daily?.[hover ?? dates.length-1] ?? 0)}`).join(" · ")}</p>
+              <p title={selected.map(r => `${r.title}: ${r.daily?.[hover ?? dates.length-1] ?? 0}`).join(" · ")} className="mobile-chart-readout" aria-live="polite">{dates[hover ?? dates.length-1]} · {selected.map(r=>`${r.title}: ${chartDisplay(r.daily?.[hover ?? dates.length-1] ?? 0)}`).join(" · ")}</p>
               <svg
                 onTouchMove={e => {const rect=e.currentTarget.getBoundingClientRect();setHover(Math.max(0,Math.min(dates.length-1,Math.round((e.touches[0].clientX-rect.left)/rect.width*(dates.length-1)))));}}
                 viewBox="0 0 1000 254"
@@ -214,7 +212,7 @@ export function SeriesReport({
                       fill="var(--muted)"
                       fontSize="13"
                     >
-                      {axisNumber.format(max * f)}
+                      <title>{String(max * f)}</title>{chartDisplay(max * f)}
                     </text>
                   </g>
                 ))}
@@ -296,8 +294,8 @@ export function SeriesReport({
                           style={{ background: r.color }}
                         />
                         <span className="flex-1">{r.title}</span>
-                        <b className="tabular-nums">
-                          {number.format(r.daily?.[hover] ?? 0)}
+                        <b title={String(r.daily?.[hover] ?? 0)} className="tabular-nums">
+                          {chartDisplay(r.daily?.[hover] ?? 0)}
                         </b>
                       </div>
                     ))}
@@ -312,7 +310,7 @@ export function SeriesReport({
                   value={hover ?? 0}
                   onChange={(e) => setHover(Number(e.target.value))}
                   aria-label="Inspect chart date"
-                  aria-valuetext={`${dates[hover ?? 0]}: ${selected.map((r) => `${r.title} ${number.format(r.daily?.[hover ?? 0] ?? 0)}`).join(", ")}`}
+                  aria-valuetext={`${dates[hover ?? 0]}: ${selected.map((r) => `${r.title} ${String(r.daily?.[hover ?? 0] ?? 0)}`).join(", ")}`}
                 />
               </label>
             </>
@@ -418,18 +416,19 @@ export function SeriesReport({
                       {r.links && (
                         <div className="flex flex-col gap-3 mt-3 text-xs text-muted">
                           {r.links.map((l) => (
-                            <a key={l.label} href={l.href}>
+                            <a key={l.label} href={l.href} title={l.title}>
                               {l.label}
                             </a>
                           ))}
                         </div>
-                      )}<p className="detail-title">{r.title}</p><dl className="detail-metrics">{columns.map(c => <div key={c.key}><dt>{c.label}</dt><dd>{display(r.values[c.key], c.format)}</dd></div>)}</dl></details>}
+                      )}<p className="detail-title">{r.title}</p><dl className="detail-metrics">{columns.map(c => <div key={c.key}><dt>{c.label}</dt><dd title={r.values[c.key] == null ? undefined : String(r.values[c.key])}>{display(r.values[c.key], c.format)}</dd></div>)}</dl></details>}
                     </div>
                   </div>
                 </td>
                 {visibleColumns.map((c) => (
                   <td
                     key={c.key}
+                    title={r.values[c.key] == null ? undefined : String(r.values[c.key])}
                     data-label={c.label}
                     className="text-right tabular-nums"
                   >
