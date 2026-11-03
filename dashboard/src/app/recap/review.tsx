@@ -44,16 +44,16 @@ export default function Recap() {
       {basis === "Creative Commons" && <><label>Licence <input name="licence" required/></label><label>Licence URL <input name="url" required type="url"/></label></>}
       {basis === "written permission" && <label>Permission note <textarea name="note" required/></label>}
       <label>Original film audio <select name="bed"><option value="0">Removed (default)</option><option value="0.04">Low bed (4%)</option></select></label>
-      <button disabled={busy}>Validate and estimate</button>
+      <button className="btn" disabled={busy}>Validate and estimate</button>
     </form>}
     {job && <>
       <p>Project: {job.id}</p><p>Rights: {Object.entries(job.rights).map(([k,v])=>`${k}: ${v}`).join(" · ")}</p>
       <p>Estimated generation cost: ${job.plan.estimate_usd.toFixed(2)}. {job.plan.estimate_note}</p>
-      <p>{job.status}: {job.stage} {job.piece || ""} ({job.percent}%)</p><progress max={100} value={job.percent}/>
+      <p role="status" style={{fontSize:18,fontWeight:600}}>{job.status === "estimated" ? "Not started. Click the button below to begin." : job.status === "running" ? `Generating: ${job.stage} ${job.piece || ""} (${job.percent}%). You can leave this page open.` : job.status === "review" ? "Finished. Review each piece below, then upload." : job.status === "error" ? "Stopped with an error." : job.status}</p>{job.status === "running" && <progress max={100} value={job.percent} style={{width:"100%"}}/>}
       {job.error && <p role="alert">{job.error}</p>}
-      {job.status === "estimated" && <button disabled={busy} onClick={()=>action({action:"generate",id:job.id})}>Generate — approve estimated cost</button>}
+      {job.status === "estimated" && <button className="btn btn-primary" disabled={busy} onClick={()=>action({action:"generate",id:job.id})}>{busy ? "Starting…" : `Start generating (about $${job.plan.estimate_usd.toFixed(2)})`}</button>}
       {Object.entries(job.items).map(([name,item])=><Piece key={name} name={name} item={item} job={job} disabled={busy || job.status === "running"} action={action}/>)}
-      <button disabled={busy || job.status === "running" || !Object.values(job.items).some(i=>i.approved && !i.discarded)} onClick={()=>action({action:"upload",id:job.id})}>Upload approved items privately with calendar schedule</button>
+      {job.status !== "estimated" && <button className="btn" disabled={busy || job.status === "running" || !Object.values(job.items).some(i=>i.approved && !i.discarded)} onClick={()=>action({action:"upload",id:job.id})}>Upload approved items privately with calendar schedule</button>}
       <p>Regeneration incurs additional cost and clears that piece’s approval. Upload retries reuse existing YouTube publications.</p>
     </>}
   </main>;
@@ -69,10 +69,10 @@ function Piece({name,item,job,disabled,action}:{name:string;item:Item;job:Job;di
     <label>Title <input value={title} maxLength={100} onChange={e=>setTitle(e.target.value)} disabled={item.uploaded}/></label>
     <label>Description <textarea value={description} maxLength={4900} onChange={e=>setDescription(e.target.value)} disabled={item.uploaded}/></label>
     <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-      <button disabled={disabled || item.uploaded} onClick={()=>action({action:"review",id:job.id,piece:name,title,description})}>Save edits</button>
-      <button disabled={disabled || item.uploaded || !item.qa?.pass} onClick={()=>action({action:"review",id:job.id,piece:name,title,description,approved:true})}>Approve</button>
-      <button disabled={disabled || item.uploaded} onClick={()=>action({action:"review",id:job.id,piece:name,title,description,discarded:true})}>Discard</button>
-      <button disabled={disabled || item.uploaded} onClick={()=>action({action:"regenerate",id:job.id,piece:name})}>Regenerate this piece (paid)</button>
+      <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"review",id:job.id,piece:name,title,description})}>Save edits</button>
+      <button className="btn" disabled={disabled || item.uploaded || !item.qa?.pass} onClick={()=>action({action:"review",id:job.id,piece:name,title,description,approved:true})}>Approve</button>
+      <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"review",id:job.id,piece:name,title,description,discarded:true})}>Discard</button>
+      <button className="btn" disabled={disabled || item.uploaded} onClick={()=>action({action:"regenerate",id:job.id,piece:name})}>Regenerate this piece (paid)</button>
     </div>
   </section>;
 }
