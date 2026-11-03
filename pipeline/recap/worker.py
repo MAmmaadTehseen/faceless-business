@@ -22,7 +22,11 @@ def transcribe(source, info):
         return []
     from faster_whisper import WhisperModel
     model = WhisperModel(os.getenv("RECAP_WHISPER_MODEL", "small"), device="cpu", compute_type="int8")
-    segments, _ = model.transcribe(str(source), beam_size=5)
+    # Decode with ffmpeg: faster-whisper's PyAV path breaks on newer av releases.
+    import numpy as np
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(source), "-map", "0:a:0", "-ac", "1", "-ar", "16000",
+                          "-f", "f32le", "-"], stdout=subprocess.PIPE, check=True).stdout
+    segments, _ = model.transcribe(np.frombuffer(raw, dtype=np.float32), beam_size=5)
     return [{"start": s.start, "end": s.end, "text": s.text} for s in segments]
 
 
