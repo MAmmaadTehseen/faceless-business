@@ -38,3 +38,32 @@ def test_qa_failure_preserves_paid_script_for_fresh_runner(tmp_path,monkeypatch,
     assert json.loads(notes)['issues'][0]['severity']=='blocking'
     if cloud:
         assert json.loads(notes)['artifact_run_id']=='123'
+
+
+def test_missing_paid_daily_script_refuses_repurchase(tmp_path, monkeypatch):
+    from pipeline.db import DB
+    monkeypatch.setattr(daily, 'OUT_DIR', tmp_path)
+    db = DB()
+    cid = 'futurework-' + datetime.now(timezone.utc).date().isoformat() + '-short-example'
+    db.insert('content', {'id': cid, 'channel': 'futurework', 'kind': 'short', 'topic': 'Example', 'title': 'Example'})
+    db.insert('costs', {'content_id': cid, 'channel': 'futurework', 'step': 'short_daily', 'usd': .2})
+    monkeypatch.setattr(daily.CostGuard, 'check', lambda *a, **kw: True)
+    client = Mock()
+    monkeypatch.setattr(daily, 'Claude', Mock(return_value=client))
+    with pytest.raises(RuntimeError, match='restore its artifact'):
+        daily.produce_daily(db, Channel())
+    client.run.assert_not_called()
+
+
+def test_cost_only_topic_is_not_bought_again_next_day(monkeypatch):
+    from pipeline.db import DB
+    db = DB()
+    db.insert('costs', {'content_id': 'futurework-2026-11-01-short-orphaned-paid-topic',
+                       'channel': 'futurework', 'step': 'short_daily', 'usd': .2})
+    # Use a current timestamp independently of the content ID's production date.
+    monkeypatch.setattr(daily, 'fetch_news', lambda *_: [
+        {'headline': 'Orphaned paid topic', 'url': 'https://example.com/old'},
+        {'headline': 'New unrelated discovery', 'url': 'https://example.com/new'}])
+    topic, recent = daily.fresh_topic(db, Channel())
+    assert topic['topic'] == 'New unrelated discovery'
+    assert 'orphaned paid topic' in recent

@@ -186,7 +186,7 @@ def article_thumbnail(db, content_id, existing, dry_run):
         return previous
 
 
-def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_run: bool = False, force: bool = False) -> dict:
+def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_run: bool = False, force: bool = False, script_data: dict | None = None) -> dict:
     # SQLite bootstraps older schemas locally; keep the optional SEO columns compatible.
     if getattr(db, "kind", None) == "sqlite":
         columns = {r[1] for r in db.conn.execute("pragma table_info(articles)")}
@@ -206,7 +206,7 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
         updates = {"thumbnail_path": thumbnail_path, "youtube_id": youtube_id, "summary_for_og": sharing_summary(existing.get("excerpt") or "")}
         db.update("articles", {"id": content_id}, updates)
         return {**existing, **updates}
-    script = json.loads((OUT_DIR / content_id / "script.json").read_text())
+    script = script_data if script_data is not None else json.loads((OUT_DIR / content_id / "script.json").read_text())
     if dry_run:
         # Offline fixture path deliberately avoids API calls and research claims.
         data = {"title": script["title"], "excerpt": "Local preview article from the fixture script.",

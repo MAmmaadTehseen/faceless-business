@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import re
+import json
 
-from .common import Claude, log
+from .common import Claude, log, OUT_DIR, write_json
 
 BANNED_TITLE = re.compile(
     r"while you sleep|guarantee|get rich|secret method|doctors hate|don't want you to know|make money fast|\$\d+[,\d]*\s*(a|per)\s*(day|week|month)|cure|lose \d+ (lbs|pounds|kg)",
@@ -80,22 +81,44 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "Hard rules: no income promises, no medical/legal/financial advice, no fabricated quotes, no 'experts say' without naming who. "
         "The first two paragraphs must be a pattern break that pays off the title within ninety seconds."
     )
-    data, _ = claude.run("script", user, schema=SCRIPT_SCHEMA, effort="high", web_search=True, max_searches=8, max_tokens=24000, content_id=content_id)
-
-    # Hook rewrite pass: cheap, big effect on retention.
-    hook_prompt = (
-        "Here is the title and the first two narration paragraphs of a video. Rewrite the two paragraphs only if they can be "
-        "made sharper: a bolder specific claim in the first sentence, stakes by the third sentence, no throat-clearing. Keep length similar. "
-        "Keep every fact and in-line statistic attribution. Use natural spoken English, hedge uncertain causes, "
-        "and use no em dashes, filler or generic transitions. If they are already strong, return them unchanged with changed=false.\n\n"
-        f"Title: {data['title']}\n\nParagraph 1: {data['script'][0]}\n\nParagraph 2: {data['script'][1] if len(data['script']) > 1 else ''}"
-    )
+    # A paid response is checkpointed before hook/validation can fail. Retrying
+    # validation must never silently purchase a replacement script.
+    saved = OUT_DIR / content_id / "script.json"
+    raw = OUT_DIR / content_id / "paid_script.json"
+    db = getattr(claude, "db", None)
+    row = db.one("content", {"id": content_id}) if db else None
     try:
-        hook, _ = claude.run("hook", hook_prompt, schema=HOOK_SCHEMA, effort="medium", max_tokens=3000, content_id=content_id)
-        if hook.get("changed") and len(data["script"]) > 1:
-            data["script"][0], data["script"][1] = hook["opening_paragraphs"]
-    except Exception as e:  # non-fatal
-        log.warning("hook pass skipped: %s", e)
+        notes = json.loads((row or {}).get("qa_notes") or "{}")
+    except (ValueError, TypeError):
+        notes = {}
+    checkpoint = notes.get("paid_script") if isinstance(notes, dict) else None
+    reused = saved.is_file() or raw.is_file() or checkpoint is not None
+    if reused:
+        data = json.loads((saved if saved.is_file() else raw).read_text()) if saved.is_file() or raw.is_file() else checkpoint
+    else:
+        if db and db.select("costs", {"content_id": content_id, "step": "script"}):
+            raise RuntimeError("Paid script missing; restore its artifact before retrying")
+        data, _ = claude.run("script", user, schema=SCRIPT_SCHEMA, effort="high", web_search=True, max_searches=8, max_tokens=24000, content_id=content_id, retries=0)
+        raw.parent.mkdir(parents=True, exist_ok=True)
+        write_json(raw, data)
+        if db and row:
+            db.update("content", {"id": content_id}, {"qa_notes": json.dumps({"paid_script": data})})
+
+    if not reused:
+        # Hook rewrite pass: cheap, big effect on retention.
+        hook_prompt = (
+            "Here is the title and the first two narration paragraphs of a video. Rewrite the two paragraphs only if they can be "
+            "made sharper: a bolder specific claim in the first sentence, stakes by the third sentence, no throat-clearing. Keep length similar. "
+            "Keep every fact and in-line statistic attribution. Use natural spoken English, hedge uncertain causes, "
+            "and use no em dashes, filler or generic transitions. If they are already strong, return them unchanged with changed=false.\n\n"
+            f"Title: {data['title']}\n\nParagraph 1: {data['script'][0]}\n\nParagraph 2: {data['script'][1] if len(data['script']) > 1 else ''}"
+        )
+        try:
+            hook, _ = claude.run("hook", hook_prompt, schema=HOOK_SCHEMA, effort="medium", max_tokens=3000, content_id=content_id)
+            if hook.get("changed") and len(data["script"]) > 1:
+                data["script"][0], data["script"][1] = hook["opening_paragraphs"]
+        except Exception as e:  # non-fatal
+            log.warning("hook pass skipped: %s", e)
 
     data = strip_script_dashes(data)
 

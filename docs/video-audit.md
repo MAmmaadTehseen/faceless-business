@@ -1,6 +1,6 @@
 # Video audit
 
-Generated 2026-11-03T06:51:17.207224+00:00. Read-only DB, YouTube videos.list, media HEAD and GitHub reads. No platform writes, DB repairs, workflow dispatches or Claude calls.
+Baseline generated 2026-11-03T06:51:17.207224+00:00. The remediation follow-up below supersedes the Webb status and spend classifications in this snapshot. Read-only DB, YouTube videos.list, media HEAD and GitHub reads. No platform writes, DB repairs, workflow dispatches or Claude calls.
 
 ## Coverage and limitations
 
@@ -368,6 +368,133 @@ Commands below are proposals only. SAFE denotes duplicate safety, not authorizat
 
 | Class | Exact command | Why |
 |---|---|---|
-| SAFE | `gh workflow run produce.yml -f resume_id=escapevelocity-2026-10-30-webb-reads-the-ice-of-interstellar-comet -f artifact_run_id=41406616051 -f artifact_name=videos-escapevelocity-41406616051 -f privacy=private -f rerender=true` | Webb Short 3 has no live copy on any platform. Rebuild addresses cropped footage; existing publication IDs prevent duplicate uploads of siblings/parent. QA must pass; new footage may still need editorial correction. Artifact verified unexpired; expires 2026-11-05T07:38:17Z. Recheck before dispatch. |
+| SUPERSEDED | No Webb rebuild command | Latest produce 41592578778 uploaded Short 3; see follow-up. |
 
 No Swift retry, quota reset, bulk disclosure write, delete or replacement-live-video command is justified. Hormuz is blocked on reconstruction/QA/persistence, so no speculative retry command is provided. Owner decisions: review historical public scheduling, inspect disclosure in Studio, authorize missing-article spend, and review intentional placeholders without deleting them.
+
+## Remediation follow-up (2026-11-03, read-only)
+
+Live reads: 90 content rows, 191 publications, 7 articles, 229 cost rows, 60 run rows. Read paginated DB tables, retained GitHub artifact members and original workflow logs. No Claude calls, platform/DB writes, dispatches or commits. Changes are confined to pipeline/, scripts/, tests/ and this report. The baseline finding table above remains historical.
+
+### Article recovery
+
+`scripts/backfill_articles.py` requires `--dry-run` or `--apply`; optional `--limit N` must be positive. Selection requires a non-killed long with a live YouTube publication and platform ID and no article row. Sources are local script.json, then unexpired retained artifact script.json, then DB narration text with the saved title. Artifact reads use range requests rather than downloading all footage. Failed/unavailable archives are reported, without printing request URLs or credentials. Dry-run does not call write_article, instantiate Claude or write DB/Storage. Apply checks for an article again, calls pipeline.article.write_article with the recovered script, preserves current validation and CostGuard, never forces regeneration and continues after individual failures (exit 1 if any fail). Run a single operator instance at a time; concurrent operators are not locked by a new DB claim.
+
+Actual dry-run output (pipeline DB connection log omitted):
+
+```text
+DRY RUN: 12 of 12 missing articles; estimate $0.60 each (validation retries may cost more)
+2026-10-28-breach-victims-are-finding-their-data-was-held-b | DB:content.script | $0.60
+2026-10-28-the-ftc-is-demanding-data-from-walmart-uber-delt | DB:content.script | $0.60
+escapevelocity-2026-10-29-nasa-s-20-billion-moon-base-strategy-wha | artifact:videos-escapevelocity-41281283060 | $0.60
+escapevelocity-2026-10-30-webb-reads-the-ice-of-interstellar-comet | artifact:videos-escapevelocity-41592578778 | $0.60
+escapevelocity-2026-11-01-nasa-s-swift-telescope-is-coming-home-af | artifact:videos-escapevelocity-41345831741 | $0.60
+escapevelocity-2026-11-02-voyager-1-has-gone-quiet-again-what-the | artifact:videos-escapevelocity-41544570269 | $0.60
+futurework-2026-10-30-attackers-use-microsoft-teams-it-support | artifact:videos-futurework-41281259162 | $0.60
+futurework-2026-11-02-anthropic-heads-toward-an-ipo-while-its | artifact:videos-futurework-41471719484 | $0.60
+tradewinds-2026-10-29-three-tankers-slip-out-of-hormuz-along-o | DB:content.script | $0.60
+tradewinds-2026-10-29-twelve-million-dollars-of-ai-chips-seize | DB:content.script | $0.60
+tradewinds-2026-10-30-container-freight-rates-are-climbing-eve | artifact:videos-tradewinds-41281269937 | $0.60
+tradewinds-2026-10-31-two-chinese-firms-exit-kenya-s-rare-eart | artifact:videos-tradewinds-41217545606 | $0.60
+Recoverable: 12; estimated cost $7.20
+No script source: none
+```
+
+All twelve are recoverable. $7.20 is an estimate, not a cap: current validation allows a second $0.60-estimated attempt per article, and actual token/search usage varies. Existing published articles are skipped; failed validation saves no article and a later operator retry can spend again.
+
+### Six historical Shorts-count findings
+
+The audit counts all non-killed children as active, including QA failures. Thus Voyager has four active children even though Short 1 failed QA. Count alone is not a publishing-health check. The following six parents have no verified retained producing artifact in the current artifact listing. No rebuild command qualifies under the artifact + saved requested Short + no duplicate risk rule. Local script files do not satisfy the retained-artifact requirement.
+
+| Long content id | Existing / active / YouTube live children | Explanation |
+|---|---|---|
+| 2026-10-27-the-netherlands-plans-to-replace-about-25-000-go | 2 / 0 / 2 | Shorts 1–2 intentionally killed placeholders; keep their uploads. Historical run executed two Shorts. Local saved script has three angles: angle 3 was outside that run’s two-Short cap, angle 4 absent. Do not replace placeholders. |
+| 2026-10-28-breach-victims-are-finding-their-data-was-held-b | 0 / 0 / 0 | Shorts 1–2 failed TTS before content persistence: “No audio was received” (produce 40682350555). This was not QA rejection. Historical run attempted two; 3–4 never requested by the two-Short run. Full saved script no longer retained. |
+| 2026-10-28-the-ftc-is-demanding-data-from-walmart-uber-delt | 2 / 2 / 2 | Shorts 1–2 live. Historical two-Short run; 3–4 never requested by that run. Full saved script no longer retained, so no claim about additional generated angles. |
+| futurework-2026-10-29-companies-that-cut-jobs-for-ai-are-now-c | 3 / 3 / 3 | Short 1 rejected by old QA (produce 40943426653), despite notes saying frames/captions were fine and text was not cut off; no child row persisted. Shorts 2–4 live. Historical QA false negative, not a never-requested angle. |
+| futurework-2026-10-29-ghost-jobs-fake-listings-and-ai-recruite | 2 / 2 / 2 | Shorts 1–2 live. Local saved script has three angles, but run 40869811860 executed only two under the historical cap; angle 3 never requested for rendering, angle 4 absent from script. |
+| tradewinds-2026-10-29-america-s-50-tariffs-on-canada-take-effe | 3 / 3 / 3 | Short 1 rejected by old QA (produce 40943437359): it treated the first of three frames as a thumbnail, even while notes reported no cut-off text. No child row persisted. Shorts 2–4 live. |
+
+### Spend classification
+
+Accounting definition: waste here means stranded paid generation for which neither a usable render nor a saved script is available in local outputs, retained artifacts or DB. It does not mean every failed attempt was avoidable. Successful recovery, safety QA and bounded article-validation retries are legitimate work. Dollar totals below use unrounded cost.usd values, count each cost row once within each class, and are not estimates. The two finding classes are analyzed separately; do not add their totals because findings may overlap.
+
+**Stranded generation waste: $3.17522.** This is $1.73513 for the abandoned PayPal/Proton long scripts/hooks plus $1.44009 for nine daily responses without a retained usable output. Within that waste, $0.80187 is repeated same-topic daily generation on later dates after an earlier paid attempt; another $0.15378 later gas attempt is recoverable in DB and excluded from waste. Repeated spend on the same content ID is not demonstrated for scripts: every long has exactly one script and one hook cost row. These are recovery/accounting judgments, not proof that no render ever existed on a now-discarded runner.
+
+| Spend-without-output content id (15 baseline findings) | USD | Classification / evidence |
+|---|---:|---|
+| 2026-10-27-microsoft-offers-voluntary-buyouts-to-about-a-qu | 0.94492 | Legitimate: final local MP4 and script exist; missing DB row makes this audit test a false positive. |
+| 2026-10-27-proton-is-re-interviewing-staff-about-how-they-u | 0.76415 | Stranded generation waste: no retained usable script/render; abandoned long attempt. |
+| 2026-10-27-paypal-cuts-thousands-of-jobs-and-raises-its-pro | 0.97098 | Stranded generation waste: no retained usable script/render; abandoned long attempt. |
+| tradewinds-2026-10-29-america-s-50-tariffs-on-canada-take-effe-short-1 | 0.03716 | Legitimate safety QA / historical false rejection; source logs above prove rendering reached QA. Not a script purchase. |
+| futurework-2026-10-29-companies-that-cut-jobs-for-ai-are-now-c-short-1 | 0.03710 | Legitimate safety QA / historical false rejection; source logs above prove rendering reached QA. Not a script purchase. |
+| futurework-2026-10-30-short-attackers-use-microsoft-teams-it-support | 0.15647 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+| futurework-2026-10-30-short-why-ai-s-time-saved-figures-converted-to | 0.15789 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+| escapevelocity-2026-10-31-short-first-light-hera-resolves-two-asteroids | 0.16850 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+| tradewinds-2026-10-31-short-european-gas-prices-hit-100-mwh-for-the | 0.15536 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+| futurework-2026-10-31-short-why-ai-s-time-saved-figures-converted-to | 0.17204 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+| escapevelocity-2026-11-01-short-first-light-hera-resolves-two-asteroids | 0.15502 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+| tradewinds-2026-11-01-short-european-gas-prices-hit-100-mwh-for-the | 0.14749 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+| futurework-2026-11-01-short-why-ai-s-time-saved-figures-converted-to | 0.16152 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+| tradewinds-2026-11-02-short-european-gas-prices-hit-100-mwh-for-the | 0.15378 | Legitimate recoverable validation failure: 165-word response saved in DB qa_notes.daily_script; edit/recover before retrying. |
+| futurework-2026-11-02-short-why-ai-s-time-saved-figures-converted-to | 0.16580 | Stranded generation waste: daily response lost after failed run; no retained script/render. |
+
+The 15 findings total $4.34818: legitimate/recoverable $1.17296; stranded generation waste $3.17522. No paid regeneration or repair was performed.
+
+The original 23 repeated-spend findings are QA re-runs/resumes and article validation retries. The newer Webb run adds three repeated-QA groups (Shorts 1, 2 and 4), for 26 now. Original 23 identifiers are included in the table below. QA costs are necessary safety checks, including re-checks after a rerender; articles are separate deliverables, not replacement video scripts. The latest Webb article attempts failed entities/self-QA validation (produce 41592578778 logs); this explains why article costs coexist with a missing article. There is no evidence of duplicate long-script purchases in these groups.
+
+| Repeated-spend content id | QA calls / USD | Article calls / USD | Classification |
+|---|---:|---:|---|
+| 2026-10-27-the-netherlands-plans-to-replace-about-25-000-go | 4 / 0.09614 | 5 / 2.18173 | Legitimate QA re-run/resume or article validation |
+| 2026-10-28-the-ftc-is-demanding-data-from-walmart-uber-delt | 2 / 0.05128 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-10-29-hera-s-first-look-at-didymos-and-dimorph | 2 / 0.08767 | 1 / 0.67292 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-10-29-nasa-s-20-billion-moon-base-strategy-wha | 3 / 0.13636 | 2 / 1.49997 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-10-29-starship-flight-15-the-attempted-double | 1 / 0.04204 | 4 / 2.19671 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-10-30-webb-reads-the-ice-of-interstellar-comet | 3 / 0.13479 | 6 / 4.14756 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-10-30-webb-reads-the-ice-of-interstellar-comet-short-1 | 2 / 0.07920 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-10-30-webb-reads-the-ice-of-interstellar-comet-short-2 | 2 / 0.07848 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-10-30-webb-reads-the-ice-of-interstellar-comet-short-3 | 3 / 0.13980 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-10-30-webb-reads-the-ice-of-interstellar-comet-short-4 | 2 / 0.07858 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-11-01-nasa-s-swift-telescope-is-coming-home-af | 1 / 0.04675 | 2 / 1.31660 | Legitimate QA re-run/resume or article validation |
+| escapevelocity-2026-11-02-voyager-1-has-gone-quiet-again-what-the | 1 / 0.04543 | 2 / 1.41658 | Legitimate QA re-run/resume or article validation |
+| futurework-2026-10-29-ghost-jobs-fake-listings-and-ai-recruite | 1 / 0.04074 | 2 / 1.19555 | Legitimate QA re-run/resume or article validation |
+| futurework-2026-10-30-attackers-use-microsoft-teams-it-support | 1 / 0.04465 | 2 / 1.23037 | Legitimate QA re-run/resume or article validation |
+| futurework-2026-11-02-anthropic-heads-toward-an-ipo-while-its | 1 / 0.04493 | 2 / 1.23027 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-29-twelve-million-dollars-of-ai-chips-seize | 2 / 0.08643 | 2 / 1.51757 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-29-twelve-million-dollars-of-ai-chips-seize-short-1 | 2 / 0.07470 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-29-twelve-million-dollars-of-ai-chips-seize-short-2 | 2 / 0.08088 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-29-twelve-million-dollars-of-ai-chips-seize-short-3 | 2 / 0.07736 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-29-twelve-million-dollars-of-ai-chips-seize-short-4 | 2 / 0.07854 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-30-container-freight-rates-are-climbing-eve | 2 / 0.08890 | 2 / 1.44718 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-30-container-freight-rates-are-climbing-eve-short-1 | 2 / 0.07940 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-30-container-freight-rates-are-climbing-eve-short-2 | 2 / 0.07938 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-30-container-freight-rates-are-climbing-eve-short-3 | 2 / 0.08188 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-30-container-freight-rates-are-climbing-eve-short-4 | 2 / 0.07800 | 0 / 0.00000 | Legitimate QA re-run/resume or article validation |
+| tradewinds-2026-10-31-two-chinese-firms-exit-kenya-s-rare-eart | 1 / 0.04385 | 2 / 1.46127 | Legitimate QA re-run/resume or article validation |
+
+Total QA/article spend within these 26 groups: $23.51044; demonstrated duplicate-script waste in these groups: $0.00000. This includes the first QA/article call as well as repeat calls; initial script/hook costs are excluded. Failed article validation is not a published article, and repeated failed validators remain an efficiency opportunity rather than evidence of a video-script repurchase.
+
+### Code changes and retry boundaries
+
+- Long script responses are checkpointed immediately to paid_script.json and content.qa_notes.paid_script before hook/validation. A retry reuses script.json, the raw paid checkpoint or DB checkpoint; no new hook is purchased on checkpoint reuse. Existing script cost without recoverable data fails closed with an artifact-recovery message. Script calls disable automatic wrapper retries, preventing malformed paid JSON from silently buying another script. Transport uncertainty can still strand a response; the cost ledger is not an atomic distributed generation lock.
+- Daily retries with a recorded paid call and missing checkpoint fail closed. Fresh-topic selection now includes cost-only daily topics from the last 14 days, so failed historical rows cannot disappear from topic avoidance on a new runner. Existing saved invalid daily scripts still require correction rather than another paid response.
+- Article recovery supplies script_data to the existing writer; CostGuard, title guardrail, validation and normal persistence remain in force. No schema or configuration changes.
+
+### Webb Short 3: newer result supersedes rebuild proposal
+
+Latest produce run **41592578778**, started 2026-11-03T06:51:57Z and completed successfully at 07:34:16Z, returned all four Shorts. The DB run result and publication row record Short 3 as passed/published with YouTube ID **0D8vDCVi4Cc**. No new YouTube API check was needed to establish the recorded produce result. Its latest QA notes still mention cropped source text (“e sun.” and partial UTC timestamp) and a partial NASA source title, classified as minor; the generated caption remained legible. It is no longer QA-blocked. Per the conditional scope, no shorts/render change or rebuild was made. Preserve its existing publication ID; do not execute the old Webb rerender command.
+
+### Exact operator commands (prepared, not executed)
+
+From repository root:
+
+```bash
+.venv/bin/python scripts/backfill_articles.py --dry-run
+.venv/bin/python scripts/backfill_articles.py --apply --limit 1
+.venv/bin/python scripts/backfill_articles.py --apply
+timeout 240 .venv/bin/python -m pytest tests -q
+```
+
+Apply spends Claude credit and writes articles/thumbnail storage plus the writer’s normal IndexNow notification. It requires production DB configuration and an Anthropic key; CostGuard may skip when budget is insufficient. Review the dry-run before applying. No qualifying Shorts rebuild/dispatch command is provided. No live operation was executed during this job.
+
+Verification: disposable SQLite, credentials removed and requests/httpx/external network CLIs blocked by tests/conftest.py. Regression coverage includes source precedence, read-only dry-run, continuation after one failed article, idempotence, pre-validation checkpoint recovery from disk and DB, refusal to repurchase missing long/daily checkpoints, and cost-only daily topic avoidance. Final command: `timeout 240 .venv/bin/python -m pytest tests -q` — **160 passed, 8 subtests passed in 9.26s**. `git diff --check` passed. No dashboard/ or hub/ edits.

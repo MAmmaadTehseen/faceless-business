@@ -35,6 +35,16 @@ def fresh_topic(db, channel):
     recent = db.select("content", {"channel": channel.key}, gte={"created_at": cutoff})
     used = db.select("topic_queue", {"channel": channel.key, "status": "used"}, gte={"created_at": cutoff})
     titles = [r.get(k) or "" for r in recent + used for k in ("topic", "title", "source_headline")]
+    # Older failed jobs sometimes logged spend without persisting a content row.
+    # Their paid topics still count toward avoidance on the next day's runner.
+    paid = db.select("costs", {"channel": channel.key, "step": "short_daily"}, gte={"at": cutoff})
+    for cost in paid:
+        cid = cost.get("content_id") or ""
+        prefix = channel.key + "-"
+        if cid.startswith(prefix):
+            tail = cid[len(prefix):]
+            if len(tail) > 17 and tail[10:17] == "-short-":
+                titles.append(tail[17:].replace("-", " "))
     def fresh(title):
         normalized = slugify(title, 500)
         return all(SequenceMatcher(None, normalized, slugify(t, 500)).ratio() < 0.65 for t in titles if t)
@@ -97,8 +107,12 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
         topic = {"topic": existing["topic"], "queue_id": None}
         data = saved_daily_script(existing)
     else:
+        if existing and db.select("costs", {"content_id": existing["id"], "step": "short_daily"}):
+            raise RuntimeError("Paid daily script missing; restore its artifact before retrying")
         topic, recent = fresh_topic(db, channel)
         content_id = f"{prefix}{slugify(topic['topic'], 40)}"
+        if db.select("costs", {"content_id": content_id, "step": "short_daily"}):
+            raise RuntimeError("Paid daily script missing; restore its artifact before retrying")
         prompt = (
             f"Write a standalone daily Short about {topic['topic']}. Source seed: {topic.get('source_url') or ''}.\n"
             "Use web search to verify recent facts; at most 3 searches. Follow the channel persona. "
