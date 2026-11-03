@@ -150,8 +150,10 @@ def inspect(content, pubs, articles, costs, truth, checked, *, now=None, heads=N
             add('high', cid, 'Short over 3 minutes or not vertical', f'{seconds}s; streams={details}')
         if not snippet.get('thumbnails'):
             add('medium', cid, 'Missing YouTube thumbnail', yt.get('platform_id'))
-        if status.get('containsSyntheticMedia') is not True:
-            add('high', cid, 'Synthetic disclosure absent', yt.get('platform_id'), 'Owner review; future upload guard already sets disclosure')
+        if status.get('containsSyntheticMedia') is False:
+            add('high', cid, 'Synthetic disclosure false', yt.get('platform_id'), 'Owner review explicit false before status update')
+        elif status.get('containsSyntheticMedia') is not True:
+            add('medium', cid, 'Synthetic disclosure unverified', yt.get('platform_id')+'; field absent from response', 'Absent is not false; verify in Studio before any metadata write')
         if not snippet.get('title','').strip() or not snippet.get('description','').strip() or BANNED_TITLE.search(snippet.get('title','')):
             add('high', cid, 'Empty metadata or banned title', snippet.get('title',''))
         if c['kind']=='short' and status.get('privacyStatus')=='public':
@@ -370,7 +372,7 @@ def report(path, findings, notes, content, pubs, runs, mapping):
     lines+=['','## Retry and rebuild commands (not executed)','','Quota queues should drain through normal sync; dispatching produce for a quota-only backlog is unnecessary. These commands require deploying fixes and reviewing quota settings first. retry.yml uses --force and bypasses local quota reservations. Reels retries require recovered media; the Hormuz Short cannot be retried successfully until its media is restored. Resume re-runs Claude QA and may generate articles; owner must authorize that spend. Historical scripts with only two angles cannot create four distinct Shorts without new writing.','']
     affected={f['content_id'] for f in findings if f['problem'] in ('Content qa_failed','Content rendered','Artifact media QA failure','Short missing media_url')}
     for platform in ('youtube','instagram','facebook'):
-        ids=[str(p['id']) for p in pubs if p['platform']==platform and p.get('status') in ('failed','queued')]
+        ids=[str(p['id']) for p in pubs if p['platform']==platform and p.get('status') in ('failed','queued') and not p.get('platform_id') and any(c['id']==p['content_id'] and c.get('media_url') and c.get('qa_status')=='passed' for c in content)]
         if ids:
             lines+=['```bash',f"gh workflow run retry.yml -f ids={','.join(ids)} -f platform={platform}",'```']
     seen=set()
@@ -422,6 +424,14 @@ def main():
         except Exception as e:
             notes.append('YouTube coverage incomplete for '+channel+': '+type(e).__name__)
     notes.append(f'YouTube: {calls} batched videos.list calls; {len(checked)} checked IDs; {len(truth)} accessible videos. Unrecorded uploads cannot be enumerated under videos.list-only constraint.')
+    notes.append('Quota settings: youtube_uploads_per_day='+str(db.setting('youtube_uploads_per_day'))+'; youtube_quota_units_per_day='+str(db.setting('youtube_quota_units_per_day'))+'.')
+    ordered=sorted(truth.values(),key=lambda v:(v.get('snippet',{}).get('publishedAt',''),v['id']))
+    for group, videos in (('oldest',ordered[:5]),('newest',ordered[-5:])):
+        for v in videos:
+            status=v.get('status',{})
+            raw={'sample':group,'id':v['id'],'publishedAt':v.get('snippet',{}).get('publishedAt'),'containsSyntheticMedia_present':'containsSyntheticMedia' in status,'containsSyntheticMedia':status.get('containsSyntheticMedia')}
+            print(json.dumps(raw),flush=True)
+            notes.append('Disclosure raw: '+json.dumps(raw))
     notes.append('Wrong-channel verification uses configured YT_CHANNEL_ID when available; otherwise channelId consistency only. Vertical verification requires owner-visible fileDetails; absent fields are unverified. API thumbnails do not prove a custom thumbnail was set.')
     urls=sorted({c['media_url'] for c in content if c.get('media_url') and c.get('status')!='killed'})
     with ThreadPoolExecutor(max_workers=6) as pool: heads=dict(zip(urls,pool.map(head,urls)))

@@ -89,3 +89,33 @@ def test_artifact_history_finds_ids_overwritten_by_resume(monkeypatch):
     assert errors==0
     assert mapping['sample']['run_id']==123
     assert alternates[0]['platform_id']=='earlier'
+
+
+def test_disclosure_absence_is_not_false():
+    c=content()
+    p=dict(id=1,content_id='sample',platform='youtube',status='live',platform_id='known',url='x')
+    v={'id':'known','status':{},'snippet':{}}
+    def disclosure():
+        return [f for f in inspect([c],[p],[],[],{'known':v},{'known'}) if f['problem'].startswith('Synthetic disclosure')]
+    assert disclosure()[0]['problem']=='Synthetic disclosure unverified'
+    assert disclosure()[0]['severity']=='medium'
+    v['status']['containsSyntheticMedia']=False
+    assert disclosure()[0]['problem']=='Synthetic disclosure false'
+    assert disclosure()[0]['severity']=='high'
+    v['status']['containsSyntheticMedia']=True
+    assert disclosure()==[]
+
+
+def test_report_does_not_propose_retries_for_live_ids_or_missing_media(tmp_path):
+    from scripts.audit_videos import report
+    path=tmp_path/'audit.md'
+    cs=[{**content(),'media_url':'https://media.test/video.mp4'},
+        {**content(),'id':'missing'}]
+    pubs=[dict(id=1,content_id='sample',platform='youtube',status='failed',platform_id='known'),
+          dict(id=2,content_id='missing',platform='instagram',status='failed'),
+          dict(id=3,content_id='sample',platform='facebook',status='failed')]
+    report(path,[],[],cs,pubs,[],{})
+    text=path.read_text()
+    assert '-f ids=1 ' not in text
+    assert '-f ids=2 ' not in text
+    assert '-f ids=3 -f platform=facebook' in text
