@@ -166,3 +166,32 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   `collab_posts_enabled` setting has no effect. Research, limits, caveats and owner setup:
   `docs/instagram-collab.md`. Serialize publishers per account for the approximate rate cap;
   mentions fail closed at 1,000 Short rows pending paginated history support.
+
+## YouTube cross-promotion (2026-11-05)
+- New uploads only, including queue drains. Shared settings `yt_description_links_enabled`
+  and `yt_playlists_enabled` require JSON boolean `true`; both default false. No backfill.
+- `pipeline/publish/youtube_promotion.py` reuses Instagram's word-boundary overlap scorer.
+  Descriptions include an existing published hub article (parent article for child Shorts)
+  and at most one overlapping sister's explicit `youtube_url` from channel.json. Missing
+  URLs are skipped. Whole links are appended only when they fit the 4,900 UTF-8-byte
+  pipeline limit; existing descriptions are not shortened to make room. URL checks
+  prevent duplicate links. No model calls.
+- After an article is saved, eligible newly uploaded long videos and child Shorts have
+  their descriptions refreshed using `videos.list` (1 unit) and, only when changed,
+  `videos.update` (50 units). Updates send only writable snippet fields; status is omitted,
+  preserving privacy, synthetic-media disclosure and scheduled `publishAt`. Eligibility
+  uses settings `yt_links_new_<video-id>` written only on new successful uploads while enabled.
+- Each channel config has four `topic_playlists` (key, title, cross_mention_keywords).
+  Only long videos with title overlap enter the best match, at most one playlist per
+  video. Creation is lazy and PRIVATE (50 units), insertion costs 50 units. IDs live in
+  `yt_playlist_<channel>_<key>` settings; `yt_playlist_video_<video-id>` retains insertion
+  attempts to avoid duplicates on uncertain failures. Serialize publishers per channel
+  to avoid competing first-time playlist creation. Failed/uncertain optional operations
+  are skipped, not automatically retried; they never fail publishing or article saving.
+- All extra API calls use existing quota reservations and respect the general reserve;
+  insufficient quota skips optional work. Initial description links cost no extra units.
+- Owner: verify `youtube_url` and playlist keywords in each channel.json; ensure hub
+  articles are publicly served at https://hub.ammaad.online/a/<slug>; enable either setting
+  independently as a JSON boolean in existing settings storage. Review created private
+  playlists in Studio and make them public when ready. No migration or new secrets needed.
+  Turning settings on does not modify older uploads. Existing upload compliance rules apply.

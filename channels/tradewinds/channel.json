@@ -13,5 +13,47 @@
   "schedule": {"days": ["Tue", "Thu", "Sat"], "utc_hour": 11},
   "shorts_per_long": 4,
   "category_id": "25",
-  "description_footer": "Sources are listed above. Narration is AI-generated. Three videos a week: subscribe."
+  "description_footer": "Sources are listed above. Narration is AI-generated. Three videos a week: subscribe.",
+  "youtube_url": "https://www.youtube.com/@tradewindsreport",
+  "topic_playlists": [
+    {
+      "key": "trade",
+      "title": "Trade and Tariffs",
+      "cross_mention_keywords": [
+        "trade",
+        "tariffs",
+        "export controls"
+      ]
+    },
+    {
+      "key": "energy",
+      "title": "Energy and Resources",
+      "cross_mention_keywords": [
+        "oil",
+        "energy",
+        "rare earths",
+        "gas"
+      ]
+    },
+    {
+      "key": "money",
+      "title": "Currencies and Central Banks",
+      "cross_mention_keywords": [
+        "currency",
+        "central bank",
+        "interest rates",
+        "inflation"
+      ]
+    },
+    {
+      "key": "power",
+      "title": "Global Power",
+      "cross_mention_keywords": [
+        "sanctions",
+        "geopolitics",
+        "shipping",
+        "supply chain"
+      ]
+    }
+  ]
 }

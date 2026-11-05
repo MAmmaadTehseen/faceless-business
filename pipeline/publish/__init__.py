@@ -191,7 +191,9 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
         if not claimed or claimed.get("error") != claim:
             return None
         acquired = True
-        r = youtube.upload(video, row["title"], row.get("description") or "", row.get("tags") or [],
+        from .youtube_promotion import description_links, new_upload
+        description = description_links(db, row, channel, row.get("description") or "")
+        r = youtube.upload(video, row["title"], description, row.get("tags") or [],
             privacy=privacy, publish_at=slot if privacy == "private" else None, thumbnail=thumbnail,
             is_short=row["kind"] == "short", category_id=channel.cfg.get("category_id", "28"))
         remote = r
@@ -199,6 +201,7 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             "url": r["url"], "privacy": privacy, "publish_at": slot.isoformat(), "status": "live",
             "published_at": now_iso(), "error": None}, on="content_id,platform")
         db.update("content", {"id": row["id"]}, {"status": "published"})
+        new_upload(db, row, channel, r["id"])
         if draining and db.sb:
             keys = [existing[k] for k in ("media_key", "thumbnail_key") if existing.get(k)]
             try:

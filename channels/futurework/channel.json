@@ -13,5 +13,48 @@
   "schedule": {"days": ["Mon", "Wed", "Fri"], "utc_hour": 6},
   "shorts_per_long": 4,
   "category_id": "28",
-  "description_footer": "Sources are listed above. Narration is AI-generated. New videos three times a week: subscribe."
+  "description_footer": "Sources are listed above. Narration is AI-generated. New videos three times a week: subscribe.",
+  "youtube_url": "https://www.youtube.com/@futurework.explained",
+  "topic_playlists": [
+    {
+      "key": "ai-work",
+      "title": "AI and the Workplace",
+      "cross_mention_keywords": [
+        "AI",
+        "automation",
+        "jobs",
+        "workforce"
+      ]
+    },
+    {
+      "key": "security",
+      "title": "Cybersecurity and Privacy",
+      "cross_mention_keywords": [
+        "cybersecurity",
+        "breach",
+        "ransomware",
+        "scam"
+      ]
+    },
+    {
+      "key": "companies",
+      "title": "Technology Companies",
+      "cross_mention_keywords": [
+        "earnings",
+        "Microsoft",
+        "Google",
+        "OpenAI"
+      ]
+    },
+    {
+      "key": "policy",
+      "title": "Work and Technology Policy",
+      "cross_mention_keywords": [
+        "regulation",
+        "remote work",
+        "wages",
+        "policy"
+      ]
+    }
+  ]
 }

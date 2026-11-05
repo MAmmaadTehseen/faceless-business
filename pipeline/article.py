@@ -404,6 +404,8 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
     saved = db.upsert("articles", row, on="id")
     if not dry_run:
         ping_indexnow(article_slug)
+        from .publish.youtube_promotion import article_saved
+        article_saved(db, content_id)
     return saved
 
 

@@ -13,5 +13,48 @@
   "schedule": {"days": ["Mon", "Thu", "Sun"], "utc_hour": 16},
   "shorts_per_long": 4,
   "category_id": "28",
-  "description_footer": "Sources are listed above. Footage courtesy of NASA/ESA and public archives. Narration is AI-generated. Three videos a week: subscribe."
+  "description_footer": "Sources are listed above. Footage courtesy of NASA/ESA and public archives. Narration is AI-generated. Three videos a week: subscribe.",
+  "youtube_url": "https://www.youtube.com/@escapevelocitydaily",
+  "topic_playlists": [
+    {
+      "key": "launches",
+      "title": "Rockets and Launches",
+      "cross_mention_keywords": [
+        "SpaceX",
+        "Starship",
+        "rocket",
+        "launch"
+      ]
+    },
+    {
+      "key": "moon",
+      "title": "Moon and Mars",
+      "cross_mention_keywords": [
+        "Artemis",
+        "lunar",
+        "Moon",
+        "Mars"
+      ]
+    },
+    {
+      "key": "cosmos",
+      "title": "Exploring the Universe",
+      "cross_mention_keywords": [
+        "James Webb",
+        "telescope",
+        "asteroid",
+        "galaxy"
+      ]
+    },
+    {
+      "key": "frontiers",
+      "title": "Frontier Science",
+      "cross_mention_keywords": [
+        "fusion",
+        "satellite",
+        "science",
+        "ESA"
+      ]
+    }
+  ]
 }
