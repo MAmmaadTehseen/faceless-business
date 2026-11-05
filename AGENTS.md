@@ -151,3 +151,18 @@ leftover `rls-probe-` data. Empty Storage lists/deletes can be successful HTTP r
 under RLS and are accepted only when they return no objects; this does not prove grants
 are absent. Review database ACLs/policies as well. The anon check does not test the
 `authenticated` role or discover live-only tables; the migration handles all public objects.
+
+## Instagram cross-promotion (2026-11-05)
+- Caption mentions are opt-in: shared setting `cross_mentions_enabled` must be JSON boolean
+  `true` (default false). Owner must verify and fill `instagram_handle` per channel; blank
+  handles are skipped and YouTube `handle` is never used as an Instagram identity.
+- Config keys `cross_mention_keywords` + `cross_mention_line` select one sister account by
+  deterministic title overlap, without Claude calls. Only Instagram captions change.
+  Require three successful unmentioned Reels since the last mention (also at startup).
+  Normal publishing and manual retries share the helper. Successful Instagram publication
+  `error` may contain JSON `cross_mention` audit metadata; retain it on replay/maintenance.
+- Collab support for Instagram Login remains unclear in official docs; no collaborators
+  parameter, invitation automation or Collab feature is implemented. A stray
+  `collab_posts_enabled` setting has no effect. Research, limits, caveats and owner setup:
+  `docs/instagram-collab.md`. Serialize publishers per account for the approximate rate cap;
+  mentions fail closed at 1,000 Short rows pending paginated history support.

@@ -8,6 +8,7 @@ from pathlib import Path
 from ..common import Channel, log, now_iso
 from . import meta, youtube
 from .jarvis import record, update as publication_update
+from .cross_promotion import instagram_caption
 from .quota import THUMB_COST, UPDATE_COST, reserve
 
 
@@ -336,11 +337,14 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
                 raise RuntimeError("instagram not configured for this channel")
             if ig and ig.get("platform_id"):
                 r = {"id": ig["platform_id"], "url": ig.get("url")}
+                mention_metadata = ig.get("error")
             else:
                 url = _media_url(db, s)
-                r = meta.publish_instagram_reel(url, caption)
+                ig_caption, mention_metadata = instagram_caption(db, s, channel, caption)
+                r = meta.publish_instagram_reel(url, ig_caption)
             record(db, {"content_id": s["id"], "platform": "instagram", "platform_id": r["id"], "url": r.get("url"), "privacy": "public",
-                                       "status": "live", "published_at": now_iso()}, on="content_id,platform")
+                                       "status": "live", "published_at": (ig or {}).get("published_at") or now_iso(),
+                                       "error": mention_metadata}, on="content_id,platform")
             results.append({"platform": "instagram", "content_id": s["id"], **r})
         except Exception as e:
             log.error("instagram failed: %s", e)

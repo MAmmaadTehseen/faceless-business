@@ -180,12 +180,15 @@ def retry_one(db, pub, force=False):
         if row["kind"] != "short":
             raise RuntimeError("Reels require Short content")
         caption = f"{row['title']}\n\n{row.get('description') or ''}".strip()
+        mention_metadata = None
         if pub["platform"] == "instagram":
+            from .publish.cross_promotion import instagram_caption
+            caption, mention_metadata = instagram_caption(db, row, channel, caption)
             result = meta.publish_instagram_reel(_media_url(db, row), caption)
         else:
             result = meta.publish_facebook_reel(Path(row["file_path"]), caption)
         publication_update(db, {"id": pub["id"]}, {"status": "live", "platform_id": result["id"],
-                  "url": result.get("url"), "privacy": "public", "published_at": now_iso(), "error": None})
+                  "url": result.get("url"), "privacy": "public", "published_at": now_iso(), "error": mention_metadata})
         db.update("content", {"id": row["id"]}, {"status": "published"})
         return True
     except Exception as exc:
