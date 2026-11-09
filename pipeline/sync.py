@@ -45,7 +45,7 @@ def sync_channel(db, channel):
     if not pubs:
         return
     yt_pubs = [p for p in pubs if p["platform"] == "youtube" and p.get("platform_id")]
-    if yt_pubs and youtube.configured():
+    if yt_pubs and youtube.configured() and not youtube.auth_failed(channel):
         ids = [p["platform_id"] for p in yt_pubs]
         st = youtube.stats(ids)
         an = youtube.analytics(ids)

@@ -1,50 +1,82 @@
-"""Two-step YouTube OAuth without a local server (works in sandboxes).
-Step 1: python scripts/youtube_auth.py url        -> prints the URL to open; log in with the channel's account, click Allow.
-        Multi-channel: add the channel key as a third arg, e.g. `url tradewinds` / `token "<url>" tradewinds`;
-        the token is then saved as YT_REFRESH_TOKEN_TRADEWINDS. Without a key it saves YT_REFRESH_TOKEN.
-Step 2: the browser lands on http://localhost:8765/?code=... (page will not load; that is expected).
-        python scripts/youtube_auth.py token "<paste that full URL>"   -> saves YT_REFRESH_TOKEN into .env
-
-Prerequisites: Google Cloud project with YouTube Data API v3 + YouTube Analytics API enabled, OAuth consent screen
-(External, your Gmail as test user), Desktop-app OAuth client; its id/secret in .env as YT_CLIENT_ID / YT_CLIENT_SECRET.
-"""
+"""Owner-only OAuth helper. Tokens are saved locally and never printed."""
+import argparse
 import os
 import re
-import sys
 from pathlib import Path
-
-from dotenv import load_dotenv
-from google_auth_oauthlib.flow import Flow
+from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(ROOT / ".env")
-SCOPES = ["https://www.googleapis.com/auth/youtube", "https://www.googleapis.com/auth/youtube.force-ssl", "https://www.googleapis.com/auth/yt-analytics.readonly"]
-REDIRECT = "http://localhost:8765/"
+KEYS = ('futurework', 'tradewinds', 'escapevelocity')
+SCOPES = ['https://www.googleapis.com/auth/youtube', 'https://www.googleapis.com/auth/youtube.force-ssl',
+          'https://www.googleapis.com/auth/yt-analytics.readonly']
+REDIRECT = 'http://localhost:8765/'
 
-cid, sec = os.getenv("YT_CLIENT_ID"), os.getenv("YT_CLIENT_SECRET")
-if not cid or not sec:
-    sys.exit("Set YT_CLIENT_ID and YT_CLIENT_SECRET in .env first")
 
-flow = Flow.from_client_config({"installed": {"client_id": cid, "client_secret": sec, "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                                              "token_uri": "https://oauth2.googleapis.com/token", "redirect_uris": [REDIRECT]}}, SCOPES, redirect_uri=REDIRECT, autogenerate_code_verifier=False)
-cmd = sys.argv[1] if len(sys.argv) > 1 else "url"
-key = (sys.argv[3] if cmd == "token" and len(sys.argv) > 3 else sys.argv[2] if cmd == "url" and len(sys.argv) > 2 else "").strip().upper()
-VAR = f"YT_REFRESH_TOKEN_{key}" if key else "YT_REFRESH_TOKEN"
-if cmd == "url":
-    url, _ = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true")
-    print(url)
-elif cmd == "token":
-    pasted = sys.argv[2].strip()
-    code = re.search(r"[?&]code=([^&]+)", pasted)
+def token_variable(key):
+    if key not in KEYS:
+        raise ValueError('Unknown channel key')
+    return 'YT_REFRESH_TOKEN' + ('' if key == 'futurework' else '_' + key.upper())
+
+
+def steps(key):
+    return (f'1. Google Cloud Console > Google Auth Platform > Audience: check Publishing status. '
+            'External apps in Testing issue 7-day refresh tokens for YouTube scopes. '
+            'Use Publish app / In production when eligible; complete requested verification. '
+            'This is separate from the YouTube API compliance audit.\n'
+            f'2. Run: .venv/bin/python scripts/youtube_auth.py url {key}\n'
+            '3. Open the URL privately, select the correct YouTube channel and allow access. '
+            'Copy the full localhost redirect URL even if the page does not load.\n'
+            f'4. Run: .venv/bin/python scripts/youtube_auth.py token "<full redirect URL>" {key}\n'
+            f'5. Owner: update GitHub Actions secret {token_variable(key)} from the saved local value '
+            'using gh secret set or GitHub Settings > Secrets and variables > Actions. Never paste it in logs.\n'
+            f'6. Run reconciliation --dry-run, review, then --apply before draining {key}.')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest='command', required=True)
+    for command in ('url', 'steps'):
+        cmd = sub.add_parser(command)
+        cmd.add_argument('channel', choices=KEYS, nargs='?', default='futurework')
+    cmd = sub.add_parser('token')
+    cmd.add_argument('redirect_url')
+    cmd.add_argument('channel', choices=KEYS, nargs='?', default='futurework')
+    args = parser.parse_args()
+    if args.command == 'steps':
+        print(steps(args.channel))
+        return
+    from dotenv import load_dotenv
+    from google_auth_oauthlib.flow import Flow
+    load_dotenv(ROOT / '.env')
+    cid, secret = os.getenv('YT_CLIENT_ID'), os.getenv('YT_CLIENT_SECRET')
+    if not cid or not secret:
+        parser.exit(1, 'Set YT_CLIENT_ID and YT_CLIENT_SECRET locally first.\n')
+    flow = Flow.from_client_config({'installed': {'client_id': cid, 'client_secret': secret,
+        'auth_uri': 'https://accounts.google.com/o/oauth2/auth', 'token_uri': 'https://oauth2.googleapis.com/token',
+        'redirect_uris': [REDIRECT]}}, SCOPES, redirect_uri=REDIRECT, autogenerate_code_verifier=False)
+    if args.command == 'url':
+        print(steps(args.channel))
+        url, _ = flow.authorization_url(access_type='offline', prompt='consent', include_granted_scopes='true')
+        print(url)
+        return
+    code = parse_qs(urlparse(args.redirect_url).query).get('code', [None])[0]
     if not code:
-        sys.exit("Could not find code= in the pasted URL")
-    import os as _os
-    _os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # redirect is http://localhost
-    flow.fetch_token(code=code.group(1).replace("%2F", "/"))
-    rt = flow.credentials.refresh_token
-    if not rt:
-        sys.exit("No refresh token returned; remove the app's access at myaccount.google.com/permissions and retry")
-    env = (ROOT / ".env").read_text()
-    env = re.sub(rf"^{VAR}=.*$", f"{VAR}={rt}", env, flags=re.M) if re.search(rf"^{VAR}=", env, flags=re.M) else env.rstrip("\n") + f"\n{VAR}={rt}\n"
-    (ROOT / ".env").write_text(env)
-    print(f"{VAR} saved to .env")
+        parser.exit(1, 'Could not find code= in redirect URL.\n')
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+    try:
+        flow.fetch_token(code=code)
+    except Exception:
+        parser.exit(1, 'OAuth exchange failed. Generate a new URL and retry; credentials were not printed.\n')
+    token = flow.credentials.refresh_token
+    if not token:
+        parser.exit(1, 'No refresh token: revoke app access at myaccount.google.com/permissions and retry.\n')
+    variable = token_variable(args.channel)
+    path = ROOT / '.env'
+    env = path.read_text() if path.exists() else ''
+    env = re.sub(rf'^{variable}=.*$', lambda _: f'{variable}={token}', env, flags=re.M) if re.search(rf'^{variable}=', env, re.M) else env.rstrip('\n') + f'\n{variable}={token}\n'
+    path.write_text(env)
+    print(f'{variable} saved locally; token not printed. Owner must update the matching GitHub secret.')
+
+
+if __name__ == '__main__':
+    main()

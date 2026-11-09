@@ -90,7 +90,22 @@ def _restore_queue(db, row, pub):
     return row
 
 
+def _queue_auth(db, row, channel, privacy, slot, existing=None):
+    fields = {}
+    try:
+        if not existing or not existing.get("media_key"):
+            fields = _persist_queue(db, row)
+    except Exception as exc:
+        fields = {}
+        log.warning("auth queue media persistence deferred (%s)", type(exc).__name__)
+    record(db, {"content_id": row["id"], "platform": "youtube", "status": "queued",
+                "privacy": privacy, "publish_at": slot.isoformat(),
+                "error": json.dumps({"reason": "youtube_auth_expired", "message": youtube.auth_error(channel)}),
+                **fields})
+
+
 def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queue=False, force=False):
+    youtube.use_channel(channel)
     existing = db.one("publications", {"content_id": row["id"], "platform": "youtube"})
     if existing and existing.get("platform_id"):
         # A known remote ID remains authoritative even if a later DB write failed.
@@ -107,6 +122,9 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             uncertain = False
         if uncertain:
             raise RuntimeError("Previous upload outcome uncertain; reconcile in Studio before retry")
+    if youtube.auth_failed(channel):
+        _queue_auth(db, row, channel, privacy, slot, existing)
+        return None
     if row.get("placeholder"):
         raise RuntimeError("Refusing to publish placeholder footage")
     if row.get("qa_status") != "passed":
@@ -180,7 +198,7 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
         # Claim the unique publication before videos.insert. Concurrent runners must
         # not both upload; a crashed claim requires explicit owner reconciliation.
         import uuid
-        claim = json.dumps({"upload_attempt": uuid.uuid4().hex, "upload_uncertain": True})
+        claim = json.dumps({"upload_attempt": uuid.uuid4().hex, "upload_uncertain": True, "attempted_at": now_iso()})
         if existing:
             db.update("publications", {"content_id": row["id"], "platform": "youtube",
                       "status": existing["status"]}, {"status": "uploading", "error": claim})
@@ -227,11 +245,18 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
                       "platform_id": remote["id"], "url": remote["url"], "status": "live",
                       "privacy": privacy, "publish_at": slot.isoformat()}, on="content_id,platform")
             raise
+        if youtube.is_auth_failure(e):
+            youtube.mark_auth_failed()
+            _queue_auth(db, row, channel, privacy, slot, existing)
+            return None
         details = youtube.error_details(e)
         # Transport errors may occur after YouTube accepted the upload. Fail closed.
         http_status = details.get("http_status")
         if acquired and (not http_status or http_status == 408 or http_status >= 500):
             details["upload_uncertain"] = True
+            # Publication creation may predate this attempt by days in the queue.
+            details.update({k: v for k, v in json.loads(claim).items()
+                            if k in ("upload_attempt", "attempted_at")})
         daily_cap = "uploadLimitExceeded" in details["reason"].split(",")
         quota = daily_cap or (bool(set(details["reason"].split(",")) & youtube.QUOTA_REASONS) and not force)
         if daily_cap:
@@ -407,6 +432,8 @@ def publish_all(db, content_id, privacy="private", channel=None):
 
 def drain_youtube_queue(db, channel):
     youtube.use_channel(channel)
+    from .reconcile import reconcile_uploads
+    reconcile_uploads(db, channel)
     rows = {r["id"]: r for r in db.select("content", {"channel": channel.key})}
     queued = [p for p in db.select("publications", {"platform": "youtube", "status": "queued"}, order="publish_at")
               if p["content_id"] in rows]

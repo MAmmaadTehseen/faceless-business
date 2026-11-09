@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -37,12 +38,65 @@ def _creds() -> Credentials:
                        client_id=os.environ["YT_CLIENT_ID"], client_secret=os.environ["YT_CLIENT_SECRET"], scopes=SCOPES)
 
 
+class YouTubeAuthExpired(RuntimeError):
+    pass
+
+
+_auth_failed: set[str] = set()
+
+
+def auth_error(channel=None):
+    key = (channel or _current).key
+    return f"YouTube login expired for {key}; re-authorise"
+
+
+def is_auth_failure(exc):
+    return isinstance(exc, (RefreshError, YouTubeAuthExpired)) or "invalid_grant" in str(exc)
+
+
+def mark_auth_failed():
+    if _current.key not in _auth_failed:
+        _auth_failed.add(_current.key)
+        log.error(auth_error())
+
+
+def auth_failed(channel=None):
+    return (channel or _current).key in _auth_failed
+
+
+class _Guarded:
+    """Guard every request, including resumable chunks and read APIs."""
+    def __init__(self, target):
+        self.target = target
+
+    def __getattr__(self, name):
+        attr = getattr(self.target, name)
+        if not callable(attr):
+            return attr
+        def call(*args, **kwargs):
+            if auth_failed():
+                raise YouTubeAuthExpired(auth_error())
+            try:
+                result = attr(*args, **kwargs)
+            except Exception as exc:
+                if is_auth_failure(exc):
+                    mark_auth_failed()
+                    raise YouTubeAuthExpired(auth_error()) from None
+                raise
+            return result if name in ("execute", "next_chunk") else _Guarded(result)
+        return call
+
+
 def yt():
-    return build("youtube", "v3", credentials=_creds(), cache_discovery=False)
+    if auth_failed():
+        raise YouTubeAuthExpired(auth_error())
+    return _Guarded(build("youtube", "v3", credentials=_creds(), cache_discovery=False))
 
 
 def yt_analytics():
-    return build("youtubeAnalytics", "v2", credentials=_creds(), cache_discovery=False)
+    if auth_failed():
+        raise YouTubeAuthExpired(auth_error())
+    return _Guarded(build("youtubeAnalytics", "v2", credentials=_creds(), cache_discovery=False))
 
 
 def configured() -> bool:
@@ -93,7 +147,8 @@ def upload(video: Path, title: str, description: str, tags: list[str], privacy: 
         try:
             status, resp = req.next_chunk()
         except Exception as exc:
-            log.error("youtube upload API error: %s", json.dumps(error_details(exc)))
+            if not is_auth_failure(exc):
+                log.error("youtube upload API error: %s", json.dumps(error_details(exc)))
             raise
     vid = resp["id"]
     if thumbnail and thumbnail.exists():
@@ -141,7 +196,8 @@ def analytics(video_ids: list[str], days: int = 28) -> dict[str, dict]:
             dimensions="video", filters="video==" + ",".join(video_ids[:200]),
         ).execute()
     except Exception as e:
-        log.warning("analytics query failed: %s", e)
+        if not is_auth_failure(e):
+            log.warning("analytics query failed: %s", e)
         return {}
     cols = [c["name"] for c in res.get("columnHeaders", [])]
     out = {}
@@ -158,7 +214,8 @@ def comments(video_id: str, max_results: int = 50) -> list[dict]:
     try:
         res = yt().commentThreads().list(part="snippet", videoId=video_id, maxResults=max_results, order="time", textFormat="plainText").execute()
     except Exception as e:
-        log.warning("comments fetch failed for %s: %s", video_id, e)
+        if not is_auth_failure(e):
+            log.warning("comments fetch failed for %s: %s", video_id, e)
         return []
     out = []
     for it in res.get("items", []):

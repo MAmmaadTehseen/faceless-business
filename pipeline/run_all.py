@@ -275,7 +275,10 @@ def main():
         except Exception as e:
             errors.append(f"{e}\n{traceback.format_exc()}")
             log.error("produce failed: %s", e)
-    db.update("runs", {"id": run["id"]}, {"status": "failed" if errors and not results else "ok", "finished_at": now_iso(),
+    from .publish import youtube
+    if youtube.auth_failed(channel):
+        errors.append(youtube.auth_error(channel))
+    db.update("runs", {"id": run["id"]}, {"status": "failed" if youtube.auth_failed(channel) or (errors and not results) else "ok", "finished_at": now_iso(),
                                           "log": json.dumps({"results": results, "errors": errors})[:20000]})
     print(json.dumps(results, indent=2))
     if errors and not results:

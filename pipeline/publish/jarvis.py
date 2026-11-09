@@ -26,10 +26,11 @@ def notify(publication, channel):
 
 
 def record(db, row, on="content_id,platform"):
-    previous = db.one("publications", {"content_id": row["content_id"], "platform": row["platform"]})
-    from datetime import datetime, timezone
-    if not previous or previous.get("status") != row.get("status"):
-        row = {**row, "status_changed_at": datetime.now(timezone.utc).isoformat()}
+    try:
+        previous = db.one("publications", {"content_id": row["content_id"], "platform": row["platform"]})
+    except Exception:
+        previous = None  # Alert bookkeeping must never prevent the core write.
+    row = {k: v for k, v in row.items() if k != "status_changed_at"}
     result = db.upsert("publications", row, on=on)
     if not previous or previous.get("status") != row.get("status"):
         try:
@@ -44,13 +45,15 @@ def record(db, row, on="content_id,platform"):
 
 def update(db, match, fields):
     """Preserve conditional update guards for queue drains and owner retries."""
-    previous = db.one("publications", match)
+    try:
+        previous = db.one("publications", match)
+    except Exception:
+        # Preserve the original conditional write even if optional alert lookup fails.
+        return db.update("publications", match, {k: v for k, v in fields.items() if k != "status_changed_at"})
     if not previous:
         return
-    from datetime import datetime, timezone
     changed = "status" in fields and previous.get("status") != fields["status"]
-    if changed:
-        fields = {**fields, "status_changed_at": datetime.now(timezone.utc).isoformat()}
+    fields = {k: v for k, v in fields.items() if k != "status_changed_at"}
     result = db.update("publications", match, fields)
     if changed:
         try:

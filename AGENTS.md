@@ -195,3 +195,26 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   independently as a JSON boolean in existing settings storage. Review created private
   playlists in Studio and make them public when ready. No migration or new secrets needed.
   Turning settings on does not modify older uploads. Existing upload compliance rules apply.
+
+## Publication incident recovery (2026-11-09)
+- Pipeline publication writes must never send `status_changed_at`; migration 015's database
+  trigger owns that field. Alert bookkeeping and webhook failures must not block core writes.
+- OAuth refresh failures open a process-local circuit per channel (selecting the channel again
+  does not reset it). Affected unstarted uploads queue with `reason: youtube_auth_expired`,
+  without `upload_uncertain`. Produce/Shorts runs retain one safe re-authorisation diagnostic.
+- Sync reconciles uncertain YouTube publications before draining. It reads the channel's uploads
+  playlist using quota reservations, never `search.list`. A unique matching title with an upload
+  timestamp compatible with the attempt restores its
+  remote ID. An authenticated, complete scan with no matching title permits queueing only after
+  24 hours from `attempted_at` (legacy fallback: publication `created_at`). Unknown age, ambiguous
+  titles, incomplete scans and unavailable auth retain uncertainty and prohibit re-upload.
+- Owner recovery: check Google Auth Platform > Audience publishing status (Testing can cause
+  7-day refresh tokens); run `python scripts/youtube_auth.py steps <channel>` for exact commands.
+  Explicit `futurework` correctly targets `YT_REFRESH_TOKEN`; other channel keys use uppercase
+  suffixes. Tokens are saved locally, never printed. Only the owner updates Actions secrets.
+- Owner: after re-authorising, run `python scripts/reconcile_uploads.py --dry-run` and review
+  decisions before `--apply`; these commands never upload. Dry-run leaves publications/content
+  unchanged but records consumed API read quota. Then sync can drain safely. No database migration
+  is needed for these code fixes; apply pending migrations separately and run the RLS check.
+- Weekly review keeps a seven-day `persona-review` artifact and pushes persona changes with
+  fetch/rebase retries. Commit/push failures are nonfatal after a successful review.

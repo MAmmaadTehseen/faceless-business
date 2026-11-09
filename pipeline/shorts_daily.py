@@ -30,6 +30,22 @@ DAILY_SCHEMA = {
 }
 
 
+def daily_script(claude, prompt, content_id, db=None):
+    for attempt in range(2):
+        if attempt and db is not None and not CostGuard(db).check("short_daily", est_usd=0.3):
+            raise RuntimeError("Budget guard stopped daily Short retry")
+        try:
+            return claude.run("short_daily", prompt, schema=DAILY_SCHEMA, effort="medium",
+                              web_search=True, max_searches=3, max_tokens=6000,
+                              retries=0, content_id=content_id)
+        except RuntimeError as exc:
+            if attempt or str(exc) != "max_tokens hit in step short_daily":
+                raise
+            prompt += ("\nPrevious response exceeded the output limit. Return compact JSON only. "
+                       "Keep the script 120-160 words, use at most 3 concise fact checks, "
+                       "a two-sentence description, and one short footage query. No extra commentary.")
+
+
 def fresh_topic(db, channel):
     cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
     recent = db.select("content", {"channel": channel.key}, gte={"created_at": cutoff})
@@ -126,8 +142,7 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
         )
         db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "short", "parent_id": None,
                               "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
-        data, _ = claude.run("short_daily", prompt, schema=DAILY_SCHEMA, effort="medium", web_search=True,
-                             max_searches=3, max_tokens=2500, retries=0, content_id=content_id)
+        data, _ = daily_script(claude, prompt, content_id, db=db)
         saved = OUT_DIR / content_id
         saved.mkdir(parents=True, exist_ok=True)
         write_json(saved / "script.json", data)
@@ -186,7 +201,10 @@ def main():
     try:
         result = produce_daily(db, Channel(args.channel), dry_run=args.dry_run, placeholder=args.placeholder,
                                no_publish=args.no_publish, privacy=args.privacy)
-        db.update("runs", {"id": run["id"]}, {"status": "ok" if result else "skipped", "finished_at": now_iso(), "log": json.dumps(result)})
+        from .publish import youtube
+        expired = youtube.auth_failed(Channel(args.channel))
+        db.update("runs", {"id": run["id"]}, {"status": "failed" if expired else "ok" if result else "skipped",
+                  "finished_at": now_iso(), "log": json.dumps({"result": result, "error": youtube.auth_error(Channel(args.channel))} if expired else result)})
         print(json.dumps(result, indent=2))
     except Exception as e:
         detail = {"error": type(e).__name__}

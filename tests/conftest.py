@@ -9,6 +9,8 @@ import pytest
 def isolated_database(monkeypatch, tmp_path):
     # Import first: common loads config once. Override it for every test afterward.
     import pipeline.db
+    from pipeline.publish import youtube
+    monkeypatch.setattr(youtube, "_auth_failed", set())
     monkeypatch.setenv('DB_BACKEND', 'sqlite')
     monkeypatch.setattr(pipeline.db, 'DATA_DIR', tmp_path)
     import os
