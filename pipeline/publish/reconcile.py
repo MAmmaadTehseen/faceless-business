@@ -74,7 +74,8 @@ def reconcile_uploads(db, channel, *, apply=True, now=None):
         if len(candidates) == 1:
             vid = candidates[0]['contentDetails']['videoId']
             fields = {'status': 'live', 'platform_id': vid, 'url': f'https://youtu.be/{vid}', 'error': None}
-        elif not matches and attempted and now - attempted >= timedelta(hours=24):
+        elif not matches and (attempted is None or now - attempted >= timedelta(hours=24)):
+            # Rows without a timestamp predate attempt tracking and are older than the window.
             fields = {'status': 'queued', 'error': json.dumps({'reason': 'reconciled_no_upload',
                       'reconciled_at': now.isoformat()})}
         if fields:
