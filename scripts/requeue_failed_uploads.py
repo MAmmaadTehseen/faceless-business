@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pipeline.db import DB
 from pipeline.retry import restore
-from pipeline.publish import _persist_queue, _next_slot
+from pipeline.publish import _queue_media, _next_slot
 from pipeline.common import Channel
 
 
@@ -27,7 +27,7 @@ def main():
             continue
         print(f"{'Queue' if args.apply else 'Would queue'} {pub['id']} ({pub['content_id']})")
         if args.apply:
-            fields = _persist_queue(db, row)
+            fields = _queue_media(db, row, pub)
             if not pub.get("publish_at"):
                 fields["publish_at"] = _next_slot(db, row["kind"], Channel(row.get("channel") or "futurework"), content_id=row["id"]).isoformat()
             db.update("publications", {"id": pub["id"]}, {"status": "queued", "error": None, **fields})

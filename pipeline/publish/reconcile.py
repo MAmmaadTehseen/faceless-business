@@ -74,13 +74,24 @@ def reconcile_uploads(db, channel, *, apply=True, now=None):
         if len(candidates) == 1:
             vid = candidates[0]['contentDetails']['videoId']
             fields = {'status': 'live', 'platform_id': vid, 'url': f'https://youtu.be/{vid}', 'error': None}
-        elif not matches and (attempted is None or now - attempted >= timedelta(hours=24)):
-            # Rows without a timestamp predate attempt tracking and are older than the window.
+        elif not matches and (attempted is not None and now - attempted >= timedelta(hours=24)):
+            # Unknown attempt age never permits another upload.
             fields = {'status': 'queued', 'error': json.dumps({'reason': 'reconciled_no_upload',
                       'reconciled_at': now.isoformat()})}
         if fields:
             decisions.append({'publication_id': pub['id'], **fields})
             if apply:
+                if fields['status'] == 'queued':
+                    from . import _queue_media
+                    from ..retry import restore
+                    try:
+                        restored = restore(db, row, pub)
+                        fields.update(_queue_media(db, restored, pub))
+                    except Exception:
+                        # Preserve uncertainty until media can be rebuilt/restored.
+                        decisions[-1] = {'publication_id': pub['id'], 'status': pub['status'],
+                                         'reason': 'media_not_recoverable'}
+                        continue
                 update(db, {'id': pub['id'], 'status': pub['status'], 'error': pub.get('error'),
                             'platform_id': None}, fields)
                 current = db.one('publications', {'id': pub['id']})

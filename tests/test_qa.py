@@ -111,7 +111,7 @@ def test_blocked_render_retained_and_resume_publishes_without_rendering(tmp_path
             produce_one(db, Mock(), Mock(placeholder=False), **kwargs)
         assert video.read_bytes() == b'retained render'
         assert any(c.args[2].get('status') == 'qa_failed' for c in db.update.call_args_list)
-        assert any(c.args[2].get('qa_notes') == json.dumps(findings) for c in db.update.call_args_list)
+        assert any(json.loads(c.args[2].get('qa_notes', '{}')).get('issues') == findings for c in db.update.call_args_list)
         produce_one(db, Mock(), Mock(placeholder=False), **kwargs)
         assert qa.call_count == 2
         publish.assert_called_once_with(db, cid, 'private', channel)

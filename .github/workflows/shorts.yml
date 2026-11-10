@@ -84,6 +84,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shorts-${{ matrix.channel }}-${{ github.run_id }}
-          path: out/**/*.mp4
+          path: |
+            out/**/*.mp4
+            out/**/script.json
+            out/**/*.mp3
+            out/**/*timings.json
+            out/**/*.srt
           retention-days: 3
           if-no-files-found: ignore

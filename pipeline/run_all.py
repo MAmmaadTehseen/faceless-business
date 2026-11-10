@@ -86,9 +86,63 @@ def rerender_short(short: dict, out_dir: Path, voice, footage: Footage, name: st
     return {"file": video, "duration": tts["duration"], "title": short["hook_title"], "script": short["script"]}
 
 
-def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None, channel: Channel | None = None, rerender: bool = False) -> dict:
-    if rerender and not resume:
-        raise ValueError("--rerender requires --resume")
+def recovery_data(row):
+    """Read the paid production checkpoint, never generate a replacement script."""
+    from .retry import _json
+    notes = _json(row.get("qa_notes"))
+    data = notes.get("rebuild_script") or notes.get("daily_script") or notes.get("paid_script")
+    if not data:
+        data = _json(row.get("script"))
+    if not data or not data.get("script"):
+        if not row.get("script"):
+            raise ValueError(f"Cannot rebuild {row['id']}: DB lacks saved script")
+        raise ValueError(f"Cannot rebuild {row['id']}: DB lacks saved shot queries/production metadata; narration alone is insufficient")
+    data = dict(data)
+    narration = row.get("script")
+    if isinstance(narration, str) and narration.strip() and not _json(narration):
+        data["script"] = narration.split("\n\n") if isinstance(data["script"], list) else narration
+    return data
+
+
+def rebuild_daily(db, row, data, claude, footage, channel, publish, privacy):
+    from .shorts_daily import daily_production_notes
+    from .publish import publish_short
+    if not data.get("query") or not data.get("hook_title"):
+        raise ValueError(f"Cannot rebuild {row['id']}: DB lacks saved Short query/title")
+    from .script import BANNED_TITLE
+    if BANNED_TITLE.search(data['hook_title']):
+        raise RuntimeError("Daily Short title failed policy guardrail")
+    out = OUT_DIR / row['id']
+    out.mkdir(parents=True, exist_ok=True)
+    write_json(out / "script.json", data)
+    result = make_short(data, out, channel.voice, footage, name=row['id'], style=channel.style)
+    qa = run_qa(claude, result['file'], None, result['duration'], row['id'], out / 'qa',
+                vision=not footage.placeholder, db=db)
+    changes = {"file_path": str(result['file']), "duration_sec": result['duration'],
+               "placeholder": footage.placeholder, "qa_status": "passed" if qa['pass'] else "failed",
+               "status": "rendered" if qa['pass'] else "qa_failed",
+               "qa_notes": daily_production_notes(qa['issues'], channel, data)}
+    db.update('content', {'id': row['id']}, changes)
+    if not qa['pass']:
+        raise RuntimeError(f"Daily Short QA failed: {qa['issues']}")
+    answer = {'content_id': row['id'], 'video': str(result['file'])}
+    if publish:
+        answer['publications'] = publish_short(db, {**row, **changes}, channel,
+                                               privacy or db.setting('publish_privacy', 'private'))
+    write_json(out / 'result.json', answer)
+    return answer
+
+
+def rebuild_notes(issues, channel, data):
+    from .retry import _json
+    notes = _json(production_notes(issues, channel, "produce"))
+    notes.update({"issues": issues, "rebuild_script": data})
+    return json.dumps(notes)
+
+
+def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None, channel: Channel | None = None, rerender: bool = False, rebuild: bool = False) -> dict:
+    if (rerender or rebuild) and not resume:
+        raise ValueError("--rerender/--rebuild requires --resume")
     row = {}
     channel = channel or (claude.channel if claude else Channel())
     voice = channel.voice or db.setting("tts_voice", "en-US-AndrewMultilingualNeural")
@@ -100,6 +154,31 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     if resume:
         content_id = resume
         out_dir = OUT_DIR / content_id
+        if rebuild:
+            row = db.one("content", {"id": content_id})
+            if not row:
+                raise ValueError(f"Cannot rebuild {content_id}: DB lacks saved script/content")
+            if row.get("placeholder") or row.get("status") == "killed":
+                raise RuntimeError("Refusing to rebuild placeholder or killed content")
+            data = dict(recovery_data(row))
+            # Published titles in the DB take precedence over early paid drafts.
+            if row.get("title"):
+                data["hook_title" if row.get("kind") == "short" else "title"] = row["title"]
+            from .script import BANNED_TITLE
+            if any(BANNED_TITLE.search(title) for title in
+                   [data.get("title") or data.get("hook_title") or "",
+                    *(short.get("hook_title", "") for short in data.get("shorts", []))]):
+                raise RuntimeError("Saved rebuild title failed policy guardrail")
+            # Rebuild always regenerates narration using the production backend.
+            import os
+            os.environ["TTS_BACKEND"] = "kokoro"
+            if row.get("kind") == "short" and not row.get("parent_id"):
+                return rebuild_daily(db, row, data, claude, footage, channel, publish, privacy)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            write_json(out_dir / "script.json", data)
+            for audio in (out_dir / "voice.mp3", *out_dir.glob(f"{content_id}-short-*_voice.mp3")):
+                audio.unlink(missing_ok=True)
+            rerender = True
         resume_plan(out_dir, content_id, rerender=rerender)
         data = json.loads((out_dir / "script.json").read_text())
         if rerender and not data.get("shot_list"):
@@ -126,6 +205,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         data = data if dry_run else write_script(claude, topic, content_id, shorts_per_long)
         write_json(out_dir / "script.json", data)
 
+    db.update("content", {"id": content_id}, {"qa_notes": rebuild_notes([], channel, data)})
     video = out_dir / f"{content_id}.mp4"
     timings_file = out_dir / "voice_timings.json"
     reused_render = bool(resume and not rerender and video.exists())
@@ -167,7 +247,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     if claude:
         qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not (bool(row.get("placeholder")) if reused_render else footage.placeholder), db=db)
     thumb = qa.get("thumbnail") or thumb
-    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": production_notes(qa["issues"], channel, "produce"), "thumbnail_path": str(thumb)})
+    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": rebuild_notes(qa["issues"], channel, data), "thumbnail_path": str(thumb)})
     if not qa["pass"]:
         db.update("content", {"id": content_id}, {"status": "qa_failed"})
         raise RuntimeError(f"QA failed for {content_id}: {qa['issues']}")
@@ -218,10 +298,10 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     if publish:
         from .publish import publish_all
         result["publications"] = publish_all(db, content_id, privacy or db.setting("publish_privacy", "private"), channel)
-    if dry_run or (publish and any(
+    if not rebuild and (dry_run or (publish and any(
         p.get("platform") == "youtube" and p.get("content_id") == content_id
         for p in result.get("publications", [])
-    )):
+    ))):
         try:
             from .article import write_article
             write_article(db, content_id, claude=claude, dry_run=dry_run)
@@ -241,11 +321,12 @@ def main():
     ap.add_argument("--count", type=int, default=None, help="long videos this run (default from settings)")
     ap.add_argument("--resume", help="content id in out/ to continue from its rendered video (thumbnail, QA, shorts, publish)")
     ap.add_argument("--rerender", action="store_true", help="with --resume, rebuild long and Shorts from saved scripts and shot queries")
+    ap.add_argument("--rebuild", action="store_true", help="with --resume, regenerate media from DB without an artifact or script calls")
     ap.add_argument("--channel", default=None, help="channel key (folder in channels/). Default: futurework, or inferred from --resume id")
     args = ap.parse_args()
 
-    if args.rerender and not args.resume:
-        ap.error("--rerender requires --resume")
+    if (args.rerender or args.rebuild) and not args.resume:
+        ap.error("--rerender/--rebuild requires --resume")
 
     db = DB()
     ckey = args.channel or (args.resume.split("-20")[0] if args.resume and not args.resume.startswith("20") else None) or "futurework"
@@ -271,7 +352,7 @@ def main():
         if guard and not guard.check("produce", est_usd=1.0):
             break
         try:
-            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume, channel=channel, rerender=args.rerender))
+            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume, channel=channel, rerender=args.rerender, rebuild=args.rebuild))
         except Exception as e:
             errors.append(f"{e}\n{traceback.format_exc()}")
             log.error("produce failed: %s", e)

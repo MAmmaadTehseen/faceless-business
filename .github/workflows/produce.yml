@@ -25,6 +25,10 @@ on:
       artifact_run_id:
         description: "Run id holding videos-<channel>-<run_id> (required for resume)"
         required: false
+      rebuild:
+        description: "Rebuild media from DB scripts; no artifact required"
+        type: boolean
+        default: false
       rerender:
         description: "Rebuild resumed long video and Shorts from saved shot queries"
         type: boolean
@@ -112,7 +116,7 @@ jobs:
           echo "channel=$CH" >> "$GITHUB_OUTPUT"
           echo "channel: $CH"
       - name: Restore rendered files
-        if: github.event.inputs.resume_id != ''
+        if: github.event.inputs.resume_id != '' && github.event.inputs.rebuild != 'true'
         env:
           JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
           JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
@@ -135,13 +139,16 @@ jobs:
           JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
           RESUME_ID: ${{ github.event.inputs.resume_id }}
           CHANNEL: ${{ steps.pick.outputs.channel }}
+          REBUILD: ${{ github.event.inputs.rebuild }}
           RERENDER: ${{ github.event.inputs.rerender }}
           COUNT: ${{ github.event.inputs.count || '1' }}
           PRIVACY: ${{ github.event.inputs.privacy }}
         run: |
+          if [ "$REBUILD" = "true" ] && [ -z "$RESUME_ID" ]; then echo "rebuild requires resume_id" >&2; exit 1; fi
           ARGS=(--publish --channel "$CHANNEL")
           if [ -n "$RESUME_ID" ]; then
             ARGS+=(--resume "$RESUME_ID")
+            if [ "$REBUILD" = "true" ]; then ARGS+=(--rebuild); fi
             if [ "$RERENDER" = "true" ]; then ARGS+=(--rerender); fi
           else
             ARGS+=(--count "$COUNT")

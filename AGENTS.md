@@ -218,3 +218,25 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   is needed for these code fixes; apply pending migrations separately and run the RLS check.
 - Weekly review keeps a seven-day `persona-review` artifact and pushes persona changes with
   fetch/rebase retries. Commit/push failures are nonfatal after a successful review.
+
+## Lost queue media recovery (2026-11-10)
+- Every new YouTube queue transition persists media before writing `queued`; storage
+  failure must never produce a new queued row without recoverable media. Production
+  upload claims also checkpoint media so uncertain outcomes remain recoverable.
+- Artifact-free recovery: `gh workflow run produce.yml -f resume_id=<content-id> -f rebuild=true -f privacy=private`
+  (`python -m pipeline.run_all --resume <id> --rebuild --publish --privacy private` locally).
+  Rebuild uses DB production metadata, regenerates Kokoro narration and footage, renders
+  and reruns QA. It makes no script, topic or article Claude calls. Existing remote IDs
+  and uncertain-upload guards remain authoritative. Standalone daily Shorts are supported.
+- Full long-video production metadata is retained as `rebuild_script` in `content.qa_notes`;
+  daily Shorts retain `daily_script`. Legacy `paid_script` checkpoints are also accepted.
+  Legacy narration-only `content.script` cannot recover absent shot queries/Short scripts;
+  rebuild fails explicitly rather than inventing them or buying another script.
+- `PYTHON_DOTENV_DISABLED=1 python scripts/recover_lost_media.py --dry-run` checks queued
+  YouTube files through existing restore locations and prints one rebuild command per
+  parent (or standalone Short). Requires explicitly exported Supabase configuration;
+  never loads `.env`, never dispatches workflows. `--apply` only resets `drain_attempts`
+  for unrestorable queued rows, retaining other error metadata and queue status.
+- Shorts workflow artifacts now retain script/narration checkpoints even if validation
+  fails before rendering. Run 42688434967 rejected 164/202-word daily scripts against
+  the 120–160-word limit; keep validation and saved paid responses for owner correction.

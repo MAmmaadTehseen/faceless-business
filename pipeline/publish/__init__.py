@@ -65,6 +65,25 @@ def _persist_queue(db, row):
     return fields
 
 
+def _queue_media(db, row, existing=None):
+    """Require durable media before committing a queue transition.
+
+    SQLite is a local development backend; its existing file is the durable copy.
+    Production must have a private storage/release key, never just a runner path.
+    """
+    if not Path(row.get("file_path") or "").is_file():
+        from ..retry import restore
+        row = restore(db, row, existing or {})
+        if existing and existing.get("media_key"):
+            return {k: existing[k] for k in ("media_key", "thumbnail_key") if existing.get(k)}
+    fields = _persist_queue(db, row)
+    if db.sb and not fields.get("media_key"):
+        raise FileNotFoundError("Cannot queue without persisted media")
+    if not db.sb and not Path(row.get("file_path") or "").is_file():
+        raise FileNotFoundError("Cannot queue without local media")
+    return fields
+
+
 def _restore_queue(db, row, pub):
     if db.sb or any(str(pub.get(k) or "").startswith("https://") for k in ("media_key", "thumbnail_key")):
         from ..common import OUT_DIR
@@ -77,27 +96,26 @@ def _restore_queue(db, row, pub):
             if not key:
                 continue
             target = work / Path(key).name
-            if key.startswith("https://"):
-                import requests
-                with requests.get(key, stream=True, timeout=900) as r:
-                    r.raise_for_status()
-                    with open(target, "wb") as fh:
-                        for chunk in r.iter_content(1 << 20):
-                            fh.write(chunk)
-            else:
-                target.write_bytes(db.sb.storage.from_("youtube-queue").download(key))
+            temporary = target.with_suffix(target.suffix + ".part")
+            try:
+                if key.startswith("https://"):
+                    import requests
+                    with requests.get(key, stream=True, timeout=900) as r:
+                        r.raise_for_status()
+                        with open(temporary, "wb") as fh:
+                            for chunk in r.iter_content(1 << 20):
+                                fh.write(chunk)
+                else:
+                    temporary.write_bytes(db.sb.storage.from_("youtube-queue").download(key))
+                temporary.replace(target)
+            finally:
+                temporary.unlink(missing_ok=True)
             row[column] = str(target)
     return row
 
 
 def _queue_auth(db, row, channel, privacy, slot, existing=None):
-    fields = {}
-    try:
-        if not existing or not existing.get("media_key"):
-            fields = _persist_queue(db, row)
-    except Exception as exc:
-        fields = {}
-        log.warning("auth queue media persistence deferred (%s)", type(exc).__name__)
+    fields = _queue_media(db, row, existing)
     record(db, {"content_id": row["id"], "platform": "youtube", "status": "queued",
                 "privacy": privacy, "publish_at": slot.isoformat(),
                 "error": json.dumps({"reason": "youtube_auth_expired", "message": youtube.auth_error(channel)}),
@@ -122,15 +140,18 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             uncertain = False
         if uncertain:
             raise RuntimeError("Previous upload outcome uncertain; reconcile in Studio before retry")
-    if youtube.auth_failed(channel):
-        _queue_auth(db, row, channel, privacy, slot, existing)
-        return None
     if row.get("placeholder"):
         raise RuntimeError("Refusing to publish placeholder footage")
     if row.get("qa_status") != "passed":
         raise RuntimeError("Refusing publication without passed QA")
+    if youtube.auth_failed(channel):
+        _queue_auth(db, row, channel, privacy, slot, existing)
+        return None
     if draining:
         row = _restore_queue(db, dict(row), existing)
+        if not Path(row.get("file_path") or "").is_file():
+            from ..retry import restore
+            row = restore(db, row, existing)
     if existing and not force:
         try:
             retry_at = json.loads(existing.get("error") or "{}").get("retry_after")
@@ -149,29 +170,19 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
     thumbnail = Path(row["thumbnail_path"]) if row.get("thumbnail_path") else None
     units = THUMB_COST if thumbnail and thumbnail.exists() else 0
     if not (reserve(db, units, uploads=1, force=True) if force else reserve(db, units, uploads=1)):
-        fields = {}
-        if not draining:
-            queued = {"content_id": row["id"], "platform": "youtube", "status": "queued",
-                      "privacy": privacy, "publish_at": slot.isoformat()}
-            if existing:
-                db.update("publications", {"content_id": row["id"], "platform": "youtube",
-                          "status": existing["status"]}, queued)
-            else:
-                try:
-                    db.insert("publications", queued)
-                except Exception:
-                    # Another runner may already be uploading this unique item.
-                    if db.one("publications", {"content_id": row["id"], "platform": "youtube"}):
-                        return None
-                    raise
+        fields = _queue_media(db, row, existing)
+        queued = {"content_id": row["id"], "platform": "youtube", "status": "queued",
+                  "privacy": privacy, "publish_at": slot.isoformat(), **fields}
+        if existing:
+            db.update("publications", {"content_id": row["id"], "platform": "youtube",
+                      "status": existing["status"]}, queued)
+        else:
             try:
-                fields = _persist_queue(db, row)
-            except Exception as e:
-                db.update("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued"},
-                          {"error": "Queue storage failed: " + type(e).__name__})
+                db.insert("publications", queued)
+            except Exception:
+                if db.one("publications", {"content_id": row["id"], "platform": "youtube"}):
+                    return None
                 raise
-        db.update("publications", {"content_id": row["id"], "platform": "youtube", "status": "queued"},
-                  {"privacy": privacy, "publish_at": slot.isoformat(), **fields})
         day = datetime.now(timezone.utc).date().isoformat()
         usage = db.one("quota_log", {"day": day}) or {}
         used_units, used_uploads = usage.get("units", 0), usage.get("uploads", 0)
@@ -197,14 +208,15 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
                               parent_slot=datetime.fromisoformat(parent["publish_at"].replace("Z", "+00:00")) if parent and parent.get("publish_at") else None)
         # Claim the unique publication before videos.insert. Concurrent runners must
         # not both upload; a crashed claim requires explicit owner reconciliation.
+        media_fields = _queue_media(db, row, existing) if db.sb else {}
         import uuid
         claim = json.dumps({"upload_attempt": uuid.uuid4().hex, "upload_uncertain": True, "attempted_at": now_iso()})
         if existing:
             db.update("publications", {"content_id": row["id"], "platform": "youtube",
-                      "status": existing["status"]}, {"status": "uploading", "error": claim})
+                      "status": existing["status"]}, {"status": "uploading", "error": claim, **media_fields})
         else:
             db.insert("publications", {"content_id": row["id"], "platform": "youtube",
-                      "status": "uploading", "privacy": privacy, "publish_at": slot.isoformat(), "error": claim})
+                      "status": "uploading", "privacy": privacy, "publish_at": slot.isoformat(), "error": claim, **media_fields})
         claimed = db.one("publications", {"content_id": row["id"], "platform": "youtube"})
         if not claimed or claimed.get("error") != claim:
             return None
@@ -220,8 +232,9 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             "published_at": now_iso(), "error": None}, on="content_id,platform")
         db.update("content", {"id": row["id"]}, {"status": "published"})
         new_upload(db, row, channel, r["id"])
-        if draining and db.sb:
-            keys = [existing[k] for k in ("media_key", "thumbnail_key") if existing.get(k)]
+        if db.sb:
+            saved_media = {**(existing or {}), **media_fields}
+            keys = [saved_media[k] for k in ("media_key", "thumbnail_key") if saved_media.get(k)]
             try:
                 bucket_keys = [k for k in keys if not k.startswith("https://")]
                 if bucket_keys:
@@ -231,7 +244,8 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
                     import subprocess
                     subprocess.run(["gh", "release", "delete-asset", tag, name, "-y"], capture_output=True)
                 if keys:
-                    db.update("publications", {"id": existing["id"]}, {"media_key": None, "thumbnail_key": None})
+                    db.update("publications", {"content_id": row["id"], "platform": "youtube"},
+                              {"media_key": None, "thumbnail_key": None})
             except Exception:
                 log.warning("queue media cleanup deferred for %s", row["id"])
         return {"platform": "youtube", "content_id": row["id"], **r}
@@ -265,9 +279,9 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
         if quota:
             details["retry_after"] = (datetime.now(timezone.utc) + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
             try:
-                fields = _persist_queue(db, row)
+                fields = _queue_media(db, row, existing)
             except Exception as storage_error:
-                quota = daily_cap
+                quota = False
                 details["storage_error"] = type(storage_error).__name__
         log.error("youtube upload failed for %s: %s", row["id"], json.dumps(details))
         record(db, {"content_id": row["id"], "platform": "youtube", "status": "queued" if quota else "failed",
