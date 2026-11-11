@@ -408,7 +408,7 @@ class Claude:
             system += "\nReturn JSON only, matching this schema exactly: " + json.dumps(schema)
         messages = [{"role": "user", "content": user}]
         # Reasoning models spend output tokens on thinking; a flat plan makes headroom free.
-        max_tokens = min(int(max_tokens) * 3, 120000)
+        max_tokens = min(max(int(max_tokens) * 3, 32000), 120000)
         total, repairs, transient = 0.0, 0, 0
         endpoint = self.base_url.removesuffix("/v1") + "/v1/messages"
         while True:
