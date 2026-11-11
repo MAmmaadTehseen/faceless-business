@@ -417,7 +417,10 @@ class Claude:
                 response = requests.post(endpoint, headers={"LUNAROUTE-API-KEY": self.api_key,
                     "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
                     json={"model": model, "max_tokens": max_tokens, "system": system,
-                          "messages": messages}, timeout=(10, 300), allow_redirects=False)
+                          "messages": messages}, timeout=(10, 1500), allow_redirects=False)
+            except requests.Timeout:
+                self._log(step, content_id, SimpleNamespace(usage=SimpleNamespace(), model=model))
+                raise RuntimeError("LunaRoute timed out after 25 minutes (no provider fallback)") from None
             except requests.RequestException:
                 self._log(step, content_id, SimpleNamespace(usage=SimpleNamespace(), model=model))
                 raise RuntimeError("LunaRoute connection failed; check gateway configuration (no provider fallback)") from None

@@ -46,7 +46,7 @@ permissions:
 jobs:
   produce:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
       JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
