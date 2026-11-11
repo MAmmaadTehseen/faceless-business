@@ -81,6 +81,10 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "Hard rules: no income promises, no medical/legal/financial advice, no fabricated quotes, no 'experts say' without naming who. "
         "The first two paragraphs must be a pattern break that pays off the title within ninety seconds."
     )
+    supplied_sources = list(dict.fromkeys(([topic["source_url"]] if topic.get("source_url") else [])
+                                         + [n["url"] for n in topic.get("news", []) if n.get("url")]))
+    if getattr(claude, "provider", "anthropic") == "lunaroute":
+        user += "\nSupplied ideation news: " + json.dumps(topic.get("news", []))
     # A paid response is checkpointed before hook/validation can fail. Retrying
     # validation must never silently purchase a replacement script.
     saved = OUT_DIR / content_id / "script.json"
@@ -98,7 +102,9 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
     else:
         if db and db.select("costs", {"content_id": content_id, "step": "script"}):
             raise RuntimeError("Paid script missing; restore its artifact before retrying")
-        data, _ = claude.run("script", user, schema=SCRIPT_SCHEMA, effort="high", web_search=True, max_searches=8, max_tokens=24000, content_id=content_id, retries=0)
+        data, _ = claude.run("script", user, schema=SCRIPT_SCHEMA, effort="high", web_search=True, max_searches=8, max_tokens=24000, content_id=content_id, retries=0, **({"supplied_sources": supplied_sources} if getattr(claude, "provider", "anthropic") == "lunaroute" else {}))
+        if getattr(claude, "provider", "anthropic") == "lunaroute":
+            data["supplied_sources"] = supplied_sources
         raw.parent.mkdir(parents=True, exist_ok=True)
         write_json(raw, data)
         if db and row:

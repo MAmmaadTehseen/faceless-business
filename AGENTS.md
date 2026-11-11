@@ -240,3 +240,20 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
 - Shorts workflow artifacts now retain script/narration checkpoints even if validation
   fails before rendering. Run 42688434967 rejected 164/202-word daily scripts against
   the 120–160-word limit; keep validation and saved paid responses for owner correction.
+
+## Model provider switching (2026-11-11)
+- `Claude` remains the shared interface. `LLM_PROVIDER` defaults to `anthropic`;
+  `lunaroute` requires environment-only `LUNAROUTE_API_KEY` and optional
+  `LUNAROUTE_BASE_URL` (default https://gw.lunaroute.com). Never fall back across providers.
+- LunaRoute uses Messages image blocks, prompted JSON + local schema validation and
+  one repair; it receives no Anthropic beta/fallback/server-tool parameters.
+- LunaRoute costs rows use model `lunaroute/<model>` and zero marginal USD, including
+  repair and failed HTTP attempts. LunaRoute vision errors fail QA closed. CostGuard uses zero estimates but checks budget; the independent
+  `LLM_MAX_CALLS_PER_CLIENT` default 100 counts requests/retries/repairs per instance.
+- Research supplies ideation news and bounded HTTP source text. Only supplied sources
+  may be cited. Saved scripts retain `supplied_sources`; article evidence URLs must
+  belong to that list. Legacy scripts require verified source metadata first.
+- Owner configures Actions variable `LLM_PROVIDER`, secret `LUNAROUTE_API_KEY`, optional
+  variable `LUNAROUTE_BASE_URL`. Per-step overrides and public API sources/limits:
+  `docs/llm-providers.md`. Owner-only comparison: `scripts/llm_compare.py`; do not run
+  automatically or in tests. Tests mock model and source HTTP, never read `.env`.

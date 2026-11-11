@@ -15,11 +15,13 @@ def isolated_database(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline.db, 'DATA_DIR', tmp_path)
     import os
     for name in list(os.environ):
-        if name in ('SUPABASE_SERVICE_KEY','ANTHROPIC_API_KEY','YT_CLIENT_SECRET','GH_TOKEN','GITHUB_TOKEN') or name.startswith(('YT_REFRESH_TOKEN','IG_ACCESS_TOKEN','META_ACCESS_TOKEN')):
+        if name in ('SUPABASE_SERVICE_KEY','ANTHROPIC_API_KEY','LUNAROUTE_API_KEY','LLM_PROVIDER','LUNAROUTE_BASE_URL','ANTHROPIC_AUTH_TOKEN','ANTHROPIC_BASE_URL','YT_CLIENT_SECRET','GH_TOKEN','GITHUB_TOKEN') or name.startswith(('YT_REFRESH_TOKEN','IG_ACCESS_TOKEN','META_ACCESS_TOKEN')):
             monkeypatch.delenv(name, raising=False)
 
+    import socket
     import requests
     import httpx
+    import httpx2
     import subprocess
     original_run = subprocess.run
     def offline(*args, **kwargs):
@@ -28,6 +30,11 @@ def isolated_database(monkeypatch, tmp_path):
         if isinstance(args, (list, tuple)) and str(args[0]).split('/')[-1] in ('gh','curl','wget'):
             raise AssertionError('External CLI access is disabled in tests')
         return original_run(args, *other, **kwargs)
+    monkeypatch.setattr(socket.socket, 'connect', offline)
+    monkeypatch.setattr(socket.socket, 'connect_ex', offline)
     monkeypatch.setattr(requests.sessions.Session, 'request', offline)
     monkeypatch.setattr(httpx.Client, 'send', offline)
+    monkeypatch.setattr(httpx2.Client, 'send', offline)
+    monkeypatch.setattr(httpx.AsyncClient, 'send', offline)
+    monkeypatch.setattr(httpx2.AsyncClient, 'send', offline)
     monkeypatch.setattr(subprocess, 'run', local_process)

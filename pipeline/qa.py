@@ -223,6 +223,8 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
     try:
         res, _ = claude.vision("qa", prompt, images, QA_SCHEMA, content_id=content_id)
     except Exception as e:
+        if getattr(claude, "provider", "anthropic") == "lunaroute":
+            raise RuntimeError("LunaRoute vision QA failed; publication requires successful vision QA") from e
         log.warning("qa vision failed, passing on probe only: %s", e)
         return finalize_qa({"issues": issues + [{"severity": "minor", "text": f"vision skipped: {e}"}], "thumbnail_ok": True, "frames_ok": True, "thumbnail": thumbnail}, strict)
     res["thumbnail"] = thumbnail

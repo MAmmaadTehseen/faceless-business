@@ -30,14 +30,15 @@ DAILY_SCHEMA = {
 }
 
 
-def daily_script(claude, prompt, content_id, db=None):
+def daily_script(claude, prompt, content_id, db=None, supplied_sources=None):
     for attempt in range(2):
         if attempt and db is not None and not CostGuard(db).check("short_daily", est_usd=0.3):
             raise RuntimeError("Budget guard stopped daily Short retry")
         try:
             return claude.run("short_daily", prompt, schema=DAILY_SCHEMA, effort="medium",
                               web_search=True, max_searches=3, max_tokens=6000,
-                              retries=0, content_id=content_id)
+                              retries=0, content_id=content_id,
+                              **({"supplied_sources": supplied_sources} if getattr(claude, "provider", "anthropic") == "lunaroute" else {}))
         except RuntimeError as exc:
             if attempt or str(exc) != "max_tokens hit in step short_daily":
                 raise
@@ -71,7 +72,7 @@ def fresh_topic(db, channel):
     news = fetch_news(db.setting(f"niche_keywords_{channel.key}") or channel.keywords)
     for n in news:
         if fresh(n["headline"]):
-            return {"topic": n["headline"], "source_url": n["url"], "queue_id": None}, titles
+            return {"topic": n["headline"], "source_url": n["url"], "queue_id": None, "news": news[:8]}, titles
     raise RuntimeError("No fresh topic outside this channel's last 14 days")
 
 
@@ -142,7 +143,11 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
         )
         db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "short", "parent_id": None,
                               "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
-        data, _ = daily_script(claude, prompt, content_id, db=db)
+        supplied_sources = [topic["source_url"]] if topic.get("source_url") else []
+        supplied_sources += [n["url"] for n in topic.get("news", []) if n.get("url")]
+        if getattr(claude, "provider", "anthropic") == "lunaroute":
+            prompt += "\nSupplied ideation news: " + json.dumps(topic.get("news", []))
+        data, _ = daily_script(claude, prompt, content_id, db=db, supplied_sources=supplied_sources)
         saved = OUT_DIR / content_id
         saved.mkdir(parents=True, exist_ok=True)
         write_json(saved / "script.json", data)

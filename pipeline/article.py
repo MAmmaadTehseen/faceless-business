@@ -347,17 +347,27 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
             "25-50 words, FAQ answers 30-75 words are accepted. Code normalizes casing, slugs and metadata lengths.\n"
             + json.dumps(script, ensure_ascii=False)
         )
+        restricted_sources = getattr(claude, "provider", "anthropic") == "lunaroute"
+        supplied_sources = script.get("supplied_sources", [])
+        if restricted_sources and not supplied_sources:
+            raise ValueError("LunaRoute article requires saved supplied_sources; restore verified source URLs first")
         schema = ARTICLE_SCHEMA
         previous = None
         for attempt in range(2):
             if not CostGuard(db).check("article", est_usd=0.6):
                 raise RuntimeError("Article skipped by budget guard")
             raw, _ = claude.run("article", prompt, schema=schema, effort="medium",
-                                web_search=True, max_searches=4, max_tokens=20000, content_id=content_id)
+                                web_search=True, max_searches=4, max_tokens=20000, content_id=content_id,
+                                **({"supplied_sources": supplied_sources} if restricted_sources else {}))
             merged = {**previous, **{k: raw[k] for k in schema["properties"]}} if previous is not None else raw
             data = repair_article(merged)
             data["body_md"] = assemble_body(data)
             failures, warnings = article_checks(data, data["body_md"])
+            if restricted_sources:
+                for section in data["sections"]:
+                    evidence = section.get("evidence")
+                    if evidence and evidence["source_url"] not in supplied_sources:
+                        failures.append("Evidence source_url must come from supplied_sources")
             if f"https://www.youtube.com/@{channel.handle}" not in data["cta_md"]:
                 failures.append("CTA must link the supplied channel URL")
             for warning in warnings:

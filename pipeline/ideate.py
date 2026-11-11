@@ -87,4 +87,4 @@ def choose_topic(db, claude: Claude, channel=None) -> dict | None:
         return None
     src = news[i]
     log.info("topic: %s | angle: %s", pick["topic"], pick["angle"])
-    return {"topic": pick["topic"], "angle": pick["angle"], "source_url": src["url"], "source_headline": src["headline"], "queue_id": None}
+    return {"topic": pick["topic"], "angle": pick["angle"], "source_url": src["url"], "source_headline": src["headline"], "queue_id": None, "news": news[:8]}
