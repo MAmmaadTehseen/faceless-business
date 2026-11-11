@@ -218,7 +218,8 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
         "Minor: pillarboxing/letterboxing, soft or blurry archival footage, incidental signage, "
         "source logos on objects such as NASA rockets, sparse but legible thumbnails, colour grading, stylistic notes. "
         "Keep thumbnail_ok as a separate check of thumbnail usability; sparse but legible is OK. "
-        "Count frames_without_caption, but captions may be absent during pauses; absence in sampled stills alone is not blocking."
+        "Count frames_without_caption, but captions may be absent during pauses; absence in sampled stills alone is not blocking. "
+        "Our own burned-in narration captions (word-by-word or stylised subtitle text, often black/white) are expected and never blocking unless cut off or unreadable."
     )
     try:
         res, _ = claude.vision("qa", prompt, images, QA_SCHEMA, content_id=content_id)
