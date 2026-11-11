@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core espeak-ng
+      - run: for i in 1 2 3 4; do sudo apt-get update -qq && sudo apt-get install -y -qq --fix-missing ffmpeg fonts-dejavu-core espeak-ng && break; echo "apt retry $i"; sleep 30; done; command -v ffmpeg
       - name: Install dependencies (CPU torch, then Kokoro)
         run: |
           pip install -r requirements.txt
