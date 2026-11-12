@@ -81,6 +81,10 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "Hard rules: no income promises, no medical/legal/financial advice, no fabricated quotes, no 'experts say' without naming who. "
         "The first two paragraphs must be a pattern break that pays off the title within ninety seconds."
     )
+    if topic.get('evergreen'):
+        user = user.replace("Today's video topic:", "Evergreen video topic:").replace(
+            "4-8 concrete, recent, attributable facts", "4-8 concrete, durable, attributable facts")
+        user += "\nThis video will be released later. No breaking news, current prices, upcoming deadlines or references to today. Explain enduring mechanisms."
     supplied_sources = list(dict.fromkeys(([topic["source_url"]] if topic.get("source_url") else [])
                                          + [n["url"] for n in topic.get("news", []) if n.get("url")]))
     if getattr(claude, "provider", "anthropic") == "lunaroute":

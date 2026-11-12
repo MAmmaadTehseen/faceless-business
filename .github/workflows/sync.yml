@@ -19,6 +19,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       GH_TOKEN: ${{ github.token }}
+      GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
       YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
       YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
       YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
@@ -42,3 +43,8 @@ jobs:
         with: { python-version: "3.12", cache: pip }
       - run: pip install -r requirements.txt
       - run: python -m pipeline.sync
+      - name: Release enabled stockpiles after normal sync
+        run: |
+          for channel in futurework tradewinds escapevelocity; do
+            python -m pipeline.release_banked --channel "$channel" --max 100 --scheduled
+          done

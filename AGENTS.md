@@ -266,3 +266,31 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
 - Connect timeout 10s, idle read timeout 120s, overall deadline 40 minutes across
   retries/repairs. Connection/stream failures retry once before completion, with
   attempt logging/cost rows; no provider fallback. Tests use mocked SSE only.
+
+## Evergreen stockpile (2026-11-12)
+- Owner-run `scripts/generate_evergreen.py --channel <key>` (LunaRoute only) creates
+  60–80 deduplicated topics in `channels/<key>/evergreen.json` and durable
+  `evergreen_topics_<key>` settings. Durable per-topic used markers avoid runner repeats.
+  Generation was not run by the coding agent; owner must populate inventories first.
+- `pipeline.run_all --bank --channel <key>` requires real footage, passed long QA and
+  exactly four passed Shorts; `pipeline.shorts_daily --bank` banks a standalone Short.
+  No publications or published hub article are created. Prepared article + release
+  manifest/media go to app-created private Google Drive folders; complete bundles become
+  `banked` atomically. IDs/checksums/checkpoints live in `qa_notes.stockpile`. No migration.
+- Drive uses only drive.file, `GDRIVE_REFRESH_TOKEN` + existing YT client credentials.
+  Owner: `scripts/youtube_auth.py url drive`, then `token "<redirect>" drive`; token saved
+  locally, never printed. Owner alone sets the Actions secret. Keep 5 GiB free; preflight
+  adds a conservative 2 GiB production allowance. Verified local media is retained.
+- `pipeline.release_banked --channel <key> --max N` reuses normal YouTube publisher without
+  model calls; downloads verify SHA-256. Long ID precedes children. Save prepared article
+  after all YouTube IDs, then move folder to `Faceless Stockpile/released/`, never delete.
+  Partial releases remain discoverable; existing uncertainty guards prohibit duplicates.
+- `bank.yml`: hourly cron gated by JSON boolean `bank_mode_enabled` (default false) and
+  inclusive ISO `bank_until`; manual dispatch intentionally bypasses those two gates.
+  Global workflow concurrency + matrix max-parallel 2 caps bank jobs at two overall.
+  Sync releases after normal sync only when `banked_release_per_day` > 0 (default 0),
+  counting bundles per channel per UTC day, with existing quota reserves/calendar.
+- Cross-runner settings locks fail closed after crashes. Owner may remove only
+  `stockpile_lock_drive_upload` / `stockpile_lock_release_<key>` after verifying no live
+  operation owns them. Setup, recovery, settings and exact commands: `docs/stockpile.md`.
+  Dashboard Stockpile card is read-only and uses cached Drive quota; no Vercel Drive secret.

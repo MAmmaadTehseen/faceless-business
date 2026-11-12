@@ -297,7 +297,7 @@ def article_thumbnail(db, content_id, existing, dry_run):
         return previous
 
 
-def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_run: bool = False, force: bool = False, script_data: dict | None = None) -> dict:
+def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_run: bool = False, force: bool = False, script_data: dict | None = None, prepare_only: bool = False) -> dict:
     # SQLite bootstraps older schemas locally; keep the optional SEO columns compatible.
     if getattr(db, "kind", None) == "sqlite":
         columns = {r[1] for r in db.conn.execute("pragma table_info(articles)")}
@@ -310,7 +310,7 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
     channel = Channel(content.get("channel") or "futurework")
     publication = db.one("publications", {"content_id": content_id, "platform": "youtube"}) or {}
     existing = db.one("articles", {"id": content_id})
-    thumbnail_path = article_thumbnail(db, content_id, existing, dry_run)
+    thumbnail_path = None if prepare_only else article_thumbnail(db, content_id, existing, dry_run)
     youtube_id = publication.get("platform_id") or (existing or {}).get("youtube_id")
     # Keep reruns cheap, but pick up a newly available YouTube ID.
     if existing and existing.get("published_at") and not dry_run and not force:
@@ -411,6 +411,9 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
         f"- [{r['title']}](/a/{r['slug']})" for r in related)
     links += f"\n\nExplore [{channel.name}](/c/{channel.key}).\n\n"
     row["body_md"] = row["body_md"].replace("## Frequently asked questions", links + "## Frequently asked questions")
+    if prepare_only:
+        row["published_at"] = None
+        return row
     saved = db.upsert("articles", row, on="id")
     if not dry_run:
         ping_indexnow(article_slug)

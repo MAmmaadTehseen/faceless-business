@@ -64,7 +64,7 @@ class DB:
             except sqlite3.OperationalError:
                 pass
         existing = {r[1] for r in self.conn.execute("pragma table_info(articles)")}
-        for column in ("meta_title", "meta_description", "primary_keyword", "faqs", "entities", "quick_answer", "takeaways"):
+        for column in ("meta_title", "meta_description", "primary_keyword", "faqs", "entities", "quick_answer", "takeaways", "summary_for_og", "updated_at", "thumbnail_path"):
             if column not in existing:
                 self.conn.execute(f"alter table articles add column {column} text")
         self.conn.commit()

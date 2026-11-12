@@ -140,7 +140,14 @@ def rebuild_notes(issues, channel, data):
     return json.dumps(notes)
 
 
-def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None, channel: Channel | None = None, rerender: bool = False, rebuild: bool = False) -> dict:
+def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: bool, publish: bool, privacy: str | None, resume: str | None = None, channel: Channel | None = None, rerender: bool = False, rebuild: bool = False, bank: bool = False) -> dict:
+    if bank:
+        if dry_run or publish or resume or footage.placeholder:
+            raise ValueError("--bank requires fresh real production without publishing")
+        if getattr(claude, "provider", None) != "lunaroute":
+            raise ValueError("Bank production requires LLM_PROVIDER=lunaroute")
+        from .stockpile import preflight
+        preflight(db)
     if (rerender or rebuild) and not resume:
         raise ValueError("--rerender/--rebuild requires --resume")
     row = {}
@@ -192,7 +199,11 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         data = json.loads(FIXTURE.read_text())
         topic = {"topic": data["topic"], "angle": "", "source_url": None, "source_headline": None, "queue_id": None}
     else:
-        topic = choose_topic(db, claude, channel)
+        if bank:
+            from .evergreen import choose
+            topic = choose(db, channel)
+        else:
+            topic = choose_topic(db, claude, channel)
         if not topic:
             raise RuntimeError("No topic available")
     if not resume:
@@ -295,6 +306,9 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         shorts.append({"id": sid, **res})
 
     result = {"content_id": content_id, "video": str(video), "thumbnail": str(thumb), "shorts": [str(s["file"]) for s in shorts], "title": data["title"]}
+    if bank:
+        from .stockpile import bank_bundle
+        result["stockpile"] = bank_bundle(db, content_id, channel, claude=claude)
     if publish:
         from .publish import publish_all
         result["publications"] = publish_all(db, content_id, privacy or db.setting("publish_privacy", "private"), channel)
@@ -315,6 +329,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="fixture script, placeholder footage, no Claude")
     ap.add_argument("--placeholder", action="store_true", help="placeholder footage even with a Pexels key")
+    ap.add_argument("--bank", action="store_true")
     ap.add_argument("--publish", action="store_true")
     ap.add_argument("--no-publish", action="store_true")
     ap.add_argument("--privacy", choices=["private", "public", "unlisted"])
@@ -328,6 +343,8 @@ def main():
     if (args.rerender or args.rebuild) and not args.resume:
         ap.error("--rerender/--rebuild requires --resume")
 
+    if args.bank and (args.publish or args.no_publish or args.dry_run or args.placeholder or args.resume):
+        ap.error("--bank cannot be combined with publish/no-publish, dry-run, placeholder or resume")
     db = DB()
     ckey = args.channel or (args.resume.split("-20")[0] if args.resume and not args.resume.startswith("20") else None) or "futurework"
     channel = Channel(ckey)
@@ -352,10 +369,18 @@ def main():
         if guard and not guard.check("produce", est_usd=1.0):
             break
         try:
-            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume, channel=channel, rerender=args.rerender, rebuild=args.rebuild))
+            results.append(produce_one(db, claude, footage, dry_run=args.dry_run, publish=args.publish and not args.no_publish, privacy=args.privacy, resume=args.resume, channel=channel, rerender=args.rerender, rebuild=args.rebuild, bank=args.bank))
         except Exception as e:
-            errors.append(f"{e}\n{traceback.format_exc()}")
-            log.error("produce failed: %s", e)
+            from .drive import DriveFull
+            if isinstance(e, DriveFull):
+                log.info("%s", e)
+                break
+            if args.bank:
+                errors.append("Bank production failed: " + type(e).__name__)
+                log.error("bank production failed (%s); checkpoints retained", type(e).__name__)
+            else:
+                errors.append(f"{e}\n{traceback.format_exc()}")
+                log.error("produce failed: %s", e)
     from .publish import youtube
     if youtube.auth_failed(channel):
         errors.append(youtube.auth_error(channel))

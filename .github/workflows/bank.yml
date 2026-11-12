@@ -1,0 +1,99 @@
+name: bank
+on:
+  schedule:
+    - cron: '45 * * * *'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Channel (or all)
+        type: choice
+        options: [all, futurework, tradewinds, escapevelocity]
+        default: all
+      count:
+        description: Long-video bundles per channel (1-10)
+        type: number
+        default: 1
+permissions:
+  contents: read
+# Serializing workflow runs makes max-parallel a global bound, not just a per-run bound.
+concurrency:
+  group: stockpile-global
+  cancel-in-progress: false
+jobs:
+  bank:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        channel: [futurework, tradewinds, escapevelocity]
+    concurrency:
+      group: stockpile-${{ matrix.channel }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      PYTHON_DOTENV_DISABLED: '1'
+      LLM_PROVIDER: lunaroute
+      LUNAROUTE_API_KEY: ${{ secrets.LUNAROUTE_API_KEY }}
+      LUNAROUTE_BASE_URL: ${{ vars.LUNAROUTE_BASE_URL || 'https://gw.lunaroute.com' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+      TTS_BACKEND: kokoro
+      HF_HOME: ${{ github.workspace }}/.hf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - run: pip install -r requirements.txt
+      - name: Gate scheduled banking
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          REQUESTED: ${{ inputs.channel }}
+          CHANNEL: ${{ matrix.channel }}
+        run: |
+          ENABLED=false
+          if [ "$EVENT" = schedule ]; then
+            ENABLED=$(python -m pipeline.bank_gate | tail -1)
+          elif [ "$REQUESTED" = all ] || [ "$REQUESTED" = "$CHANNEL" ]; then
+            ENABLED=true
+          fi
+          echo "enabled=$ENABLED" >> "$GITHUB_OUTPUT"
+      - name: Install rendering dependencies
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core espeak-ng
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install kokoro soundfile
+      - uses: actions/cache@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          path: .hf
+          key: kokoro-82m-v1
+      - name: Bank finished bundles
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          CHANNEL: ${{ matrix.channel }}
+          COUNT: ${{ inputs.count || 1 }}
+        run: |
+          python -c 'import os; n=int(os.environ["COUNT"]); assert 1 <= n <= 10, "count must be 1-10"'
+          python -m pipeline.run_all --bank --channel "$CHANNEL" --count "$COUNT"
+      - name: Retain recovery checkpoints
+        if: always() && steps.gate.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bank-${{ matrix.channel }}-${{ github.run_id }}
+          path: |
+            out/**/*.json
+            out/**/*.srt
+            out/**/*.mp3
+            out/**/*.mp4
+            out/**/*.jpg
+          retention-days: 3
+          if-no-files-found: ignore

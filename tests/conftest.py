@@ -15,7 +15,7 @@ def isolated_database(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline.db, 'DATA_DIR', tmp_path)
     import os
     for name in list(os.environ):
-        if name in ('SUPABASE_SERVICE_KEY','ANTHROPIC_API_KEY','LUNAROUTE_API_KEY','LLM_PROVIDER','LUNAROUTE_BASE_URL','ANTHROPIC_AUTH_TOKEN','ANTHROPIC_BASE_URL','YT_CLIENT_SECRET','GH_TOKEN','GITHUB_TOKEN') or name.startswith(('YT_REFRESH_TOKEN','IG_ACCESS_TOKEN','META_ACCESS_TOKEN')):
+        if name in ('SUPABASE_SERVICE_KEY','ANTHROPIC_API_KEY','LUNAROUTE_API_KEY','LLM_PROVIDER','LUNAROUTE_BASE_URL','ANTHROPIC_AUTH_TOKEN','ANTHROPIC_BASE_URL','YT_CLIENT_SECRET','GDRIVE_REFRESH_TOKEN','GH_TOKEN','GITHUB_TOKEN') or name.startswith(('YT_REFRESH_TOKEN','IG_ACCESS_TOKEN','META_ACCESS_TOKEN')):
             monkeypatch.delenv(name, raising=False)
 
     import socket

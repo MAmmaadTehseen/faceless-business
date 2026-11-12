@@ -97,21 +97,29 @@ def daily_production_notes(issues, channel, data):
     return json.dumps(notes)
 
 
-def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=False, privacy=None):
+def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=False, privacy=None, bank=False):
     if db.setting("pipeline_paused", False) and not dry_run:
         log.info("daily short: pipeline paused")
         return None
     if not dry_run and not CostGuard(db).check("short_daily", est_usd=0.3):
         return None
+    if bank:
+        if dry_run or placeholder:
+            raise ValueError("Banking requires real production")
+        from .stockpile import preflight
+        preflight(db)
+        no_publish = True
     today = datetime.now(timezone.utc).date().isoformat()
     # Daily jobs may be retried: do not create another topic/upload for this date.
-    prefix = f"{channel.key}-{today}-short-"
-    existing = next((r for r in db.select("content", {"channel": channel.key, "kind": "short", "parent_id": None}) if r["id"].startswith(prefix)), None)
+    prefix = f"{channel.key}-{today}-{'bank-short' if bank else 'short'}-"
+    existing = None if bank else next((r for r in db.select("content", {"channel": channel.key, "kind": "short", "parent_id": None}) if r["id"].startswith(prefix)), None)
     if existing and existing.get("qa_status") == "passed" and not dry_run and not existing.get("placeholder"):
         if not no_publish:
             publish_short(db, existing, channel, privacy or db.setting("publish_privacy", "private"))
         return {"content_id": existing["id"], "video": existing["file_path"]}
     claude = None if dry_run else Claude(db, channel=channel)
+    if bank and getattr(claude, "provider", None) != "lunaroute":
+        raise ValueError("Bank production requires LLM_PROVIDER=lunaroute")
     if dry_run:
         from .run_all import FIXTURE
         fixture = json.loads(FIXTURE.read_text())
@@ -126,7 +134,11 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
     else:
         if existing and db.select("costs", {"content_id": existing["id"], "step": "short_daily"}):
             raise RuntimeError("Paid daily script missing; restore its artifact before retrying")
-        topic, recent = fresh_topic(db, channel)
+        if bank:
+            from .evergreen import choose
+            topic, recent = choose(db, channel), []
+        else:
+            topic, recent = fresh_topic(db, channel)
         content_id = f"{prefix}{slugify(topic['topic'], 40)}"
         if db.select("costs", {"content_id": content_id, "step": "short_daily"}):
             raise RuntimeError("Paid daily script missing; restore its artifact before retrying")
@@ -141,6 +153,9 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
             "Include attributable source URLs in facts_check and description. Use a generic physical footage query. "
             f"Do not repeat any of these recent topics or titles: {json.dumps(recent)}"
         )
+        if bank:
+            prompt = prompt.replace('verify recent facts', 'verify durable facts')
+            prompt += "\nEvergreen stockpile: explain durable mechanisms. No news, current prices, deadlines, or references to today."
         db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "short", "parent_id": None,
                               "topic": topic["topic"], "title": topic["topic"], "status": "draft"}, on="id")
         supplied_sources = [topic["source_url"]] if topic.get("source_url") else []
@@ -178,7 +193,7 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
     db.upsert("content", row, on="id")
     if not qa["pass"]:
         raise RuntimeError(f"Daily Short QA failed: {qa['issues']}")
-    if not dry_run and not footage.placeholder:
+    if not bank and not dry_run and not footage.placeholder:
         try:
             row["media_url"] = meta.public_url_for(res["file"], tag=f"media-{datetime.now(timezone.utc):%Y%m%d}")
             db.update("content", {"id": content_id}, {"media_url": row["media_url"]})
@@ -187,6 +202,9 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
     if topic.get("queue_id"):
         db.update("topic_queue", {"id": topic["queue_id"]}, {"status": "used"})
     result = {"content_id": content_id, "video": str(res["file"])}
+    if bank:
+        from .stockpile import bank_bundle
+        result["stockpile"] = bank_bundle(db, content_id, channel, claude=claude)
     if not dry_run and not no_publish:
         result["publications"] = publish_short(db, row, channel, privacy or db.setting("publish_privacy", "private"))
     write_json(out / "result.json", result)
@@ -196,6 +214,7 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
 def main():
     ap = argparse.ArgumentParser(__doc__)
     ap.add_argument("--channel", required=True, choices=Channel.keys())
+    ap.add_argument("--bank", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--placeholder", action="store_true")
     ap.add_argument("--no-publish", action="store_true")
@@ -205,18 +224,25 @@ def main():
     run = db.insert("runs", {"workflow": "shorts", "channel": args.channel, "status": "running"})
     try:
         result = produce_daily(db, Channel(args.channel), dry_run=args.dry_run, placeholder=args.placeholder,
-                               no_publish=args.no_publish, privacy=args.privacy)
+                               no_publish=args.no_publish, privacy=args.privacy, bank=args.bank)
         from .publish import youtube
         expired = youtube.auth_failed(Channel(args.channel))
         db.update("runs", {"id": run["id"]}, {"status": "failed" if expired else "ok" if result else "skipped",
                   "finished_at": now_iso(), "log": json.dumps({"result": result, "error": youtube.auth_error(Channel(args.channel))} if expired else result)})
         print(json.dumps(result, indent=2))
     except Exception as e:
+        from .drive import DriveFull
+        if isinstance(e, DriveFull):
+            db.update("runs", {"id": run["id"]}, {"status": "skipped", "finished_at": now_iso(), "log": "Drive reserve reached; checkpoints retained"})
+            return
         detail = {"error": type(e).__name__}
         # Keep useful validation diagnostics without persisting request/credential errors.
         if str(e).startswith(("Daily Short script outside", "Daily Short contains unverified", "Daily Short title failed")):
             detail["reason"] = str(e)[:250]
         db.update("runs", {"id": run["id"]}, {"status": "failed", "finished_at": now_iso(), "log": json.dumps(detail)})
+        if args.bank:
+            log.error("bank Short failed (%s); checkpoints retained", type(e).__name__)
+            raise SystemExit(1) from None
         raise
 
 
