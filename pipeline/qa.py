@@ -223,9 +223,17 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
         "Captions show a few words at a time, so a caption that ends mid-sentence is normal, not cut off."
     )
     try:
-        res, _ = claude.vision("qa", prompt, images, QA_SCHEMA, content_id=content_id)
+        try:
+            res, _ = claude.vision("qa", prompt, images, QA_SCHEMA, content_id=content_id)
+        except Exception as first:
+            if getattr(claude, "provider", "anthropic") != "lunaroute":
+                raise
+            # Reasoning models occasionally return malformed output or stall; one fresh attempt.
+            log.warning("qa vision attempt 1 failed (%s: %s); retrying once", type(first).__name__, str(first)[:300])
+            res, _ = claude.vision("qa", prompt, images, QA_SCHEMA, content_id=content_id)
     except Exception as e:
         if getattr(claude, "provider", "anthropic") == "lunaroute":
+            log.error("qa vision failed: %s: %s", type(e).__name__, str(e)[:300])
             raise RuntimeError("LunaRoute vision QA failed; publication requires successful vision QA") from e
         log.warning("qa vision failed, passing on probe only: %s", e)
         return finalize_qa({"issues": issues + [{"severity": "minor", "text": f"vision skipped: {e}"}], "thumbnail_ok": True, "frames_ok": True, "thumbnail": thumbnail}, strict)
