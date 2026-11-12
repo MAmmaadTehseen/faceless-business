@@ -391,6 +391,88 @@ class Claude:
             raise ValueError("Invalid LLM model configuration")
         return model
 
+    def _lunaroute_stream(self, response, deadline):
+        """Assemble one Messages SSE response; never accept a truncated message."""
+        body = {"content": [], "usage": {}}
+        text, data, event = [], [], ""
+        # A separate reader lets the deadline interrupt even a peer dripping bytes
+        # without completing an SSE line (requests' timeout alone cannot do that).
+        import queue
+        import threading
+        incoming = queue.Queue()
+        stopped = threading.Event()
+
+        def read_lines():
+            try:
+                for line in response.iter_lines(chunk_size=1, decode_unicode=True):
+                    if stopped.is_set():
+                        return
+                    incoming.put(line)
+            except Exception as exc:
+                incoming.put(exc)
+            finally:
+                incoming.put(None)
+
+        threading.Thread(target=read_lines, daemon=True).start()
+        def lines():
+            try:
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise RuntimeError("LunaRoute overall timeout after 40 minutes (no provider fallback)")
+                    try:
+                        item = incoming.get(timeout=min(120, remaining))
+                    except queue.Empty:
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("LunaRoute overall timeout after 40 minutes (no provider fallback)") from None
+                        raise requests.ReadTimeout("LunaRoute idle timeout") from None
+                    if item is None:
+                        return
+                    if isinstance(item, Exception):
+                        raise item
+                    yield item
+            finally:
+                stopped.set()
+
+        for line in lines():
+            if isinstance(line, bytes):
+                line = line.decode("utf-8")
+            if line:
+                if line.startswith("event:"):
+                    event = line[6:].strip()
+                elif line.startswith("data:"):
+                    data.append(line[5:].lstrip(" "))
+                continue
+            if not data:
+                event = ""
+                continue
+            try:
+                payload = json.loads("\n".join(data))
+                kind = payload.get("type", event)
+                if kind == "error":
+                    # Do not echo gateway content, which can contain request data.
+                    raise requests.ConnectionError("LunaRoute stream error event (no provider fallback)")
+                if kind == "message_start":
+                    message = payload.get("message", {})
+                    body.update({k: v for k, v in message.items() if k != "content"})
+                elif kind == "content_block_delta":
+                    delta = payload.get("delta", {})
+                    if delta.get("type") == "text_delta":
+                        text.append(delta.get("text", ""))
+                    # Thinking/signature deltas and pings are activity, not output.
+                elif kind in ("message_delta", "message_stop"):
+                    body.update(payload.get("delta", {}))
+                    if "stop_reason" in payload:
+                        body["stop_reason"] = payload["stop_reason"]
+                    body.setdefault("usage", {}).update(payload.get("usage", {}))
+                    if kind == "message_stop":
+                        body["content"] = [{"type": "text", "text": "".join(text)}]
+                        return body
+            except (ValueError, TypeError, AttributeError):
+                raise requests.ConnectionError("LunaRoute malformed stream (no provider fallback)") from None
+            data, event = [], ""
+        raise requests.ConnectionError("LunaRoute mid-stream disconnect before message_stop (no provider fallback)")
+
     def _lunaroute(self, step, user, *, schema, use_persona, system_extra, web_search,
                    max_tokens, content_id, retries, supplied_sources):
         vision = isinstance(user, list) and any(b.get("type") == "image" for b in user)
@@ -411,19 +493,53 @@ class Claude:
         max_tokens = min(max(int(max_tokens) * 3, 32000), 120000)
         total, repairs, transient = 0.0, 0, 0
         endpoint = self.base_url.removesuffix("/v1") + "/v1/messages"
+        streaming, stream_retries = True, 0
+        deadline = time.monotonic() + 40 * 60
         while True:
+            if time.monotonic() >= deadline:
+                raise RuntimeError("LunaRoute overall timeout after 40 minutes (no provider fallback)")
             self._guard_call(step)
+            response = None
+            body = None
             try:
                 response = requests.post(endpoint, headers={"LUNAROUTE-API-KEY": self.api_key,
                     "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
                     json={"model": model, "max_tokens": max_tokens, "system": system,
-                          "messages": messages}, timeout=(10, 1500), allow_redirects=False)
-            except requests.Timeout:
+                          "messages": messages, "stream": streaming}, stream=True,
+                    timeout=(10, min(120, max(1, deadline - time.monotonic()))), allow_redirects=False)
+                if response.status_code == 200:
+                    if streaming and "text/event-stream" not in response.headers.get("Content-Type", "").lower():
+                        self._log(step, content_id, SimpleNamespace(usage=SimpleNamespace(), model=model))
+                        log.info("lunaroute %s: non-SSE response; retrying with stream=false", step)
+                        streaming = False
+                        continue
+                    body = self._lunaroute_stream(response, deadline) if streaming else response.json()
+            except requests.RequestException as exc:
                 self._log(step, content_id, SimpleNamespace(usage=SimpleNamespace(), model=model))
-                raise RuntimeError("LunaRoute timed out after 25 minutes (no provider fallback)") from None
-            except requests.RequestException:
+                if isinstance(exc, requests.ConnectTimeout):
+                    reason = "connect failure (timeout)"
+                elif isinstance(exc, requests.Timeout) or "read timed out" in str(exc).lower():
+                    reason = "idle timeout between stream events (120 seconds)"
+                elif response is None:
+                    reason = "connect failure"
+                elif "stream error event" in str(exc):
+                    reason = "stream error event"
+                else:
+                    reason = "mid-stream disconnect"
+                log.warning("lunaroute %s attempt %d: %s", step, stream_retries + 1, reason)
+                if stream_retries < 1 and time.monotonic() < deadline:
+                    stream_retries += 1
+                    continue
+                raise RuntimeError(f"LunaRoute {reason} (no provider fallback)") from None
+            except RuntimeError:
                 self._log(step, content_id, SimpleNamespace(usage=SimpleNamespace(), model=model))
-                raise RuntimeError("LunaRoute connection failed; check gateway configuration (no provider fallback)") from None
+                raise
+            except ValueError:
+                self._log(step, content_id, SimpleNamespace(usage=SimpleNamespace(), model=model))
+                raise RuntimeError("LunaRoute returned an invalid Messages response") from None
+            finally:
+                if response is not None:
+                    response.close()
             if response.status_code != 200:
                 self._log(step, content_id, SimpleNamespace(usage=SimpleNamespace(), model=model))
             if response.status_code == 429 or response.status_code >= 500:
@@ -438,7 +554,6 @@ class Claude:
             if response.status_code != 200:
                 raise RuntimeError(f"LunaRoute HTTP {response.status_code}; check key, model, base URL and plan; no provider fallback")
             try:
-                body = response.json()
                 usage = SimpleNamespace(**body.get("usage", {}))
                 resp = SimpleNamespace(usage=usage, model=body.get("model", model))
                 total += self._log(step, content_id, resp)

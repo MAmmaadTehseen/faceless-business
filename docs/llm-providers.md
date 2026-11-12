@@ -29,14 +29,24 @@ that capacity depends on the subscription. Extra requests can queue or overflow;
 priority queue waiting is capped at 60 seconds, background waiting at 240 seconds.
 [Errors and rate limits](https://docs.lunaroute.com/api/errors/) documents HTTP 429
 and `Retry-After`; clients should allow more than 60 seconds for queued requests.
-The adapter uses a 10-second connection and 300-second read timeout, with bounded
-same-provider retries for 429/5xx, honoring integer Retry-After up to 60 seconds.
-Inference redirects are refused to keep the API key on the configured gateway.
-Exact owner-plan concurrency and model output limits are unverified. Confirm them
-in the account; this implementation does not query the live catalog at startup.
-The [Models API](https://docs.lunaroute.com/api/models/) describes per-model context
-limits and capability metadata. Model availability can change; configure overrides
-if the chosen IDs are unavailable. Do not assume a subscription includes BYOK costs.
+The adapter requests Messages SSE with `stream: true` on the same `/v1/messages`
+endpoint. Text deltas form the answer; thinking deltas and pings keep the connection
+active without entering the answer. Usage and stop reason are merged from message
+events, and `message_stop` is required before accepting the answer. Fenced JSON,
+max-token/refusal stops, and the single schema repair retain their existing behavior.
+A non-SSE successful response triggers a new request with `stream: false`, never a
+provider switch. Connections have a 10-second connect timeout, a 120-second idle
+read timeout, and a 40-minute overall deadline covering retries and repairs.
+Connection/stream failures get one retry only before a complete message; each
+attempt is logged and counted. HTTP 429/5xx retain bounded existing retries.
+Diagnostics distinguish connect failure, idle timeout, mid-stream disconnect,
+stream error events and HTTP status without echoing gateway error payloads.
+HTTP retries honor integer Retry-After up to 60 seconds. Inference redirects are
+refused to keep the API key on the configured gateway. Exact owner-plan concurrency
+and model output limits are unverified; confirm them in the account. This adapter
+does not query the live catalog at startup. The [Models API](https://docs.lunaroute.com/api/models/)
+describes capability metadata; configure overrides if selected IDs are unavailable.
+Do not assume a subscription includes BYOK costs.
 
 Native JSON Schema enforcement for these specific models and the Messages route
 could not be confirmed in public documentation. UI capability badges are not a

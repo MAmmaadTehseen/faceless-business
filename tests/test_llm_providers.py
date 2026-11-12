@@ -11,10 +11,20 @@ SCHEMA = {"type": "object", "properties": {"ok": {"type": "boolean"}},
 
 
 def response(text='{"ok":true}', status=200):
-    mock = MagicMock(status_code=status, headers={})
+    mock = MagicMock(status_code=status, headers={"Content-Type": "text/event-stream"})
     mock.json.return_value = {"model": "glm-5.3", "content": [{"type": "text", "text": text}],
                               "usage": {"input_tokens": 100, "output_tokens": 20}, "stop_reason": "end_turn"}
+    mock.iter_lines.return_value = sse_lines([
+        {"type": "message_start", "message": {"model": "glm-5.3", "usage": {"input_tokens": 100}}},
+        {"type": "content_block_delta", "delta": {"type": "text_delta", "text": text}},
+        {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 20}},
+        {"type": "message_stop"},
+    ])
     return mock
+
+
+def sse_lines(events):
+    return [line for event in events for line in ("event: " + event["type"], "data: " + json.dumps(event), "")]
 
 
 def client(monkeypatch, db=None):
@@ -279,3 +289,90 @@ def test_strip_json_fence():
     assert json.loads(strip_json_fence('```json\n{"a": 1}\n```')) == {"a": 1}
     assert json.loads(strip_json_fence('Here you go:\n{"a": [1]}')) == {"a": [1]}
     assert json.loads(strip_json_fence('[1, 2]')) == [1, 2]
+
+
+@pytest.mark.parametrize("thinking,fenced", [(False, False), (True, False), (True, True)])
+def test_stream_text_thinking_and_fences(monkeypatch, thinking, fenced):
+    claude = client(monkeypatch)
+    result = response()
+    events = [{"type": "message_start", "message": {"usage": {"input_tokens": 12}}}]
+    if thinking:
+        events += [{"type": "content_block_delta", "delta": {"type": "thinking_delta", "thinking": "private reasoning"}}, {"type": "ping"}]
+    text = '```json\n{"ok":true}\n```' if fenced else '{"ok":true}'
+    events += [{"type": "content_block_delta", "delta": {"type": "text_delta", "text": part}} for part in (text[:5], text[5:])]
+    events += [{"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 42}}, {"type": "message_stop"}]
+    result.iter_lines.return_value = iter(sse_lines(events))
+    post = MagicMock(return_value=result)
+    monkeypatch.setattr("requests.post", post)
+    assert claude.run("script", "fixture", schema=SCHEMA)[0] == {"ok": True}
+    assert post.call_args.kwargs["json"]["stream"] is True
+    assert post.call_args.kwargs["timeout"] == (10, 120)
+    result.close.assert_called_once()
+
+
+@pytest.mark.parametrize("stop", ["max_tokens", "refusal"])
+def test_stream_stop_reason_not_retried(monkeypatch, stop):
+    claude = client(monkeypatch)
+    result = response()
+    result.iter_lines.return_value = iter(sse_lines([
+        {"type": "message_delta", "delta": {"stop_reason": stop}}, {"type": "message_stop"}]))
+    post = MagicMock(return_value=result)
+    monkeypatch.setattr("requests.post", post)
+    with pytest.raises(RuntimeError, match="max_tokens" if stop == "max_tokens" else "refused"):
+        claude.run("script", "fixture")
+    assert post.call_count == 1
+
+
+@pytest.mark.parametrize("failure,reason", [("disconnect", "mid-stream disconnect"), ("error", "stream error event"), ("idle", "idle timeout"), ("connect", "connect failure")])
+def test_stream_failure_retry_and_logging(monkeypatch, failure, reason, caplog):
+    import requests
+    from pipeline.db import DB
+    db = DB()
+    claude = client(monkeypatch, db)
+    def broken_lines(**kwargs):
+        yield from sse_lines([{"type": "content_block_delta", "delta": {"type": "text_delta", "text": "discard me"}}])
+        if failure == "error":
+            yield from sse_lines([{"type": "error", "error": {"message": "secret request data"}}])
+        elif failure == "idle":
+            raise requests.ConnectionError("Read timed out.")
+        else:
+            raise requests.exceptions.ChunkedEncodingError("closed")
+    broken = response()
+    broken.iter_lines.side_effect = broken_lines
+    post = MagicMock(side_effect=[requests.ConnectionError() if failure == "connect" else broken, response()])
+    monkeypatch.setattr("requests.post", post)
+    assert claude.run("script", "fixture", schema=SCHEMA)[0] == {"ok": True}
+    assert post.call_count == 2 and len(db.select("costs")) == 2
+    assert reason in caplog.text and "secret request data" not in caplog.text
+
+
+def test_non_sse_fallback(monkeypatch):
+    claude = client(monkeypatch)
+    first, second = response(), response()
+    first.headers = second.headers = {"Content-Type": "application/json"}
+    post = MagicMock(side_effect=[first, second])
+    monkeypatch.setattr("requests.post", post)
+    assert claude.run("script", "fixture", schema=SCHEMA)[0] == {"ok": True}
+    assert [c.kwargs["json"]["stream"] for c in post.call_args_list] == [True, False]
+    first.close.assert_called_once()
+    second.close.assert_called_once()
+
+
+def test_stream_retry_exhausted(monkeypatch):
+    import requests
+    claude = client(monkeypatch)
+    post = MagicMock(side_effect=requests.ConnectTimeout())
+    monkeypatch.setattr("requests.post", post)
+    with pytest.raises(RuntimeError, match="connect failure"):
+        claude.run("script", "fixture")
+    assert post.call_count == 2
+
+
+def test_stream_overall_cap(monkeypatch):
+    claude = client(monkeypatch)
+    post = MagicMock(return_value=response())
+    monkeypatch.setattr("requests.post", post)
+    monkeypatch.setattr("pipeline.common.time.monotonic", MagicMock(side_effect=[0, 0, 0, 2401]))
+    with pytest.raises(RuntimeError, match="overall timeout"):
+        claude.run("script", "fixture")
+    assert post.call_count == 1

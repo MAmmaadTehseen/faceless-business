@@ -257,3 +257,12 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   variable `LUNAROUTE_BASE_URL`. Per-step overrides and public API sources/limits:
   `docs/llm-providers.md`. Owner-only comparison: `scripts/llm_compare.py`; do not run
   automatically or in tests. Tests mock model and source HTTP, never read `.env`.
+
+## LunaRoute streaming (2026-11-12)
+- Messages requests use SSE (`stream: true`) at the same `/v1/messages` endpoint.
+  Text deltas only become output; thinking/pings count as activity. Require message_stop;
+  merge usage/stop reason from message events. Keep fenced JSON, refusal/max_tokens
+  handling and one schema repair. Non-SSE success retries with stream=false only.
+- Connect timeout 10s, idle read timeout 120s, overall deadline 40 minutes across
+  retries/repairs. Connection/stream failures retry once before completion, with
+  attempt logging/cost rows; no provider fallback. Tests use mocked SSE only.
