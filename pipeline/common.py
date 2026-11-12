@@ -58,7 +58,7 @@ def slugify(text: str, max_len: int = 48) -> str:
 
 LUNAROUTE_MODELS = {
     "script": "glm-5.3", "article": "glm-5.3", "qa": "glm-5.3-vision",
-    "vision": "glm-5.3-vision", "reply": "glm-5.3-flash", "ideate": "glm-5.3-flash",
+    "vision": "glm-5.3-vision", "reply": "glm-5.3-flash", "ideate": "glm-5.3",
     "short_daily": "glm-5.3", "recap": "glm-5.3", "review": "glm-5.3",
     "optimize": "glm-5.3-flash", "hook": "glm-5.3",
 }

@@ -219,7 +219,8 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
         "source logos on objects such as NASA rockets, sparse but legible thumbnails, colour grading, stylistic notes. "
         "Keep thumbnail_ok as a separate check of thumbnail usability; sparse but legible is OK. "
         "Count frames_without_caption, but captions may be absent during pauses; absence in sampled stills alone is not blocking. "
-        "Our own burned-in narration captions (word-by-word or stylised subtitle text, often black/white) are expected and never blocking unless cut off or unreadable."
+        "Our own burned-in narration captions (word-by-word or stylised subtitle text, often black/white) are expected and never blocking unless letters are physically cropped by the frame edge or unreadable. "
+        "Captions show a few words at a time, so a caption that ends mid-sentence is normal, not cut off."
     )
     try:
         res, _ = claude.vision("qa", prompt, images, QA_SCHEMA, content_id=content_id)
