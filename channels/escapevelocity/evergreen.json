@@ -1,0 +1,742 @@
+[
+  {
+    "topic": "How We Know Dark Matter Exists Without Seeing It",
+    "angle": "The chain of evidence from galaxy rotation speeds to gravitational lensing, and why astronomers separate the measured effect, missing mass, from the still unconfirmed particles proposed to explain it.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How Astronomers Found the Universe Speeding Up",
+    "angle": "Distances measured with exploding stars, and the surprise they revealed: expansion is accelerating. Explains why dark energy is the name for an unexplained effect, not a solved one, and how disagreements between methods keep the field honest.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Cosmic Microwave Background: The Oldest Light There Is",
+    "angle": "The afterglow of the hot early universe, released when the primordial fog of charged particles cleared. What the tiny temperature ripples encode, and how dedicated detectors map them across the whole sky.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Redshift: How Stretched Light Becomes a Speedometer and a Ruler",
+    "angle": "The workhorse measurement of cosmology. Distinguishes motion through space from the expansion of space itself, and why the stretch of a wavelength tells you both how fast and how far.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Gravitational Lensing: The Universe's Own Magnifying Glass",
+    "angle": "Mass bends light, so a cluster of galaxies works like a natural telescope. How lensing reveals and weighs invisible mass, sharpens views of objects behind it, and scales all the way down to single planets.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Cosmic Distance Ladder, Rung by Rung",
+    "angle": "Parallax for nearby stars, pulsating stars for the galaxy, exploding stars for deep space. Each rung calibrates the next, and the places where rungs disagree are where the live debates happen.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why the Sky Looks the Same in Every Direction",
+    "angle": "The horizon problem, and the leading answer: a burst of faster-than-light expansion called inflation. Clear about which parts have supporting evidence and which parts remain untested ideas.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How a Dipping Star Reveals a Hidden Planet",
+    "angle": "The transit method. A small dip in brightness, repeated on a schedule, gives a planet's size and year, and how wide-field surveys turned a niche trick into the most productive planet finder we have.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Wobble Method: Finding Planets in a Star's Sway",
+    "angle": "Stars and planets orbit a common centre, so every planet makes its star wobble. How spectrographs read that wobble as a Doppler shift, and why this gave us the first planets around sun-like stars.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How to Photograph a Planet Beside a Blazing Star",
+    "angle": "Direct imaging is like spotting a firefly next to a lighthouse. Coronagraphs and starshades block the starlight, and the honest reason Earth twins remain out of reach is contrast.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Microlensing: Catching Planets With a Star's Gravity",
+    "angle": "When one star drifts in front of another, gravity briefly magnifies the light, and any planet adds its own blip. Why wide infrared surveys are built for these rare alignments, and how the same geometry finds worlds with no star at all.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Habitable Zone: What Earth-Like Really Means",
+    "angle": "An orbit where liquid water could persist, nothing more. Why it is a first filter rather than a promise, and how atmosphere, geology and history decide whether a world inside the line is anything like Earth.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How Telescopes Read the Air of Other Worlds",
+    "angle": "Starlight filtered through a transiting planet's atmosphere picks up chemical fingerprints. What has been detected so far, and why the air is far easier to measure than the planet itself.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How to Weigh a Planet With Light Alone",
+    "angle": "Transits give size, wobbles give mass, and together they give density. The path from one number to a story about rock, water and gas, and where interpretation starts to outrun the data.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Tidal Locking: The World With One Eternal Day",
+    "angle": "Why close-orbiting worlds stop spinning relative to their stars, with the Moon as the local example. What permanent day and night sides may mean for atmospheres and climate models.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Hot Jupiters: The Planets That Should Not Exist",
+    "angle": "Gas giants skimming their stars broke the old formation story. Explains migration by disk drag and gravitational scattering, and what these scorched worlds taught us about our own solar system's youth.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Biosignatures: Searching for Life Without Fooling Yourself",
+    "angle": "Gas mixes like oxygen and methane together can suggest biology, and every one has non-living false positives. The evidence bar astronomers set, and why several independent clues beat one tempting signal.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How Stars Are Born in Clouds of Cold Dust",
+    "angle": "Collapse, a spinning disk, ignition. Why stellar nurseries hide from visible light and shine in infrared, and why astronomers keep returning to the same nearby clouds to watch birth in progress.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why the Biggest Stars Die First",
+    "angle": "Mass is both fuel and furnace, so giants exhaust themselves in millions of years while red dwarfs will outlast the current age of the universe. The payoff: how supernovae forge and scatter the ingredients of planets.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Neutron Stars: A Star Crushed to the Size of a City",
+    "angle": "What happens when collapse stops just short of a black hole. Matter so dense a teaspoon would outweigh a mountain, and why many of these objects announce themselves in X-rays while stripping gas from a companion.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Pulsars: The Most Reliable Clocks in the Sky",
+    "angle": "Beams sweeping like lighthouse flashes, with timing that rivals the best clocks humans build. How teams use pulsars to test relativity, and how timing whole networks of them hunts for gravitational waves.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "White Dwarfs: The Quiet Fate of Nearly Every Star",
+    "angle": "The red giant stage, the shed outer layers, then an ember held up by quantum pressure. Includes the archival Hubble cold case of possible planets born anew around a dead star.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Brown Dwarfs: Too Big for Planets, Too Small for Stars",
+    "angle": "Why nuclear fusion has a mass threshold, and what fills the gap between Jupiter and the smallest true stars. How all-sky infrared surveys like SPHEREx are cataloguing this in-between population.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Starquakes: Hearing the Inside of a Star",
+    "angle": "Stars ring like bells, and their surfaces flicker with the vibration. Asteroseismology turns those frequencies into mass, age and interior structure, the ultrasound of astronomy.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Binary Stars: The Outbursts of a Life Lived in Pairs",
+    "angle": "Companions mean stolen gas, unstable transfer and recurring eruptions. How X-ray observatories trace the source of a star's mysterious brightenings, and why so many strange objects turn out to be double.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Event Horizon: What the Point of No Return Actually Is",
+    "angle": "The boundary explained without misleading metaphors. Why the horizon is a one-way street for information, and why an infalling observer notices nothing special at the crossing itself.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Monster Hiding at the Centre of the Milky Way",
+    "angle": "Decades of patient tracking of stars orbiting an invisible point, the work that pinned down the central black hole. Why watching those orbits continue keeps testing relativity in our own backyard.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Accretion Disks: Why Falling In Can Outshine a Galaxy",
+    "angle": "Friction in a swirling disk turns infalling matter into some of the brightest steady light in the universe. Then the hard bit: how magnetic fields threading the disk launch jets along the spin axis.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "What a Gravitational Wave Actually Is",
+    "angle": "Accelerating masses ripple spacetime itself. Why even the strongest cosmic events produce distortions far smaller than the width of a proton, and why that sets the entire engineering problem of detection.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How to Hear Spacetime: Inside a Gravitational Wave Detector",
+    "angle": "Kilometres of laser arms, mirrors hung like pendulums, and a noise budget fought against ground tremors, ocean waves and traffic. The machines that turned a prediction into a working observatory.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why the Next Wave Detector Belongs in Space",
+    "angle": "Ground detectors are deaf to the slow, deep ripples of merging supermassive black holes. The space-based fix, laser arms millions of kilometres apart, and the first challenge is holding the beam steady between free-flying craft.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Multi-Messenger Astronomy: One Event, Two Ways to See",
+    "angle": "When a neutron star merger arrived as both gravitational waves and light, telescopes worldwide swung to it within minutes. Why two independent channels beat one, and what joint observing changed about how alerts work.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Where Gold Comes From: Forges in Neutron Star Collisions",
+    "angle": "Extreme-pressure nuclear physics builds heavy elements like gold and platinum. How the kilonova glow of a merger confirmed the origin story, and how much of what you wear may have started there.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Gamma-Ray Bursts: The Brightest Flashes Since the Big Bang",
+    "angle": "Two families with two engines, collapsing giants and colliding dead stars. How the afterglow breakthrough cracked the distance puzzle, and why response speed is half the science.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Fast Radio Bursts: A Millisecond Mystery",
+    "angle": "A blip of radio carrying enormous energy, from sources that mostly refuse to repeat. How pinning them to host galaxies settled the distance question, why a magnetar link may explain some cases, and what stays unsolved.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How the First Galaxies Built Themselves",
+    "angle": "Small clumps merging into giants across cosmic time. Why the earliest ones appear in infrared, and what deep-field stares are revealing about our own galaxy's ancestors.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Galactic Archaeology: Reading History in Old Stars",
+    "angle": "Stars are fossils with chemical fingerprints and measurable ages. How surveys use them to reconstruct how the Milky Way assembled itself, including the record written in our own stellar neighbourhood.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "When Galaxies Collide, Almost Nothing Hits Anything",
+    "angle": "Stars are vanishingly small points in mostly empty space, so mergers weave stars through each other while the gas crashes and bursts into new star formation. The long view of our own galaxy's eventual merger, over billions of years.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Cosmic Web: Mapping Invisible Scaffolding",
+    "angle": "Galaxies dangle on filaments of dark matter wrapped around vast voids. How combining galaxy surveys with lensing maps reveals the pattern, and why the pattern itself is a test of the early universe.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why We Put Telescopes Above the Atmosphere",
+    "angle": "Twinkle is charming from a backyard and fatal to sharp imaging, and the air blocks whole wavelength bands. The honest trade between space observatories and the giant, upgradeable telescopes on the ground.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Infrared: Seeing Through Dust and Back in Time",
+    "angle": "Dust blinds visible-light telescopes and glows in infrared. Why detectors must be kept cold, why nurseries and distant galaxies hide in this band, and what it reveals that no eyepiece ever could.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Spectroscopy: The Fingerprints Hidden in Starlight",
+    "angle": "Split light into a rainbow and dark lines encode chemistry, temperature and motion. The single workhorse method behind most of what we know about the universe.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Adaptive Optics: How Ground Telescopes Beat the Blur",
+    "angle": "Fire a laser to make an artificial star, measure how the air smears it, and flex the mirror hundreds of times a second. Why the world's most productive ground observatories keep getting better.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why an X-Ray Telescope Is a Barrel of Angled Mirrors",
+    "angle": "X-rays sink into surfaces head-on, so telescopes must bounce them at grazing angles down nested cylinders. How this counterintuitive design makes black hole neighbourhoods and stellar wreckage visible.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Radio Astronomy: Why Only Bigger Will Do",
+    "angle": "Radio wavelengths are long, so a sharp image needs an aperture no single dish can supply. The fix is interferometry, many antennas combined into one virtual telescope spanning a continent.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "False Colour: Why Space Images Look the Way They Do",
+    "angle": "Invisible wavelengths get mapped to colours your eye can read, and every press image passes through human hands. How honest processing differs from raw data, and a checklist for reading any space photo.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Aligning a Mirror in Space: How a Telescope Gets Sharp",
+    "angle": "Segments must be phased to a fraction of a wavelength, and after launch nobody can turn a screw. The wavefront-sensing tricks that let folded optics settle into a working observatory.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why a Wide Field Beats a Sharp Eye for Discovery",
+    "angle": "A survey telescope covers in one exposure what a pointed observatory would need many nights to sweep. How wide-field infrared machines catch rare blips, lensing events and faint movers by sheer coverage.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Permanently Shadowed Craters: Where the Moon Keeps Its Ice",
+    "angle": "Sunlight grazes the poles at such an angle that some crater floors may not have seen it in billions of years, cold enough to trap water ice. Why that ice is both a science archive and a resource.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How We Know an Icy Moon Hides an Ocean",
+    "angle": "Tidal flexing heats the interior, and instruments read the fingerprints from orbit: induced magnetic signals, telltale geysers, a shifting surface. Why ocean worlds moved to the centre of the search for habitable environments.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Comets: Why a Snowball Grows Two Tails",
+    "angle": "Approaching the Sun, ice turns straight to gas and drags dust free. The straight ion tail obeys the solar wind while the curved dust trail lags behind, a geometry lesson written across the sky.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Meteor Showers: Why the Sky Repeats Itself Every Year",
+    "angle": "Earth crosses the same old comet debris on the same stretch of every orbit. Radiants, hourly counts and how to actually watch one, no equipment needed.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why Mars Lost Its Air",
+    "angle": "With no global magnetic field, the solar wind strips gas to space atom by atom. How orbiters measure the leaking atmosphere, and what that steady drain says about whether Mars ever had a thicker sky.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Tidal Heating: The Volcano Driven by a Tug of War",
+    "angle": "Jupiter kneading its moon Io's stretched orbit melts the interior and makes Io the most volcanic body we know. The same engine, gentler, keeps icy moons' oceans liquid.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Venus and Earth: Same Recipe, Different Outcomes",
+    "angle": "Two similar rocky worlds took divergent paths, one toward a crushing sky and runaway greenhouse. What comparative planetology reveals about how an atmosphere writes a planet's history.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Asteroid, Comet or Dwarf Planet: How Scientists Draw the Lines",
+    "angle": "Definitions come from behaviour, not looks or size alone. The reasoning behind each category, and why the boundaries still spark scientific argument worth watching.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "What Space Weather Actually Is",
+    "angle": "A steady solar wind with storms on top, flares, plasma clouds and radiation bursts as three different things. Why only one of them gives satellite operators a day or two of warning.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Solar Flares: The Sun Snapping a Magnetic Spring",
+    "angle": "Twisted fields reconnect and dump energy in minutes. How flares are ranked by brightness, and why their light arriving at light speed leaves no warning time at all.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Coronal Mass Ejections: A Billion Tonnes of Sun on the Move",
+    "angle": "A magnetised plasma blob, and whether Earth is in the path depends on its direction. The hidden variable inside the blob, the field's orientation, decides whether it rattles the planet or slides past quietly.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why Auroras Are Green, and Sometimes Red or Purple",
+    "angle": "Oxygen and nitrogen glowing at different altitudes, green from roughly a hundred kilometres up and rarer red even higher. The chemistry of the sky's own neon sign, plus what makes the colours vary.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Ionosphere: The Layer That Carries Radio and Confuses GPS",
+    "angle": "Solar radiation keeps a shell of the upper atmosphere charged, and charged air bends radio waves. Why distant stations skip around the planet, and why storms scramble satellite signals overhead.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How Satellites Feel Space Weather",
+    "angle": "Drag from the thin outer atmosphere, electrical charging, and memory bits flipped by energetic particles. The engineering countermeasures, from shielding to redundancy, and why operators watch the Sun before the sky.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How a Geomagnetic Storm Forecast Gets Made",
+    "angle": "Magnetometers, solar monitors and storm indices, turned into watches and warnings. Honest about lead times, none for the light, a day or two for the plasma behind it, and deep uncertainty in the field direction.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Solar Cycle: The Sun's Eleven-Year Heartbeat",
+    "angle": "A magnetic dynamo that flips the Sun's poles each cycle. How counting sunspots built one of the longest continuous records in science, and why the cycle shapes everything from aurora frequency to satellite drag.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Strongest Geomagnetic Storm Ever Recorded",
+    "angle": "Telegraph lines sparked and auroras reached the tropics. What the record event teaches about how severe space weather can get, how the historical record was assembled, and why engineers still design against it.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Light Lag: Why Deep Space Missions Must Think for Themselves",
+    "angle": "Radio takes minutes to hours to cross the gap, so a joystick will never work. How landers and rovers trade ground control for onboard autonomy, and why the delay is physics, not a design choice.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How to Catch a Space Station: Orbital Rendezvous Explained",
+    "angle": "The counterintuitive core: speeding up lifts your orbit and makes you fall behind, so catching up means slowing down first. Phasing, approach and docking, the choreography behind every spacecraft arrival you watch.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Why the Space Station Keeps Falling, and How It Stays Up",
+    "angle": "At about four hundred kilometres, two hundred fifty miles, the last wisps of atmosphere drag it down every day, so it regularly climbs back. The balance between thin air and stable orbit, and how solar storms add drag.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Heat Shields: Surviving the Fastest Part of the Flight",
+    "angle": "Atmospheric entry can compress air into plasma hotter than the Sun's surface, and the shield's job is to throw that heat away. Ablative charring versus reusable tiles, and why the entry corridor is only a degree or two wide.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Four Ways to Land on Another World",
+    "angle": "Parachutes, airbags, sky cranes and powered descent, each a trade between mass, terrain and guidance. The framework behind every landing you have watched, from airless rocks to worlds with weather.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Electric Propulsion: The Engine That Whispers for Months",
+    "angle": "Ion thrusters often push with less force than the weight of a coin, yet they run for months without stopping. Delta-v explained in plain terms, and why deep space missions keep choosing the whisper over the roar.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "Sonic Booms: What They Are and How to Quiet One",
+    "angle": "Pressure cones stack into a double bang that chases the aircraft. How shaping the airframe spreads the boom into a rumble, the engineering idea behind quiet supersonic research.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "How a Press Release Differs From a Paper",
+    "angle": "Major observatories release a couple of peer-reviewed papers every day, and only a few become headlines. The pipeline from data to publication to press, and how to read each layer for what is measured, claimed and dramatised.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  },
+  {
+    "topic": "The Telescope That Keeps Discovering After You Stop Watching",
+    "angle": "Archives answer new questions with old data, including a cold case about planets forming around a dead star reopened from stored Hubble images. Why every observatory's most durable instrument is its data archive.",
+    "source_urls": [
+      "https://science.nasa.gov/universe/",
+      "https://www.esa.int/Science_Exploration/Space_Science",
+      "https://www.eso.org/public/science/",
+      "https://www.noaa.gov/education/resource-collections/space-weather"
+    ]
+  }
+]

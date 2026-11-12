@@ -1,0 +1,742 @@
+[
+  {
+    "topic": "Who Really Pays a Tariff: The Split Nobody Prints",
+    "angle": "Explains tax incidence: the duty is paid at the border, but the cost divides between exporter, importer and shopper according to who can walk away. Shows how customs data and price studies can reveal the split, and how one shelf price can tell you which side blinked.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Six Digit Language of Trade",
+    "angle": "Every product enters a country as a code in the Harmonised System, and each code carries its own rate. Explains how classification is decided, where disputes start, and why changing one digit can change a bill. The codebook outlasts every government that amends it.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Fruit or Vegetable? The Fight That Sets Your Duty",
+    "angle": "The historic tomato classification case shows that customs law is not botany. Explains how the same goods can sit in different codes with different duties, and why classification is a quiet policy lever that industries lobby over for years.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Rules of Origin: Where a Product Is Actually From",
+    "angle": "Origin is not the port of loading; it is where the last substantial transformation happened. Explains value-content thresholds, why origin paperwork rather than distance decides the duty, and how to read a made-in label like an accountant.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Tariff Engineering: Designing Goods Around the Code",
+    "angle": "Products can be reshaped to fall into cheaper tariff lines, from flatpack furniture to pickup beds altered to count as something else. Explains the interplay between design and duty, and who captures the saving when it works.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Escalation Ladder: Why Beans Enter Cheap and Chocolate Does Not",
+    "angle": "Defines tariff escalation: raw materials face low duties while processed versions face higher ones. Explains how this protects processing rather than farming, pushes factories toward rich markets, and keeps growers at the bottom of the value chain.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Tariff-Rate Quotas: Two Duties, One Product",
+    "angle": "A low duty applies inside the quota and a punitive one beyond it, so quota licences become assets. Explains how licence rents are captured, why they can outsize the tax revenue, and why the same cheese can be cheap or dear depending on paperwork.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Announcement Effect: Prices Move Before the Duty Exists",
+    "angle": "A threatened tariff can work on the arrival of the news, not the arrival of the goods. Explains stockpiling and front-loading, and the measurable gap between announcement and implementation that analysts watch.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "De Minimis: The Threshold That Built a Parcel Economy",
+    "angle": "Defines de minimis: the value threshold below which parcels enter duty-free with light checks. Explains how such thresholds shift inspection costs onto postal systems, reshape retail logistics, and change who competes with whom.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Duty Drawback: The Refund Most Importers Never Claim",
+    "angle": "Duties paid on imported inputs can be refunded when the finished goods are exported again. Explains the mechanism, why paperwork friction means money is left on the table, and which specialists exist purely to recover it.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Bonded Warehouses: The Border Inside a Country",
+    "angle": "Goods can sit for months without paying duty because customs treats the warehouse as outside the border. Uses maturing whisky, exhibition stock and re-export hubs to explain how time itself becomes a tariff variable.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Chicken Tax: When Retaliation Never Leaves",
+    "angle": "A retaliation aimed at one farm product landed on pickup trucks and simply stayed. A case study in how measures labelled temporary harden into market architecture, and how vehicle design adapted around the duty for decades.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "How Retaliation Lists Are Written",
+    "angle": "When a trade fight ends in tariffs, the targets are chosen for visibility, not volume. Explains why food and drink so often answer for aircraft and technology, using the long-running aircraft subsidy quarrel between two trading blocs as the standing example.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Dumping, Fairly Explained",
+    "angle": "Defines dumping: selling abroad below the normal value charged at home. Explains how the margin is constructed on paper, how injury is tested, and why the remedy is a duty at the border. Presents the economic logic of both the accuser and the accused.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "When a Subsidy Travels Downstream",
+    "angle": "Cheap electricity or cheap finance upstream makes goods cheaper downstream, in any market they reach. Explains countervailing duties and why a dispute over one country's subsidy often surfaces in another country's industry.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Safeguards: The Emergency Exit That Becomes a Corridor",
+    "angle": "A surge of imports can trigger protection designed to be temporary, with review calendars meant to retire it. Explains how reviews work in practice and who must show up, petition in hand, to keep a measure alive or end it.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Most Favoured Nation: The Promise to Favour Nobody",
+    "angle": "The core rule of the trade system: any concession given to one member must be given to all. Explains how that ratchet builds openness over decades, and why free trade agreements are the sanctioned exception that carves the rule into blocs.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "National Treatment: The Fine Print After the Border",
+    "angle": "Equal tariffs do not mean equal access, because internal taxes and rules can quietly favour domestic goods. Explains the second half of the trade bargain, and how to spot a discriminating tax code hiding behind a zero tariff.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Bound versus Applied: The Promise and the Policy",
+    "angle": "Every member files a ceiling for each tariff line, the bound rate, then charges an applied rate below it. Explains the headroom known as water in the schedule: space that lets a government raise duties without breaking any promise.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Trade Policy Review: Peer Pressure With a Deadline",
+    "angle": "Every member's trade regime is examined on a fixed schedule and the report becomes public. Explains how transparency disciplines backsliding, and why analysts read these filings months before the same facts reach the headlines.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "How Trade Disputes Actually End: Settlement, Not Verdict",
+    "angle": "The system is built to reward consultation and settlement rather than judgement. Explains the stages from talks to panel, why most cases never reach a ruling, and how the process gives both sides negotiating weight.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Friends or Rivals: What Preferential Deals Do to Outsiders",
+    "angle": "A preferential deal can create new trade or merely divert it from a cheaper producer outside the club. Explains trade creation versus trade diversion, who collects the difference, and why blocs form even when everyone loses a little efficiency.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Free Trade Area or Customs Union: Where the Border Sits",
+    "angle": "A free trade area keeps each country's external tariff, so the internal border needs origin checks. A customs union shares one external tariff, so goods clear once. Explains why the same map can produce completely different borders.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Spaghetti Bowl: Overlapping Deals, Multiplied Paperwork",
+    "angle": "Each preferential deal carries its own rules of origin, so one product may need several origin proofs depending on destination. Explains the fixed compliance cost, and why small firms can be priced out of preferences they formally enjoy.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Cost of a Signature: What Border Delay Actually Charges",
+    "angle": "Dwell time at the border acts like a hidden duty paid in interest, spoilage and missed windows. Explains why trade facilitation reform, the quiet business of cutting days, can matter more to a supply chain than the visible tariff line.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "One Form to Rule Them: Customs Automation and the Single Window",
+    "angle": "Traders once filed separately with customs, health, agriculture and standards agencies; a single window merges the filings. Explains automation gains, using customs systems such as ASYCUDA as the example, and why implementation stalls in legacy paperwork.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Trusted Trader: Buying Speed With Compliance",
+    "angle": "Authorised operator status trades audits for queues: customs trusts the company and inspects less. Explains the economics of compliance as currency, and how mutual recognition between customs services lets trust cross borders too.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Risk Profiling: How Customs Chooses Which Box to Open",
+    "angle": "With millions of declarations and limited scanners, targeting is data-driven. Explains selectivity scoring, the deterrence arithmetic of inspections, and why a box that gets opened is rarely chosen at random.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Bill of Lading: The Paper That Owns the Cargo",
+    "angle": "This one document is a receipt, a contract and a transferable title at once. Explains why banks demand it, why the original often travels by courier faster than the ship sails, and why fraud follows it everywhere.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Letter of Credit: How Banks Sell Trust",
+    "angle": "Two firms an ocean apart do not trust each other, so two banks step in and pay against documents rather than promises. Explains the fee layers, the role of documents as collateral, and why smaller exporters can be priced out of the instrument.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Incoterms: The Three Letters That Move Risk",
+    "angle": "Defines Incoterms: the shorthand terms that decide at which moment cost and risk pass from seller to buyer. Explains why two identical goods can leave very different bills behind them, and why the word free in a term is not a discount.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Port Bill: Reading the Charges Behind a Container",
+    "angle": "Terminal handling, documentation, security and delivery charges stack up at destination. Explains who owes what by contract, why the fee list is so long, and where the surprise line items on an invoice actually come from.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Demurrage: The Clock That Starts at the Berth",
+    "angle": "Defines demurrage: storage charges that begin when free time at the terminal runs out. Explains why it is revenue for one side and a dispute for the other, and what demurrage levels quietly reveal about port congestion.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Hub Port: Why Your Box Changes Ships Twice",
+    "angle": "Most cargo never sails direct; it rides feeder vessels to a hub and out again. Defines transhipment and explains why schedule density beats distance, and why some ports win simply by being in the way.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Ship Size Economics: The Draft Line and the Mega-Box",
+    "angle": "Bigger hulls cut cost per container but demand deeper water, taller cranes and longer inland queues. Explains the scale trade-off, and who pays for infrastructure that only the largest vessels can use.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Container: The Box That Standardised the World",
+    "angle": "A steel box of agreed dimensions made cargo interchangeable across ship, rail and truck without repacking. Explains the standard's economics, the leasing pools behind it, and how one boring box reshaped the port workforce.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Empty Box Problem: Shipping Air Backwards",
+    "angle": "Trade imbalances strand containers on the wrong side of the ocean. Explains repositioning costs, why backhaul capacity gets discounted, and who ultimately pays to move empty steel around the planet.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Terminal Automation: The Work That Moves to Software",
+    "angle": "Automated cranes and gates can shift port labour from lifting to maintenance and code. Explains the economics, the reliability gains, and the new bottleneck that follows: system integration rather than muscle.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Flag a Ship Flies: Registries and Their Bargains",
+    "angle": "Open registries sell a flag, and with it a tax, manning and inspection regime. Explains flag state responsibility, why the registry matters after any casualty, and who actually regulates the sea.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Where Ships Go to Die: The Scrap Trade at the End of the Chain",
+    "angle": "A vessel's last voyage is to a recycling yard, and its steel re-enters the market. Explains the economics of end-of-life ships, the rules that govern recycling, and how the final chapter feeds back into fleet costs.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Spot or Time: How Chartering a Ship Works",
+    "angle": "Defines the two ways to hire a vessel: on the spot market for one voyage, or for a period of months. Explains why owners and charterers want opposite things from the market, and what that tension does to rates.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "How a Freight Rate Is Built",
+    "angle": "A container price is a base rate plus a stack of surcharges: fuel, congestion, peak season, equipment imbalance. Explains index-linked contracts and why two shippers on the same vessel can pay different amounts for the same box.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Slow Steaming: Speed as Hidden Capacity",
+    "angle": "Cutting a few knots off a vessel's speed saves fuel and, across a whole fleet, adds effective capacity to the market. Explains the lever, the schedule padding it produces, and why published arrival times are promises with margin built in.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "One Sulphur Rule, Two Fuel Markets",
+    "angle": "A standing global cap on the sulphur content of ship fuel split marine fuel into compliant blends and scrubber economics. Explains how a single environmental rule repriced bunkers and reshaped refinery output for ships.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "General Average: When Your Container Pays for the Rescue",
+    "angle": "Defines general average: the centuries-old principle that if cargo is sacrificed to save a ship, every cargo owner shares the loss. Explains the bond, the adjuster, and why your goods can owe money for someone else's accident.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "What War Risk Insurance Actually Prices",
+    "angle": "A war-risk premium is probability, plus available capacity, plus fear, priced in a small specialist market. Explains how underwriters can quietly veto a route, and why the premium curve, not the headline, tells you where ships will sail.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The P&I Clubs: Mutual Insurance at Sea",
+    "angle": "Defines P&I clubs: mutual associations where shipowners pool liabilities with no shareholders. Explains how modest premiums cover enormous claims, and why the quietest institutions in shipping hold the most power.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Canal Tolls: How a Shortcut Sets Its Price",
+    "angle": "A canal sells time, and its toll is priced against the detour it removes. Explains booking systems, auctioned priority slots, and the arithmetic every route planner runs before committing a vessel.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Chokepoint Arithmetic: Days, Fuel, Insurance",
+    "angle": "Every diversion decision reduces to three variables: added days, added fuel, added premium. Explains how the three are weighed against each other, and why the third often decides the first two. Works for any strait, any canal, any route.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Cabotage: Who May Carry Goods Inside a Border",
+    "angle": "Defines cabotage: rules reserving domestic and coastal shipping to local vessels. Explains the safety and labour arguments on each side, the freight cost effects, and the island and remote regions that quietly pay the difference.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Landlocked: The Silent Tax of No Coastline",
+    "angle": "A country without a coast pays for transit in fees, delays and insurance before its goods ever see water. Explains corridor bargaining, why transit neighbours hold a permanent card, and who captures the transit rent.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Gauge Break: Where Trains Change Shoes",
+    "angle": "Where railway track widths differ, freight must be transloaded or bogies swapped, and borders grow queues. Explains why gauges persist for historical and military reasons, and why corridor investment chases the breaks in the map.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Belly Cargo: Why Passenger Jets Carry Your Electronics",
+    "angle": "A large share of air freight rides in the bellies of passenger aircraft. Explains why a route's seat sales determine its freight capacity, and how value per kilogram decides whether a product flies, sails or stays home.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Perishability Clock: Flowers Fly, Grain Sails",
+    "angle": "Days of shelf life decide the mode, the route and the packaging. Explains cold treatment, refrigerated containers, and who eats the loss when a shipment ages out before it arrives.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Inland Port: Customs Miles From the Sea",
+    "angle": "Containers clear customs at rail-served terminals far from the coast, moving paperwork away from congestion. Explains why inland cities became ports, and what that can do to coastal labour and land values along the corridor.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Bullwhip Effect: Small Demand Wobble, Huge Wave Upstream",
+    "angle": "A modest change at the shelf amplifies into wild swings at the factory. Defines the bullwhip effect and explains ordering ratchets, forecast gaming, and why the most volatile numbers sit furthest from the customer.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Just in Time Grows a Buffer",
+    "angle": "Inventory is insurance, and someone must pay the premium in working capital and warehouse space. Explains the carrying cost versus stockout trade-off, and why every resilience promise quietly lands as a cost somewhere in the chain.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "When Trade Data Lies: Mirror Statistics and Double Counting",
+    "angle": "One country's import figures rarely match its partner's export figures, and a shipment crossing several borders can be counted several times. Explains re-export inflation, the Rotterdam effect, and how analysts clean the numbers before trusting them.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Comparative Advantage: The Old Idea Behind Every Route",
+    "angle": "Countries gain by specialising even when one of them is better at everything. Explains the mechanism with a two-good, two-country example, plus the honest footnote: the gains are averages, and some towns pay the average.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Gravity of Trade: Why Neighbours Sell to Neighbours",
+    "angle": "Distance, borders, language and history shrink trade in predictable, measurable ways. Explains the gravity pattern, why regional blocs form along the grain of geography, and why the map often predicts flows better than the tariff schedule.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Currency Pass-Through: Why Prices Lag the Exchange Rate",
+    "angle": "A weaker currency should make exports cheaper and imports dearer, yet dockside prices move slowly. Explains contract terms, invoicing habits and hedging friction, and why the adjustment shows up in quarters rather than weeks.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Invoicing Dollar: Who Bears the Exchange Risk",
+    "angle": "Much of world trade is priced in a third currency, so a buyer and a seller can both face a risk neither chose. Explains why invoicing concentrates on one currency, and what ripples out when that currency moves.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Reading a Trade Deficit Like an Analyst",
+    "angle": "A deficit is one line in a balance sheet that must balance somewhere else. Explains goods, services and capital flows, and why the headline number is a record of choices rather than a scorecard of winners.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Why Mangoes Wait: Sanitary Rules at the Border",
+    "angle": "Plant health rules, pest risk assessments and mandated cold treatments decide market access long before any tariff does. Explains why the strictest inspectors often sit on islands, and why a fruit's biggest obstacle can be an insect.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Naming as Property: Geographic Indications at the Till",
+    "angle": "Champagne, parmesan and scotch are legal territories as much as products. Explains how protected names earn a premium, the fight between protected and generic labels, and what a name does to a farmer's margin at the far end of the chain.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Data Localisation: The Border That Software Crosses",
+    "angle": "Rules on where data may live force firms to build capacity inside the countries they serve. Explains server geography as a non-tariff barrier, and why cloud architecture, not shipping schedules, now decides where digital services are made.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Invisible Exports: When the Customer Travels",
+    "angle": "Tourism and tuition are exports consumed at home by visiting customers. Explains the services ledger, why exchange rates matter to hoteliers and universities alike, and what a visa decision does to a balance of payments.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Carbon Border: Pricing Pollution at the Gate",
+    "angle": "A border adjustment charges for the emissions embedded in imports so domestic climate rules do not simply push production abroad. Explains the design, the measurement problem, and who ends up computing the carbon inside a tonne of steel.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Export Bans and the Food Spiral",
+    "angle": "When one harvest fails, export stops can spread country by country, and importers bid over a shrinking pool. Explains price insulation, the smuggling margin such bans create, and why protecting one table can come at another's expense.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Strategic Reserves: Stockpiles as Insurance and Influence",
+    "angle": "States store grain, fuel and critical inputs to blunt shocks and to bargain. Explains the carrying cost, the politics of release timing, and why a reserve is a policy instrument just as much as a warehouse.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Crush Margin: One Bean, Two Markets",
+    "angle": "A soybean splits into oil and animal feed, and the spread between their combined value and the raw bean sets the trade. Defines the crush margin and explains how crushers steer flows, linking your grocery shelf to a processing spread.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "The Smelter Decides Where the Mine's Money Lands",
+    "angle": "Ore is heavy and cheap; refined metal is where the margin and the jobs sit. Explains treatment charges, smelter location economics, and how a mining country can ship its wealth away while keeping the rock.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "LNG: The Factory You Can Sail",
+    "angle": "Chilling gas into a liquid turns a fixed pipeline commitment into a cargo that can be resold at sea. Explains liquefaction trains, import terminals and take-or-pay contracts, and why gas still prices region by region rather than globally.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  },
+  {
+    "topic": "Trading Electrons: The Grid as a Border",
+    "angle": "Interconnectors let countries trade power they cannot store, and connection queues can become the real trade barrier. Explains how cross-border electricity markets are bid, and what a map of grid ties says about who trusts whom.",
+    "source_urls": [
+      "https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics",
+      "https://www.worldbank.org/en/topic/trade",
+      "https://www.wto.org/english/thewto_e/whatis_e/tif_e/tif_e.htm",
+      "https://unctad.org/topic/transport-and-trade-logistics"
+    ]
+  }
+]
