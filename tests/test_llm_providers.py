@@ -271,3 +271,11 @@ def test_http_redirect_refused(monkeypatch):
     with pytest.raises(RuntimeError, match="HTTP 307"):
         claude.run("script", "fixture")
     assert post.call_count == 1
+
+
+def test_strip_json_fence():
+    from pipeline.common import strip_json_fence
+    import json
+    assert json.loads(strip_json_fence('```json\n{"a": 1}\n```')) == {"a": 1}
+    assert json.loads(strip_json_fence('Here you go:\n{"a": [1]}')) == {"a": [1]}
+    assert json.loads(strip_json_fence('[1, 2]')) == [1, 2]

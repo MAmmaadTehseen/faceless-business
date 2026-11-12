@@ -452,7 +452,7 @@ class Claude:
             if not schema:
                 return text, total
             try:
-                value = json.loads(text)
+                value = json.loads(strip_json_fence(text))
                 validate_output(value, schema)
                 return value, total
             except ValueError:
@@ -471,6 +471,19 @@ class Claude:
             content.append({"type": "image", "source": {"type": "base64", "media_type": mt, "data": data}})
         content.append({"type": "text", "text": prompt})
         return self.run(step, content, schema=schema, effort="low", use_persona=False, max_tokens=2000, content_id=content_id)
+
+
+def strip_json_fence(text: str) -> str:
+    """Models often wrap JSON in a ```json fence or add a line of prose; keep the JSON value."""
+    t = text.strip()
+    m = re.search(r"```(?:json)?\s*(.*?)```", t, re.S)
+    if m:
+        t = m.group(1).strip()
+    if t and t[0] not in "{[":
+        starts = [i for i in (t.find("{"), t.find("[")) if i >= 0]
+        if starts:
+            t = t[min(starts):]
+    return t
 
 
 def write_json(path: Path, obj: Any) -> None:
