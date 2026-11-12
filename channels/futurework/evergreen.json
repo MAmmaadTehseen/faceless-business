@@ -1,7 +1,7 @@
 [
   {
-    "topic": "The hiring freeze that does the quiet work of a layoff",
     "angle": "Attrition, denied backfills and stalled requisitions shrink teams with no announcement. Spotting a freeze early buys you months of warning that nobody sends in an email.",
+    "topic": "The hiring freeze that does the quiet work of a layoff",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -10,8 +10,8 @@
     ]
   },
   {
-    "topic": "Why a manager can buy software but not a person",
     "angle": "Spending rules treat a subscription and a salary differently, so tools get expensed while hires wait for committees. That asymmetry quietly shapes how automation enters your workplace.",
+    "topic": "Why a manager can buy software but not a person",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -20,8 +20,8 @@
     ]
   },
   {
-    "topic": "How the budget cycle decides when new tools arrive",
     "angle": "Rollouts cluster right after budgets reset and stall when spending tightens. The timing of a tool tells you whether it is a priority or an experiment.",
+    "topic": "How the budget cycle decides when new tools arrive",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -30,8 +30,8 @@
     ]
   },
   {
-    "topic": "Pilot or funded? Reading the real status of the tool on your desk",
     "angle": "Funded programs come with an owner, training and metrics. Unfunded ones come with one enthusiastic email. A short checklist separates the two before you spend your own credibility on them.",
+    "topic": "Pilot or funded? Reading the real status of the tool on your desk",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -40,8 +40,8 @@
     ]
   },
   {
-    "topic": "Spans and layers: the org chart math behind every restructure",
     "angle": "Each manager can only watch so many people, and software changes that number. When the number rises, a layer disappears from the chart, and the middle usually pays for it.",
+    "topic": "Spans and layers: the org chart math behind every restructure",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -50,8 +50,8 @@
     ]
   },
   {
-    "topic": "The training budget as an early warning light",
     "angle": "Discretionary spend gets cut before anything else. When learning money dries up while tool money keeps flowing, the company has announced its plan without saying a word.",
+    "topic": "The training budget as an early warning light",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -60,8 +60,8 @@
     ]
   },
   {
-    "topic": "Why consultants arrive before the software does",
     "angle": "Efficiency programs run in a sequence: assessment, pilot, vendor, then restructure. Knowing which stage your company is in tells you what lands on your desk next.",
+    "topic": "Why consultants arrive before the software does",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -70,8 +70,8 @@
     ]
   },
   {
-    "topic": "What a job requisition reveals that a press release never will",
     "angle": "Internal postings show where headcount and budget actually grow. If the growth roles keep posting, follow them. If they freeze, that is the other signal.",
+    "topic": "What a job requisition reveals that a press release never will",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -80,8 +80,8 @@
     ]
   },
   {
-    "topic": "The contractor canary",
     "angle": "Contingent labor flexes before permanent labor. When agency roles quietly disappear, the staffing market your company uses has already told you the weather.",
+    "topic": "The contractor canary",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -90,8 +90,8 @@
     ]
   },
   {
-    "topic": "When no layoffs are planned and teams shrink anyway",
     "angle": "Freezes, attrition and restructuring cut headcount without any announcement. Words like efficiency and simplification reliably precede that kind of shrinkage.",
+    "topic": "When no layoffs are planned and teams shrink anyway",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -100,8 +100,8 @@
     ]
   },
   {
-    "topic": "Why tools arrive team by team, never everywhere at once",
     "angle": "Deployment order is a priority map. The first teams either get investment or get measured harder, and telling which is which changes how you read the rollout.",
+    "topic": "Why tools arrive team by team, never everywhere at once",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -110,8 +110,8 @@
     ]
   },
   {
-    "topic": "Every efficiency program is a budget program",
     "angle": "The stated reason and the real constraint are two different documents. Reading the spend explains decisions that the mission statement cannot.",
+    "topic": "Every efficiency program is a budget program",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -120,8 +120,8 @@
     ]
   },
   {
-    "topic": "Tasks, not jobs: the unit automation actually targets",
     "angle": "Every role is a bundle of tasks, and only the legible ones can be automated. Unbundling your own week gives you an honest exposure reading in one afternoon.",
+    "topic": "Tasks, not jobs: the unit automation actually targets",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -130,8 +130,8 @@
     ]
   },
   {
-    "topic": "Verification becomes the job",
     "angle": "Once a draft costs nothing to produce, checking it becomes the bottleneck. Reviewing output and owning the result is the work that stays visible.",
+    "topic": "Verification becomes the job",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -140,8 +140,8 @@
     ]
   },
   {
-    "topic": "The specification skill: writing instructions a system can follow",
     "angle": "Delegating to software is a management skill built on context, examples and clear acceptance criteria. People who specify well get better results than people who collect tricks.",
+    "topic": "The specification skill: writing instructions a system can follow",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -150,8 +150,8 @@
     ]
   },
   {
-    "topic": "The context you have that the model does not",
     "angle": "Systems are generic, and your files, history and constraints are not. Feeding context is the experienced worker's edge, and it is teachable rather than magical.",
+    "topic": "The context you have that the model does not",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -160,8 +160,8 @@
     ]
   },
   {
-    "topic": "How deflection changes a support queue",
     "angle": "Automation absorbs the easy tickets first, so what remains is harder and angrier. Agent skill shifts from answering toward exception handling, and the queue is a small model of every affected job.",
+    "topic": "How deflection changes a support queue",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -170,8 +170,8 @@
     ]
   },
   {
-    "topic": "The apprenticeship problem",
     "angle": "Juniors learned by doing the easy work, and that is the work automation takes first. Companies that keep a career ladder rebuild the learning loop on purpose, so ask what the loop is.",
+    "topic": "The apprenticeship problem",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -180,8 +180,8 @@
     ]
   },
   {
-    "topic": "Shadow AI: why people paste company data into consumer tools",
     "angle": "When official tools lag, staff route around IT and the data leaves the building. Closing the speed gap is the only fix, because bans that ignore the cause never hold.",
+    "topic": "Shadow AI: why people paste company data into consumer tools",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -190,8 +190,8 @@
     ]
   },
   {
-    "topic": "Why pilots die between the demo and the workflow",
     "angle": "Integration, ownership, data quality and maintenance decide whether a pilot survives. Four failure points explain most internal tool deaths, and you can check all four yourself.",
+    "topic": "Why pilots die between the demo and the workflow",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -200,8 +200,8 @@
     ]
   },
   {
-    "topic": "Automation bias: why fluent answers get checked less",
     "angle": "The more polished the output, the less scrutiny it gets, and cockpit research saw this pattern long before chatbots. Small review habits restore the skepticism that cheap text erodes.",
+    "topic": "Automation bias: why fluent answers get checked less",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -210,8 +210,8 @@
     ]
   },
   {
-    "topic": "Silent updates: the tool you learned is not the tool you have",
     "angle": "Model versions change without notice, so a reliable recipe quietly breaks. Pinning what you can and re-testing what you cannot is maintenance, not paranoia.",
+    "topic": "Silent updates: the tool you learned is not the tool you have",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -220,8 +220,8 @@
     ]
   },
   {
-    "topic": "What happens to your metrics when a tool does half the work",
     "angle": "Quotas and output counts assume a fixed effort per result. When the baseline moves, targets move soon after, so the measure is worth raising before the number argues for you.",
+    "topic": "What happens to your metrics when a tool does half the work",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -230,8 +230,8 @@
     ]
   },
   {
-    "topic": "The translator role, explained",
     "angle": "Adoption stalls between the technical team and the budget owners until someone can explain the tool in business terms. That seat in both meetings is durable, and it is rarely on the org chart.",
+    "topic": "The translator role, explained",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -240,8 +240,8 @@
     ]
   },
   {
-    "topic": "Rework: the tax that cancels the time saved",
     "angle": "Fixing bad output quietly spends the minutes the tool appeared to save. Measuring rework on your own tasks before assuming a gain is the honest arithmetic.",
+    "topic": "Rework: the tax that cancels the time saved",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -250,8 +250,8 @@
     ]
   },
   {
-    "topic": "What skilled users of these tools do differently",
     "angle": "The strongest internal users iterate and verify instead of collecting clever phrases. Copying two habits transfers further than adopting five new tools.",
+    "topic": "What skilled users of these tools do differently",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -260,8 +260,8 @@
     ]
   },
   {
-    "topic": "Judgment becomes the product",
     "angle": "When production is cheap, the scarce inputs are taste, accountability and deciding what is worth making. That shift shows up in reviews and promotions before anyone announces it.",
+    "topic": "Judgment becomes the product",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -270,8 +270,8 @@
     ]
   },
   {
-    "topic": "Skill fade when the hard part is done for you",
     "angle": "Competence needs practice, and automation removes practice unless it is deliberately kept. Aviation and calculators both taught this lesson before office software did.",
+    "topic": "Skill fade when the hard part is done for you",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -280,8 +280,8 @@
     ]
   },
   {
-    "topic": "How to demo an AI tool to leadership",
     "angle": "The demo decides the budget, and structure beats enthusiasm: a baseline, a comparison, and one honest failure mode. Showing what the tool cannot do is what earns trust.",
+    "topic": "How to demo an AI tool to leadership",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -290,8 +290,8 @@
     ]
   },
   {
-    "topic": "Output quality is a data problem before it is a model problem",
     "angle": "Results track the documents and structure your organization feeds the system. Cleanup is the unglamorous project that decides whether the tool works where you work.",
+    "topic": "Output quality is a data problem before it is a model problem",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -300,8 +300,8 @@
     ]
   },
   {
-    "topic": "Confidently wrong, plainly explained",
     "angle": "Systems built to produce plausible text can state falsehoods without hesitation. Matching your checking effort to the stakes, citations and numbers first, is the practical defense.",
+    "topic": "Confidently wrong, plainly explained",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -310,8 +310,8 @@
     ]
   },
   {
-    "topic": "Where your work prompts actually go",
     "angle": "Consumer tools may log, keep and train on what you type, so one paste can move company data to a vendor's storage. Three questions before pasting is a privacy habit that transfers to every tool.",
+    "topic": "Where your work prompts actually go",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -320,8 +320,8 @@
     ]
   },
   {
-    "topic": "Why every company's AI policy reads the same",
     "angle": "Framework language travels through procurement questionnaires and crosswalk documents, so standards written for volunteers end up in your onboarding pack. The shared vocabulary is free preparation.",
+    "topic": "Why every company's AI policy reads the same",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -330,8 +330,8 @@
     ]
   },
   {
-    "topic": "How credential stuffing actually works",
     "angle": "Old breaches feed automated login attempts at enormous scale, so one reused password keeps every account on that list. A password manager ends the whole class of attack, not one incident.",
+    "topic": "How credential stuffing actually works",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -340,8 +340,8 @@
     ]
   },
   {
-    "topic": "The session token: stealing the login without the password",
     "angle": "Signing in leaves a token behind, and whoever takes it walks through the open door while multifactor authentication watches. That threat explains several rules that otherwise look arbitrary.",
+    "topic": "The session token: stealing the login without the password",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -350,8 +350,8 @@
     ]
   },
   {
-    "topic": "Multifactor authentication without the jargon",
     "angle": "The idea is proving yourself with something you have or something you are, and not every second factor resists phishing equally. Knowing the order to adopt turns a chore into a real defense.",
+    "topic": "Multifactor authentication without the jargon",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -360,8 +360,8 @@
     ]
   },
   {
-    "topic": "The five levers every scam pulls",
     "angle": "Urgency, authority, fear, familiarity and reward appear in every phishing message, whatever the bait. Spotting the lever is easier than spotting the lie.",
+    "topic": "The five levers every scam pulls",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -370,8 +370,8 @@
     ]
   },
   {
-    "topic": "Why link text lies",
     "angle": "The display name and the real destination are two different things, and lookalike domains are trivially built. Three seconds checking the actual address beats most phishing emails.",
+    "topic": "Why link text lies",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -380,8 +380,8 @@
     ]
   },
   {
-    "topic": "The fake executive email, step by step",
     "angle": "Attackers study org charts and timing, then slip into a real thread from a real-looking mailbox. One habit defeats the whole playbook: confirming through a second channel.",
+    "topic": "The fake executive email, step by step",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -390,8 +390,8 @@
     ]
   },
   {
-    "topic": "When the voice is not the person",
     "angle": "Cloning a voice takes seconds of audio, so a phone call is no longer proof of identity. Calling back on a known number is the norm that survives the technology.",
+    "topic": "When the voice is not the person",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -400,8 +400,8 @@
     ]
   },
   {
-    "topic": "The fake candidate problem",
     "angle": "Remote hiring lets fabricated applicants reach interviews with real tools and borrowed identities. What recruiting verifies, and what access follows a hire, makes this a security issue, not just an HR one.",
+    "topic": "The fake candidate problem",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -410,8 +410,8 @@
     ]
   },
   {
-    "topic": "Patches: the least glamorous defense",
     "angle": "Most intrusions walk through holes that were already known and already fixed. How patching works, and why attackers scan for old versions, explains the update nag on every device you own.",
+    "topic": "Patches: the least glamorous defense",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -420,8 +420,8 @@
     ]
   },
   {
-    "topic": "Ransomware from first click to locked files",
     "angle": "The anatomy is consistent: entry, spread, theft, then lock. Backups decide the ending, which makes preparation the entire game.",
+    "topic": "Ransomware from first click to locked files",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -430,8 +430,8 @@
     ]
   },
   {
-    "topic": "Backups that survive the attacker",
     "angle": "A sync is not a backup, and an untested backup is only a hope. Several copies, one kept offline, and a restore you have actually rehearsed is the boring habit that takes the ransom out of ransomware.",
+    "topic": "Backups that survive the attacker",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -440,8 +440,8 @@
     ]
   },
   {
-    "topic": "Least privilege: access should be borrowed, not owned",
     "angle": "Permissions granted once tend to live for years, and that sprawl sits quietly behind many incidents. Treating access as a loan for a task shrinks the blast radius of every mistake.",
+    "topic": "Least privilege: access should be borrowed, not owned",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -450,8 +450,8 @@
     ]
   },
   {
-    "topic": "Alert fatigue: when every warning shouts",
     "angle": "Security products bury the real signal in noise, so people tune everything out equally. A warning people actually respect is rare by design, and the lesson applies to any report your team produces.",
+    "topic": "Alert fatigue: when every warning shouts",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -460,8 +460,8 @@
     ]
   },
   {
-    "topic": "SIM swapping: your phone number as an identity document",
     "angle": "Porting a number hijacks the codes sent to it, so every account tied to that number falls with it. Moving critical accounts to a stronger factor breaks the chain.",
+    "topic": "SIM swapping: your phone number as an identity document",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -470,8 +470,8 @@
     ]
   },
   {
-    "topic": "The recovery chain: one mailbox owns everything else",
     "angle": "Password resets flow to email, so whoever controls the inbox controls the rest. Securing that mailbox first does more than any other single step.",
+    "topic": "The recovery chain: one mailbox owns everything else",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -480,8 +480,8 @@
     ]
   },
   {
-    "topic": "The access chain: a vendor's vendor becomes your breach",
     "angle": "Data flows through subcontractors, and permissions granted once live on for years. Tracing who actually holds your organization's information is a map nobody draws until they must.",
+    "topic": "The access chain: a vendor's vendor becomes your breach",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -490,8 +490,8 @@
     ]
   },
   {
-    "topic": "Why small businesses are attractive targets",
     "angle": "Automated scanning does not check company size, and weak defaults are simply found first. A short list of basic habits removes most opportunistic attacks, which is why the same boring advice is repeated everywhere.",
+    "topic": "Why small businesses are attractive targets",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -500,8 +500,8 @@
     ]
   },
   {
-    "topic": "The first hour after a compromise",
     "angle": "The order matters: isolate, preserve evidence, change credentials from a clean device, then notify. A team that rehearses the sequence once behaves completely differently under pressure.",
+    "topic": "The first hour after a compromise",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -510,8 +510,8 @@
     ]
   },
   {
-    "topic": "Two-channel verification as a workplace norm",
     "angle": "Confirming unusual requests through a known second channel defeats imposters of every kind. Scripts that make the check polite are what make the habit stick.",
+    "topic": "Two-channel verification as a workplace norm",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -520,8 +520,8 @@
     ]
   },
   {
-    "topic": "What cyber insurance questions reveal about your gaps",
     "angle": "Applications for cyber coverage ask about multifactor authentication, backups and patching before almost anything else. The questionnaire works as a free audit checklist, whatever you decide to buy.",
+    "topic": "What cyber insurance questions reveal about your gaps",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -530,8 +530,8 @@
     ]
   },
   {
-    "topic": "Insider risk is mostly a mistake story",
     "angle": "Most incidents begin with an error or a shortcut, not a villain, and shame makes reporting slower. Policies people can actually follow are the whole game for managers.",
+    "topic": "Insider risk is mostly a mistake story",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -540,8 +540,8 @@
     ]
   },
   {
-    "topic": "Zero trust in plain English",
     "angle": "Work left the office, so the perimeter dissolved, and now every request has to prove itself. The phrase explains half the login changes you have been asked to accept.",
+    "topic": "Zero trust in plain English",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -550,8 +550,8 @@
     ]
   },
   {
-    "topic": "The device settings nobody teaches you",
     "angle": "Screen locks, disk encryption, device finders and separated work profiles remove most physical theft risk. Each takes minutes, which is the pattern of most good security.",
+    "topic": "The device settings nobody teaches you",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -560,8 +560,8 @@
     ]
   },
   {
-    "topic": "What the NIST AI Risk Management Framework actually is",
     "angle": "A voluntary framework, built through open comment and workshops, for designing and using AI with trustworthiness in mind. Voluntary on paper, yet it shapes the contracts and job requirements you will actually meet.",
+    "topic": "What the NIST AI Risk Management Framework actually is",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -570,8 +570,8 @@
     ]
   },
   {
-    "topic": "Why generative AI got its own risk profile",
     "angle": "NIST published a profile to help organizations spot risks unique to generative systems and choose actions that fit their goals. A profile is a translation layer, and its existence says these tools were judged different in kind.",
+    "topic": "Why generative AI got its own risk profile",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -580,8 +580,8 @@
     ]
   },
   {
-    "topic": "Voluntary guidance, mandatory consequences",
     "angle": "Frameworks begin as suggestions and become requirements through procurement, contracts and certification. That mechanism explains why standards written for volunteers end up on your desk.",
+    "topic": "Voluntary guidance, mandatory consequences",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -590,8 +590,8 @@
     ]
   },
   {
-    "topic": "Why critical infrastructure gets special treatment",
     "angle": "NIST has been developing profile guidance that points operators of essential systems toward specific risk practices. The same tool carries different stakes when failure means a blackout instead of a bad draft.",
+    "topic": "Why critical infrastructure gets special treatment",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -600,8 +600,8 @@
     ]
   },
   {
-    "topic": "The consensus machine: how standards bodies actually work",
     "angle": "The AI Risk Management Framework grew from requests for information, public drafts, comment periods and workshops over years. Slow open process is why the output survives, and public comment is how anyone can take part.",
+    "topic": "The consensus machine: how standards bodies actually work",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -610,8 +610,8 @@
     ]
   },
   {
-    "topic": "Trustworthy as a checklist, not a vibe",
     "angle": "Trustworthiness splits into parts a buyer can test: does it work as claimed, can the result be explained, and who answers when it fails. Turning the slogan into questions is how you evaluate any vendor.",
+    "topic": "Trustworthy as a checklist, not a vibe",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -620,8 +620,8 @@
     ]
   },
   {
-    "topic": "When the system helps decide, a human still signs",
     "angle": "Accountability clings to the named approver no matter how much the tool contributed. Notes on what you checked are what protect the person who signed off.",
+    "topic": "When the system helps decide, a human still signs",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -630,8 +630,8 @@
     ]
   },
   {
-    "topic": "Red teaming your own workflow",
     "angle": "Security teams attack their own systems on purpose, and the practice transfers to AI workflows. Finding the failure modes before leadership does is a quiet way to become the expert in the room.",
+    "topic": "Red teaming your own workflow",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -640,8 +640,8 @@
     ]
   },
   {
-    "topic": "The productivity paradox",
     "angle": "Office technology spreads for years while measured productivity barely moves, then something breaks the lag. The pattern explains why tool announcements and desk reality so rarely match.",
+    "topic": "The productivity paradox",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -650,8 +650,8 @@
     ]
   },
   {
-    "topic": "Where the gains from better tools go",
     "angle": "Gains can surface as more output, better margins or fewer hours, and the split is a decision, not physics. Which one your workplace chooses decides what the tool means for you.",
+    "topic": "Where the gains from better tools go",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -660,8 +660,8 @@
     ]
   },
   {
-    "topic": "How researchers measure automation exposure",
     "angle": "Serious studies classify occupations by the tasks inside them, which is why headline numbers disagree so wildly. Task-based reading is also the honest way to check your own role.",
+    "topic": "How researchers measure automation exposure",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -670,8 +670,8 @@
     ]
   },
   {
-    "topic": "Why retraining programs keep missing",
     "angle": "Courses teach tools while the real gaps are context and placement, and completing a course is not the same as transferring a skill. Learning attached to real work is the kind that compounds.",
+    "topic": "Why retraining programs keep missing",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -680,8 +680,8 @@
     ]
   },
   {
-    "topic": "Job polarization: what happens to the middle",
     "angle": "Technology tends to expand work at the top and the bottom while squeezing routine middle tasks. The question that matters is which half of your own role is growing.",
+    "topic": "Job polarization: what happens to the middle",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -690,8 +690,8 @@
     ]
   },
   {
-    "topic": "Policy lags capability, every time",
     "angle": "Principles and frameworks arrive first, enforcement arrives much later, and the gap is where workers and buyers operate with least protection. International AI policy work follows that old sequence, and knowing it guards against both panic and complacency.",
+    "topic": "Policy lags capability, every time",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -700,8 +700,8 @@
     ]
   },
   {
-    "topic": "The two forces pulling every AI decision",
     "angle": "One force cuts spend, the other adds capability, and jobs get redesigned in the tension between them. Naming the two forces makes almost any company move legible.",
+    "topic": "The two forces pulling every AI decision",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -710,8 +710,8 @@
     ]
   },
   {
-    "topic": "The last to know pays the most",
     "angle": "Inside every company, information about change arrives in a fixed order, and the end of that line is an expensive place to stand. Moving up the hearing order is positioning, not politics.",
+    "topic": "The last to know pays the most",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",
@@ -720,8 +720,728 @@
     ]
   },
   {
-    "topic": "What adapting early actually looks like",
     "angle": "Past shifts created work that had no name at the start, and the people who moved first were rarely the most credentialed. The pattern favors the curious over the certified.",
+    "topic": "What adapting early actually looks like",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Why a profitable company still cuts jobs",
+    "angle": "Profit is an opinion and cash flow is a fact, and the gap between them explains cuts in good years. The accounting mechanism in plain English, and how to tell which kind of company you work for.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Capex versus opex, explained from the desk",
+    "angle": "Companies sort spending into what they own and what they rent, and each follows different rules and approvals. That split is why software bills grow while headcount stalls, and why the rental line is always easier to turn off.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The ROI slide: how internal business cases get built",
+    "angle": "Every tool your company buys rode in on a slide promising a number. How those numbers are made, the flattering assumptions hidden inside them, and the questions that make the math honest.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Use it or lose it: why budgets burn before year end",
+    "angle": "Unspent budget can shrink next year's allocation, so money gets spent on whatever is easy to approve. The pattern predicts when tools arrive, when training happens, and why year-end decisions look nothing like spring ones.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Read the annual report like an owner",
+    "angle": "Public companies publish where their money went and where they say it is going. Three sections, read the way an analyst reads them, tell an employee more than any all-hands: capital allocation, headcount by segment, and risk factors.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The ratchet: where your saved hours actually go",
+    "angle": "When a tool saves an hour, the hour rarely comes back to you. Expectations reset, work expands to fill recovered time, and the person ends up busier with more output to verify. The mechanism behind 'do more with less'.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The invisible savings problem",
+    "angle": "Budgets count what gets bought, not what gets prevented. Security, maintenance, and documentation only show up when they fail, which is why they get cut first and mourned loudest, and how to make prevention visible before it is gone.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The approval chain is the real org chart",
+    "angle": "Who can say yes to spending is the true map of power, and it is written in thresholds, not titles. Learning to read the approval chain tells you why good ideas stall and where to route an ask so it survives.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The empty chair: what an unfilled seat costs",
+    "angle": "An open requisition is the cheapest line item a company has, and the work does not wait for the hire. The cost math of the empty chair, why finance tolerates it, and what a long-open posting really says.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Why the insider usually loses to the outsider",
+    "angle": "Internal moves often need three approvals; an external hire needs one. The mechanics behind internal mobility, why a stranger looks cheaper on paper, and how to work the system instead of resenting it.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Every tool hires a caretaker",
+    "angle": "No software runs itself: someone writes the prompts, tends the exceptions, cleans the data, and answers the queue. The invisible tending jobs that arrive with every rollout, and why spotting them early is an opportunity rather than a chore.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The meeting problem tools do not fix",
+    "angle": "Better notes and smarter calendars lower the cost of meeting, which can mean more meetings. Coordination cost is the durable mechanism, and the levers that actually reduce it live in the structure of the week, not the software.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The seat audit: how software true-ups work",
+    "angle": "Vendors count who logged in and bill for the difference, so companies audit seats the way landlords audit keys. What a license true-up is, why your access gets reviewed like inventory, and what it means when tools get quietly reclaimed.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Switching costs: vendor lock-in in plain English",
+    "angle": "The best tool does not always win; the hardest-to-leave one often does. How data, training, and contracts add up to lock-in, and how to judge whether a tool your team depends on is a foundation or a trap.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The renewal calendar rules your tools",
+    "angle": "Notice windows and auto-renewal dates decide tool fates long before anyone re-evaluates features. How to read the renewal calendar at your company, and the narrow window in which a complaint actually counts.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "How cut lists actually get built",
+    "angle": "When companies cut, the list is not random and it is rarely public. The criteria that shape who goes, from cost centers to criticality scores, which criteria hold up, and how to tell where you sit relative to them.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Same prompt, two answers",
+    "angle": "These systems are probability machines, not databases, so identical questions can produce different results. What that means for work you cannot double-check, and the habits that make outputs reliable anyway.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Prompt injection: when the text is the trap",
+    "angle": "A document, an email, or a webpage can carry instructions that a helpful assistant will follow. The attack that turns your pasting into someone else's command, and why reading can be as risky as clicking.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Why error compounds when steps chain",
+    "angle": "A step that is usually right still fails often enough once a workflow stacks many of them. How small mistake rates multiply, and the checkpoints that keep a chain of automated steps honest.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The escalation path: designing the hand-back",
+    "angle": "The best AI workflows are built around the moment the machine should stop and a person should take over. How escalation paths are designed, why missing ones create failures nobody owns, and the questions to ask about any tool you deploy.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Guardrails: why the tool refuses legitimate work",
+    "angle": "Safety filters are tuned for the worst user, so careful workers hit refusals. How overcorrection happens, why the settings are blunt on purpose, and the practical routes to real work without fighting the tool.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Benchmarks: what AI test scores actually measure",
+    "angle": "Scores are measured on fixed tests under fixed conditions, which is not your Tuesday. What benchmarks are good for, where they mislead, and why headline scores can rise while your results stay flat.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Prompt, retrieval, fine-tuning: three ways your company customizes AI",
+    "angle": "The same base model behaves differently depending on whether the company writes instructions, connects documents, or retrains weights. A plain-English map of the three approaches, and which one explains the answers you actually get at work.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "When AI drives the screen",
+    "angle": "Tools that click, type, and navigate for you raise the stakes from wrong answers to wrong actions. How computer-use tools work, what a wrong click by software can cost, and why autonomy should be granted like access, in small amounts.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Averages lie: why the worst output sets the risk",
+    "angle": "A tool that is right most of the time is still wrong somewhere, and workflows inherit the worst case, not the typical one. How to size risk from failure modes instead of demos, and where a human check earns its keep.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Why you cannot always get a why",
+    "angle": "Fluent answers are cheap for these systems; faithful reasons are not always available even to their builders. The limits of explainability, what to ask a vendor instead of 'why did it say that', and how to work with answers you cannot fully trace.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The human work inside fluency",
+    "angle": "Smooth output rests on labeled data, and labeling is done by people, often far away and often unseen. Who does that work, why quality depends on it, and what every user should know about the invisible labor in the answers.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Why the model forgets the top of your document",
+    "angle": "Every system has a working limit on how much it can hold at once, and the edges are where quality drops. Context limits in practice, the workarounds people actually use, and how to structure long work so nothing important falls off.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Test before you trust",
+    "angle": "Acceptance testing is the skill of running a small set of your real tasks against a tool before betting a workflow on it. How to build a tiny evaluation, what it catches that demos hide, and why the person who tests becomes the expert in the room.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Drafting is cheap, deciding is expensive",
+    "angle": "When generation costs almost nothing, the bottleneck moves to review and sign-off. Why queues form at the decision point, what happens when output outruns the humans who must approve it, and where the real advantage sits now.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "AI detection and false flags",
+    "angle": "Detection tools make errors, and when everything gets screened, even small error rates sweep in innocent work. What base rates do to accusations, what a score can and cannot prove, and the questions worth asking before any conclusion rests on a detector.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Memory changes the stakes",
+    "angle": "When a tool remembers across sessions, it becomes a record of preferences, inputs, and mistakes. What persistence means for workplace tools, what sticks around after the chat ends, and the settings worth understanding before you confide in a system.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The right to argue with a machine",
+    "angle": "When a system helps decide a hire, a shift, or a service, the important question is whether anyone can contest the outcome. Contestability in plain English, why it separates toys from infrastructure, and the questions that reveal whether a vendor supports it.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The AI inventory: you cannot manage what nobody listed",
+    "angle": "Companies cannot govern tools nobody has written down, and unlisted tools are where surprise failures live. How a simple register of systems, uses, and owners works, and how a team of any size can start one in an afternoon.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Fix it upstream",
+    "angle": "Choices made before launch, from defaults to data, cost less than corrections after harm. Why design beats retrofit, how to spot a product that bolted its safety on late, and the upstream questions that prevent the late-night incident.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The risk register: the boring document that prevents disasters",
+    "angle": "A list of risks, owners, and next steps sounds like paperwork, but writing things down is what turns worry into action. How registers work, why unmaintained ones are worse than none, and how to start one on any team.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Blameless reporting: why punishment hides problems",
+    "angle": "People who fear blame report late or not at all, so punishing the messenger makes late reporting the safe choice. The mechanics of blameless cultures, what they are not, and the small changes that make honesty cheaper than silence.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Risk appetite: the line nobody writes down",
+    "angle": "Every organization tolerates some chance of failure, written or not, and it shows in what gets funded versus what gets tolerated. How to infer your employer's real risk appetite from behavior, and why yours should probably not match it.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Vendor tiering: how companies sort suppliers by risk",
+    "angle": "Not every supplier gets the same scrutiny: access, data, and criticality decide the tier. How tiering works, why you might be a high tier to a client and never know, and what small firms should ask before they sign.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Paper is not practice",
+    "angle": "Security questionnaires are easy to answer honestly and wrongly: a checkbox says a policy exists, not that anyone follows it. Attestation fatigue explained, and the one follow-up question that separates real practice from paperwork.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Impact and likelihood: the two-axis habit",
+    "angle": "One axis asks how bad, the other asks how often, and most arguments about risk are people using different axes. The durable habit of sizing any problem on both, and why it dissolves both panic and dismissal.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Password managers, plainly",
+    "angle": "One strong passphrase guarding a vault of long random ones beats memory, reuse, and clever schemes. How managers work, what happens if the vault itself is compromised, and the ten-minute setup that removes the weakest habit in security.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Passkeys: logging in without a password",
+    "angle": "A passkey ties your login to your device instead of a password that can be stolen and replayed. How the mechanism works, why it removes the phishing target rather than defending it, and what recovery looks like when the device is gone.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The unreadable link: QR codes and risk",
+    "angle": "A QR code hides its destination until scanned, which flips the usual habit of checking before clicking. Where the pattern gets abused, why context decides the risk, and the verification steps that make codes safe to use.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Lookalike domains",
+    "angle": "Attackers register web addresses one character away from real ones, and even careful eyes miss the difference. How near-twin domains work, why the trick keeps succeeding, and the habit of typing instead of trusting that defeats it.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "What 'continue with Google' actually grants",
+    "angle": "Signing in with a big account hands a third party specific permissions, and most of us never read which. OAuth in plain English, how to audit years of accumulated consents, and why revoking old access is the most neglected cleanup in security.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "What a photo says about you",
+    "angle": "Image files can carry more than the picture: location, device, sometimes the document behind the crop. Metadata explained, what screenshots can leak, and the habit of stripping details before sharing anything work-related.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "VPNs, plainly",
+    "angle": "A VPN changes who can see your traffic, not whether your passwords are strong or your links are safe. What a VPN protects, what it does not, and why it is a situational tool rather than a security plan.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Why the text message is the new hook",
+    "angle": "SMS carries the same scams as email with fewer pixels to inspect and a stronger reflex to reply. How smishing works, why filters struggle with it, and what no bank, employer, or delivery service will ever ask you for by text.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Ghost access: the logins nobody reclaims",
+    "angle": "Accounts outlive the people they belonged to, and shared logins outlive the colleagues who set them. How offboarding gaps become standing doors, and how a quarterly access review works even without a security team.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Your phone is now the office",
+    "angle": "When personal devices carry work accounts, a lost phone can be a lost client list. BYOD in plain English, what employers can and cannot see, and the line that keeps your personal life and your job from infecting each other.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The visitor setting: your home network perimeter",
+    "angle": "Cameras, televisions, and guests share the same network as the laptop you work on unless you split them. Guest networks and device isolation explained, and the small router habit that contains most of a household's risk.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The one-person IT department",
+    "angle": "A small firm without a security team still needs someone who owns the passwords, the backups, and the plan for the bad day. How to divide security ownership across a handful of people, and the checklist that fits a business too small for a specialist.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The solo worker's security baseline",
+    "angle": "Freelancers and one-person firms hold client data with none of the guardrails of a company. The minimum set of habits that covers most of the risk, and why the first client you protect is yourself.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Data minimization: the least-data habit",
+    "angle": "Every record a company keeps is a record that can leak, so the strongest defense is not holding data in the first place. How minimization works for teams, and the personal version: asking whether anything needs to be saved at all.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Why spam filters miss the notes written for you",
+    "angle": "Filters stop the clumsy and the mass-produced; a message researched for one person often reads as normal mail. What targeted notes look like, why volume defenses cannot catch them, and what only a human with a callback habit can.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The shared secret problem",
+    "angle": "Shared inboxes, shared drives, and the one password everyone knows are convenient until someone leaves or a copy leaks. The lifecycle of shared credentials, and how teams rotate them without losing the convenience that made them share.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The notification gap",
+    "angle": "Between exposure and disclosure sits a stretch of quiet, and 'no evidence of misuse' is a phrase with edges. How breach disclosure unfolds, why the most dangerous window is the silent one, and the basic hygiene that matters while you wait.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Proximity bias: the promotion math of being seen",
+    "angle": "Decision-makers remember what they see, and out of sight quietly becomes out of mind at review time. How proximity bias works, why visibility is a system and not a personality contest, and the honest ways remote workers make their work count.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The always-on tax",
+    "angle": "Cheap communication made work reachable everywhere, and working time crept into every gap it found. How connectivity stretched the workday, what boundary habits actually hold, and why the phone on the nightstand is a labor question, not a personal failing.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "When your boss is a dashboard",
+    "angle": "Scores, quotas, and auto-generated warnings increasingly sit between workers and managers. How algorithmic management changes discretion and voice, what gets measured and what gets lost, and how a human appeals a number.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Your shift, scheduled by an algorithm",
+    "angle": "Platforms promise flexibility while optimizing labor cost, and those two goals pull in opposite directions. How algorithmic scheduling works, what constraints hide inside the word flexible, and what workers on rosters can reasonably ask to see.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Job or gig: the classification question in plain English",
+    "angle": "The same work can sit inside or outside employment, and the line is drawn by tests that differ by place and keep moving. The classification debate explained without picking a side, why it matters for protections and costs, and what is worth understanding either way you are paid.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Coordination costs: why distance stopped protecting desk work",
+    "angle": "Jobs clustered in offices partly because working together across distance was expensive, and technology keeps cutting that cost. The economics of coordination, why geography protects work less each decade, and what still resists being done from anywhere.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The unwritten manual",
+    "angle": "Most of what a team knows is not written down anywhere, and it walks out with every departure. Tacit knowledge explained, why documentation projects keep failing, and the low-effort habits that capture what matters before it leaves.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The keyword filter: how machines read your application",
+    "angle": "Screening software matches applications against words from the posting, which is cruder and more literal than any human reader. How the filtering layer works, what it rewards and punishes, and how to describe real work so both a machine and a person can see it.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The trust requirement",
+    "angle": "Some work resists automation for reasons that are not technical: people must be able to hold someone accountable. Why care, judgment, and presence hold value, what tools do to the edges of those jobs, and how to tell whether your work carries a trust requirement.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Compute as capital",
+    "angle": "Chips, buildings, and power lines are becoming the capital equipment of the age, bought the way factories used to be. What it means when budgets shift from payroll to machines, why the shift echoes industrial investment waves, and where the desk worker fits in the structure.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Build versus run",
+    "angle": "Training a model is a project with a huge bill; running one is a metered cost that scales with use. Why that split shapes vendor behavior, why heavy usage can surprise a budget, and what buyers should ask about metering before they deploy.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The complement effect",
+    "angle": "When a tool makes the parts around your work cheaper, the parts only you can do often rise in value. The economics of complements, why some workers benefit from the same machine that displaces others, and how to tell which side you are on.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "Automation in hindsight",
+    "angle": "Every wave, from spreadsheets to voicemail, arrived with both a panic and a promise, and delivered a third thing nobody ordered. What past tool rollouts actually did to jobs, which predictions aged worst, and the honest lesson for planning around the current one.",
+    "source_urls": [
+      "https://www.nist.gov/itl/ai-risk-management-framework",
+      "https://www.ilo.org/topics-and-sectors/future-work",
+      "https://www.oecd.org/en/topics/artificial-intelligence.html",
+      "https://www.cisa.gov/secure-our-world"
+    ]
+  },
+  {
+    "topic": "The geography of employment",
+    "angle": "Remote work untied jobs from places for a while, then employers began pulling threads back: rules, hours, and presence each pull differently. Why your employer cares where you sit, what constrains remote promises, and how to read a remote policy for the parts that are conditional.",
     "source_urls": [
       "https://www.nist.gov/itl/ai-risk-management-framework",
       "https://www.ilo.org/topics-and-sectors/future-work",

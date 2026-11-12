@@ -301,3 +301,11 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
 - Blocking caption/overlay findings downgrade to logged minor notes when narration is
   supplied, except cropping/cut-off, illegible/unreadable text, third-party watermarks/logos,
   nudity, gore, black frames and misleading claims. Strict QA still rejects minor findings.
+
+## Bank article resilience (2026-11-12)
+- Article evidence labels normalize casing, surrounding punctuation and known aliases to
+  Fact / Important / Do You Know / Stat / Pro Tip; unknown labels still fail validation.
+- Exhausted article preparation failures do not block banking passing media. Bundles store
+  `article: null` in the manifest and `article_failed: true` in both the manifest
+  and `qa_notes.stockpile`.
+  Release publishes the videos and skips the missing article without model calls.

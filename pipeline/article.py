@@ -82,7 +82,29 @@ def ping_indexnow(slug):
         log.warning("IndexNow notification failed; article remains saved")
 
 
+EVIDENCE_LABELS = ("Fact", "Important", "Do You Know", "Stat", "Pro Tip")
+EVIDENCE_LABEL_INSTRUCTION = (
+    'Evidence labels must be exactly one of: "Fact", "Important", "Do You Know", "Stat", "Pro Tip". '
+)
+
+
+def normalize_evidence_labels(data):
+    aliases = {label.casefold(): label for label in EVIDENCE_LABELS}
+    aliases.update({"did you know": "Do You Know", "dyk": "Do You Know",
+                    "statistic": "Stat", "data": "Stat", "tip": "Pro Tip",
+                    "key fact": "Fact", "fact check": "Fact",
+                    "key point": "Important", "note": "Important"})
+    for section in data.get("sections", []):
+        box = section.get("evidence")
+        if box and isinstance(box.get("label"), str):
+            # Strip surrounding punctuation (including Markdown), preserving unknown labels.
+            key = re.sub(r"^[\W_]+|[\W_]+$", "", box["label"]).casefold()
+            key = " ".join(key.split())
+            box["label"] = aliases.get(key, box["label"])
+
+
 def validation_errors(data, body):
+    normalize_evidence_labels(data)
     errors = []
     def check(ok, message):
         if not ok:
@@ -107,7 +129,7 @@ def validation_errors(data, body):
             valid_url, domain = False, ""
         check(valid_url, "Evidence requires an http(s) URL")
         domains.append(domain)
-        check(box["label"] in ("Fact", "Important", "Do You Know", "Stat", "Pro Tip"), "Invalid evidence label")
+        check(box["label"] in EVIDENCE_LABELS, "Invalid evidence label")
     check(all(domains) and len(set(domains)) == len(domains), "Evidence needs distinct registered domains")
     keyword = data["primary_keyword"].strip().casefold()
     check(bool(keyword) and body.casefold().count(keyword) == 1, "Primary keyword must appear exactly once in body")
@@ -169,6 +191,7 @@ def repair_article(data):
             return {k: clean(v) for k, v in value.items()}
         return value
     data = clean(data)
+    normalize_evidence_labels(data)
     small = {"a", "an", "and", "as", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with"}
     def title(text):
         index = 0
@@ -338,6 +361,7 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
             "Adapt this saved video script into a standalone educational Plainsight Media article. "
             "Follow ALL these writing rules and return the structured fields, not an assembled body. "
             "Use web search (at most four searches) to verify evidence URLs and the precise claims they support. "
+            + EVIDENCE_LABEL_INSTRUCTION +
             "No invented sources. Prioritize accurate, useful prose over exact word counts. "
             "Do not emit the YouTube placeholder or duplicate Quick Answer, takeaways or FAQs in sections. "
             "body_md contains paragraphs and optional H3s only; heading is plain text. "
@@ -382,7 +406,8 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
             schema = obj({k: ARTICLE_SCHEMA["properties"][k] for k in fields})
             previous = data
             prompt = ("Repair only these failed article fields; return only the requested schema fields. "
-                      "Preserve verified claims and sources. No invented evidence.\nFailures:\n" +
+                      "Preserve verified claims and sources. No invented evidence.\n" +
+                      EVIDENCE_LABEL_INSTRUCTION + "\nFailures:\n" +
                       "\n".join(failures) + f"\nCTA channel URL: https://www.youtube.com/@{channel.handle}\n" +
                       "Failed fields:\n" + json.dumps({k: data[k] for k in fields}, ensure_ascii=False) +
                       "\nTopic: " + script["title"])

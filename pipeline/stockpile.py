@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import uuid
 import time
 from pathlib import Path
-from .common import OUT_DIR, now_iso, write_json
+from .common import OUT_DIR, now_iso, write_json, log
 from .drive import Drive, digest
 
 
@@ -91,14 +91,22 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
             raise RuntimeError('Cannot bank content with publications')
     out = OUT_DIR / content_id
     article = None
+    article_failed = False
     if root['kind'] == 'long':
         from .article import write_article
         cached = out / 'bank-article.json'
-        if cached.is_file():
-            article = json.loads(cached.read_text())
-        else:
-            article = write_article(db, content_id, claude=claude, prepare_only=True)
-            write_json(cached, article)
+        try:
+            if cached.is_file():
+                article = json.loads(cached.read_text())
+            else:
+                # write_article owns validation retries; exhausted retries are nonfatal here.
+                article = write_article(db, content_id, claude=claude, prepare_only=True)
+                write_json(cached, article)
+        except Exception as exc:
+            article = None
+            article_failed = True
+            log.warning('Stockpile article preparation failed (%s); banking passing media without article',
+                        type(exc).__name__)
     files = {}
     for row in rows:
         for field in ('file_path', 'thumbnail_path'):
@@ -124,13 +132,13 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
                          'sha256': digest(path)}
     manifest = {'version': 1, 'content_id': content_id, 'channel': channel.key, 'created_at': now_iso(),
         'category_id': str(channel.cfg.get('category_id', '28')), 'containsSyntheticMedia': True,
-        'privacy': 'private', 'content': rows, 'article': article, 'files': entries}
+        'privacy': 'private', 'content': rows, 'article': article, 'article_failed': article_failed, 'files': entries}
     manifest_path = out / 'manifest.json'
     write_json(manifest_path, manifest)
     manifest_id = drive.upload(manifest_path, folder)
     metadata = {'root_id': drive_root, 'folder_id': folder, 'manifest_id': manifest_id,
         'manifest_sha256': digest(manifest_path), 'files': entries, 'bytes': total + manifest_path.stat().st_size,
-        'banked_at': now_iso(), 'released': False}
+        'banked_at': now_iso(), 'released': False, 'article_failed': article_failed}
     mark_banked(db, rows, metadata)
     db.set_setting('stockpile_drive_space', {**drive.space(), 'checked_at': now_iso()})
     # Keep local checkpoints for recovery. No local deletion is needed on ephemeral runners.

@@ -33,7 +33,7 @@ def generate(db, channel, claude):
         raise RuntimeError(f'Only {len(accepted)} unique topics; inventory unchanged. Rerun owner script.')
     # Settings survive fresh runners; file is the owner-reviewable snapshot.
     path = CHANNELS_DIR / channel.key / 'evergreen.json'
-    path.write_text(json.dumps(accepted, indent=2) + '\n')
+    path.write_text(json.dumps(old + accepted, indent=2) + '\n')
     db.set_setting('evergreen_topics_' + channel.key, old + accepted)
     return len(accepted)
 

@@ -71,6 +71,8 @@ class ArticleChecks(unittest.TestCase):
         claude.run.side_effect = [(bad, 0), (good, 0)]
         result = write_article(db, 'fixture', claude=claude, script_data={'title': 'A Focused Explainer'})
         self.assertEqual(claude.run.call_count, 2)
+        for call in claude.run.call_args_list:
+            self.assertIn('Evidence labels must be exactly one of: "Fact", "Important", "Do You Know", "Stat", "Pro Tip".', call.args[1])
         self.assertEqual(guard.return_value.check.call_count, 2)
         self.assertIn('Use exactly 5 FAQs', claude.run.call_args.args[1])
         self.assertTrue(claude.run.call_args.kwargs['web_search'])
@@ -166,3 +168,33 @@ class ArticleChecks(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class EvidenceLabelNormalization(unittest.TestCase):
+    def test_aliases_are_canonical_in_validation_and_rendered_body(self):
+        from pipeline.article import repair_article
+        aliases = {
+            'Did You Know': 'Do You Know', '  Did you know? ': 'Do You Know',
+            'DYK': 'Do You Know', 'Statistic': 'Stat', 'Data': 'Stat',
+            'Tip': 'Pro Tip', 'Key Fact': 'Fact', 'Fact Check': 'Fact',
+            'Key Point': 'Important', 'Note': 'Important',
+            '**fAcT:**': 'Fact', ' important! ': 'Important',
+            'do you know?': 'Do You Know', 'STAT.': 'Stat', 'pro tip:': 'Pro Tip',
+        }
+        for alias, canonical in aliases.items():
+            with self.subTest(alias=alias):
+                data = valid_article()
+                data['sections'][0]['evidence']['label'] = alias
+                self.assertNotIn('Invalid evidence label', validation_errors(data, assemble_body(data)))
+                self.assertEqual(data['sections'][0]['evidence']['label'], canonical)
+                data['sections'][0]['evidence']['label'] = alias
+                repaired = repair_article(data)
+                self.assertEqual(repaired['sections'][0]['evidence']['label'], canonical)
+                self.assertIn(f'> **{canonical}**:', assemble_body(repaired))
+
+    def test_unknown_label_still_fails(self):
+        from pipeline.article import repair_article
+        data = valid_article()
+        data['sections'][0]['evidence']['label'] = 'Unverified Rumor'
+        data = repair_article(data)
+        self.assertIn('Invalid evidence label', validation_errors(data, assemble_body(data)))

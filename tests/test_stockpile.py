@@ -269,7 +269,8 @@ def test_failed_parent_does_not_upload_children_without_parent_link(tmp_path, mo
 
 
 @pytest.mark.parametrize('failed_children', [0, 1, 4])
-def test_bank_long_runs_full_qa_and_prepares_article_without_publishing(tmp_path, monkeypatch, failed_children):
+@pytest.mark.parametrize('article_failure', [False, True])
+def test_bank_long_runs_full_qa_and_prepares_article_without_publishing(tmp_path, monkeypatch, failed_children, article_failure):
     from pipeline import run_all, publish, article
     db, channel, drive = DB(), Channel(), FakeDrive()
     db.set_setting('evergreen_topics_futurework', [{'topic': 'Durable mechanisms of workplace automation'}])
@@ -302,6 +303,8 @@ def test_bank_long_runs_full_qa_and_prepares_article_without_publishing(tmp_path
         [{'pass': i >= failed_children, 'issues': findings if i < failed_children else []} for i in range(4)])
     monkeypatch.setattr(run_all, 'run_qa', qa)
     prepare = Mock(return_value={'title': 'Article', 'slug': 'article', 'body_md': 'Saved article'})
+    if article_failure:
+        prepare.side_effect = ValueError('Article validation failed after retries')
     monkeypatch.setattr(article, 'write_article', prepare)
     publishing = Mock(side_effect=AssertionError('bank cannot publish'))
     monkeypatch.setattr(publish, 'publish_all', publishing)
@@ -314,6 +317,8 @@ def test_bank_long_runs_full_qa_and_prepares_article_without_publishing(tmp_path
     assert len(failed) == failed_children
     assert all(stockpile.notes(row)['issues'] == findings for row in failed)
     manifest = json.loads(drive.data[result['stockpile']['manifest_id']])
+    assert manifest['article_failed'] is article_failure
+    assert (manifest['article'] is None) is article_failure
     assert len(manifest['content']) == 5 - failed_children
     assert not {r['id'] for r in failed} & {r['id'] for r in manifest['content']}
     assert all(c.kwargs['caption_text'] for c in qa.call_args_list)
@@ -390,3 +395,30 @@ def test_release_bundle_excludes_qa_failed_children(tmp_path, monkeypatch, faile
     assert release_banked.release(db, Channel(), drive=drive) == 1
     assert upload.call_count == 5 - failed_count
     assert len(db.select('content', {'status': 'qa_failed'})) == failed_count
+
+
+@pytest.mark.parametrize('failure', [ValueError('Article validation failed: Invalid evidence label'),
+                                     RuntimeError('provider unavailable')])
+def test_article_failure_banks_and_releases_all_passing_media(tmp_path, monkeypatch, caplog, failure):
+    db, cid, drive = bundle(tmp_path, monkeypatch)
+    (tmp_path / cid / 'bank-article.json').unlink()
+    prepare = Mock(side_effect=failure)
+    monkeypatch.setattr('pipeline.article.write_article', prepare)
+    metadata = stockpile.bank_bundle(db, cid, Channel(), drive=drive)
+    prepare.assert_called_once()
+    manifest = json.loads(drive.data[metadata['manifest_id']])
+    assert manifest['article'] is None and manifest['article_failed'] is True
+    assert len(manifest['content']) == 5
+    assert len(db.select('content', {'status': 'banked'})) == 5
+    for row in db.select('content'):
+        assert stockpile.notes(row)['stockpile']['article_failed'] is True
+        assert Path(row['file_path']).is_file()
+    assert 'banking passing media without article' in caplog.text
+    upload = mock_publish(monkeypatch)
+    monkeypatch.setattr('pipeline.common.Claude.run', Mock(side_effect=AssertionError('no release model calls')))
+    assert release_banked.release(db, Channel(), drive=drive) == 1
+    assert upload.call_count == 5 and not db.select('articles')
+    assert len(drive.moves) == 1
+    assert stockpile.notes(db.one('content', {'id': cid}))['stockpile']['article_failed'] is True
+    assert release_banked.release(db, Channel(), drive=drive) == 0
+    assert upload.call_count == 5

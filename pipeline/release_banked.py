@@ -105,6 +105,8 @@ def release_one(db, channel, row, drive):
         db.upsert('articles', article, on='id')
         ping_indexnow(article['slug'])
         article_saved(db, row['id'])
+    elif manifest.get('article_failed'):
+        log.warning('Stockpile bundle %s released without article after preparation failure', row['id'])
     # A failed move leaves a discoverable pending checkpoint and is safe to retry.
     drive.release(checkpoint['folder_id'], checkpoint['root_id'])
     for saved in rows:
