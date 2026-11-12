@@ -184,7 +184,7 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
     if footage.placeholder and not (dry_run or no_publish):
         raise RuntimeError("Refusing to publish placeholder footage")
     res = make_short(data, out, channel.voice, footage, name=content_id, style=channel.style)
-    qa = run_qa(claude, res["file"], None, res["duration"], content_id, out / "qa", vision=not footage.placeholder, db=db)
+    qa = run_qa(claude, res["file"], None, res["duration"], content_id, out / "qa", vision=not footage.placeholder, db=db, caption_text=data["script"])
     row = {"id": content_id, "channel": channel.key, "kind": "short", "parent_id": None,
            "topic": topic["topic"], "title": data["hook_title"], "description": data["description"],
            "tags": data["tags"], "script": data["script"], "duration_sec": res["duration"],

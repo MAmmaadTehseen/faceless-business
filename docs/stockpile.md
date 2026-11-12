@@ -2,9 +2,9 @@
 
 Normal produce/Shorts jobs keep their existing behavior. Banking is separate and automatic
 release defaults to off. No database migration or extra paid service is required.
-A bundle means one long video and exactly four child Shorts, or one standalone Short.
+A bundle means one QA-passed long video and its QA-passed child Shorts (up to four), or one standalone Short.
 Release rate is **bundles per channel per UTC day**, not individual upload attempts.
-A long bundle needs capacity for five YouTube uploads; both existing quota reserves apply.
+A long bundle needs capacity for the number of pieces in its manifest (up to five YouTube uploads); both existing quota reserves apply.
 
 ## Owner setup
 
@@ -70,8 +70,8 @@ LLM_PROVIDER=lunaroute TTS_BACKEND=kokoro .venv/bin/python -m pipeline.shorts_da
 ```
 
 Bank mode refuses placeholders. It runs the normal voice, footage, rendering, long and
-Short QA plus article generation, but makes no YouTube or Meta publications. All four
-Shorts must finish and pass. Article text is prepared without publishing it to the hub.
+Short QA plus article generation, but makes no YouTube or Meta publications. Failed Shorts remain qa_failed with their QA findings; the long video and every passed
+Short are banked, including a long-only bundle when all children fail. Article text is prepared without publishing it to the hub.
 
 In existing settings storage (Supabase `settings` table), upsert these JSON values:
 
@@ -169,8 +169,8 @@ owner can complete storage without repeating models or rendering:
 ```
 
 The saved `bank-article.json` avoids another article call. If it is absent, article generation
-is still necessary. Missing/failed Shorts must be repaired through the existing recovery
-process first; no incomplete bundle can be banked. Never overwrite a completed stockpile
+is still necessary. Missing/failed Shorts are omitted from the release manifest and do not block banking.
+The long video must pass QA; failed children retain their findings for owner review. Never overwrite a completed stockpile
 checkpoint; release it using `pipeline.release_banked`.
 
 Implementation references: [Drive resumable uploads](https://developers.google.com/workspace/drive/api/guides/manage-uploads),

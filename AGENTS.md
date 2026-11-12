@@ -273,7 +273,7 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   `evergreen_topics_<key>` settings. Durable per-topic used markers avoid runner repeats.
   Generation was not run by the coding agent; owner must populate inventories first.
 - `pipeline.run_all --bank --channel <key>` requires real footage, passed long QA and
-  exactly four passed Shorts; `pipeline.shorts_daily --bank` banks a standalone Short.
+  every child Short that passed QA (failed children remain qa_failed with findings); `pipeline.shorts_daily --bank` banks a standalone Short.
   No publications or published hub article are created. Prepared article + release
   manifest/media go to app-created private Google Drive folders; complete bundles become
   `banked` atomically. IDs/checksums/checkpoints live in `qa_notes.stockpile`. No migration.
@@ -294,3 +294,10 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   `stockpile_lock_drive_upload` / `stockpile_lock_release_<key>` after verifying no live
   operation owns them. Setup, recovery, settings and exact commands: `docs/stockpile.md`.
   Dashboard Stockpile card is read-only and uses cached Drive quota; no Vercel Drive secret.
+
+## Caption-aware QA (2026-11-12)
+- All video QA callers supply narration as caption_text. Matching burned-in words are
+  expected captions; only physically frame-cropped letters should be flagged as captions.
+- Blocking caption/overlay findings downgrade to logged minor notes when narration is
+  supplied, except cropping/cut-off, illegible/unreadable text, third-party watermarks/logos,
+  nudity, gore, black frames and misleading claims. Strict QA still rejects minor findings.

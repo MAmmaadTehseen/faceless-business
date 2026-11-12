@@ -286,7 +286,7 @@ def generate(work, state, only=None, *, db=None, claude=None, rerender=False):
         if not CostGuard(db).check("recap_qa", 0.10):
             raise ValueError("Monthly budget guard refused QA")
         checked = StrictVision(claude, duration)
-        qa = run_qa(checked, video, thumb, duration, "filmreview-" + state["id"] + "-" + name, piece, vision=True, db=db)
+        qa = run_qa(checked, video, thumb, duration, "filmreview-" + state["id"] + "-" + name, piece, vision=True, db=db, caption_text="\n".join(s["text"] for s in item["segments"]))
         if checked.failed:
             qa["pass"] = False
             qa["issues"].append({"severity": "blocking", "text": "Vision QA did not complete"})

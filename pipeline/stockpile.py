@@ -83,9 +83,7 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
     if notes(root).get('stockpile'):
         raise RuntimeError('Bundle already checkpointed; release or recover it before banking again')
     children = db.select('content', {'parent_id': content_id}, order='id') if root['kind'] == 'long' else []
-    rows = [root, *children]
-    if root['kind'] == 'long' and len(children) != 4:
-        raise RuntimeError('Banking requires exactly four finished Shorts')
+    rows = [root, *(row for row in children if row.get('qa_status') == 'passed')]
     for row in rows:
         if row.get('placeholder') or row.get('qa_status') != 'passed':
             raise RuntimeError('Banking requires real footage and passed QA for every item')

@@ -117,7 +117,7 @@ def rebuild_daily(db, row, data, claude, footage, channel, publish, privacy):
     write_json(out / "script.json", data)
     result = make_short(data, out, channel.voice, footage, name=row['id'], style=channel.style)
     qa = run_qa(claude, result['file'], None, result['duration'], row['id'], out / 'qa',
-                vision=not footage.placeholder, db=db)
+                vision=not footage.placeholder, db=db, caption_text=result['script'])
     changes = {"file_path": str(result['file']), "duration_sec": result['duration'],
                "placeholder": footage.placeholder, "qa_status": "passed" if qa['pass'] else "failed",
                "status": "rendered" if qa['pass'] else "qa_failed",
@@ -256,7 +256,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
 
     qa = {"pass": True, "issues": []}
     if claude:
-        qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not (bool(row.get("placeholder")) if reused_render else footage.placeholder), db=db)
+        qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not (bool(row.get("placeholder")) if reused_render else footage.placeholder), db=db, caption_text="\n\n".join(data["script"]))
     thumb = qa.get("thumbnail") or thumb
     db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": rebuild_notes(qa["issues"], channel, data), "thumbnail_path": str(thumb)})
     if not qa["pass"]:
@@ -286,7 +286,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         except Exception as e:
             log.error("short %s failed: %s", sid, e)
             continue
-        short_qa = run_qa(claude, res["file"], None, res["duration"], sid, out_dir / f"qa-{sid}", vision=not footage.placeholder, db=db)
+        short_qa = run_qa(claude, res["file"], None, res["duration"], sid, out_dir / f"qa-{sid}", vision=not footage.placeholder, db=db, caption_text=res["script"])
         db.upsert("content", {"id": sid, "channel": channel.key, "kind": "short", "parent_id": content_id,
                               "topic": topic["topic"], "title": res["title"], "file_path": str(res["file"]),
                               "description": f"{res['title']}\n\nFull video: {{LONG_URL}}\n#shorts", "script": res["script"],

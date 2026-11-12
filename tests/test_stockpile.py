@@ -67,7 +67,7 @@ def test_bank_complete_bundle_no_publications_or_article(tmp_path, monkeypatch):
     assert stockpile.notes(db.one('content', {'id': cid}))['issues'] == []
 
 
-@pytest.mark.parametrize('failure', ['quota', 'upload', 'qa', 'missing_short'])
+@pytest.mark.parametrize('failure', ['quota', 'upload', 'qa'])
 def test_failed_banking_never_marks_partial_bundle(tmp_path, monkeypatch, failure):
     db, cid, drive = bundle(tmp_path, monkeypatch)
     if failure == 'quota':
@@ -75,7 +75,7 @@ def test_failed_banking_never_marks_partial_bundle(tmp_path, monkeypatch, failur
     elif failure == 'upload':
         drive.upload = Mock(side_effect=RuntimeError('upload failed'))
     elif failure == 'qa':
-        db.update('content', {'id': cid + '-short-4'}, {'qa_status': 'failed'})
+        db.update('content', {'id': cid}, {'qa_status': 'failed'})
     else:
         db.conn.execute('delete from content where id=?', (cid + '-short-4',))
         db.conn.commit()
@@ -268,7 +268,8 @@ def test_failed_parent_does_not_upload_children_without_parent_link(tmp_path, mo
     assert not db.select('publications') and not drive.moves
 
 
-def test_bank_long_runs_full_qa_and_prepares_article_without_publishing(tmp_path, monkeypatch):
+@pytest.mark.parametrize('failed_children', [0, 1, 4])
+def test_bank_long_runs_full_qa_and_prepares_article_without_publishing(tmp_path, monkeypatch, failed_children):
     from pipeline import run_all, publish, article
     db, channel, drive = DB(), Channel(), FakeDrive()
     db.set_setting('evergreen_topics_futurework', [{'topic': 'Durable mechanisms of workplace automation'}])
@@ -296,7 +297,9 @@ def test_bank_long_runs_full_qa_and_prepares_article_without_publishing(tmp_path
     monkeypatch.setattr(run_all, 'render', rendered)
     monkeypatch.setattr(run_all, 'make_thumbnail', thumbnail)
     monkeypatch.setattr(run_all, 'make_short', short)
-    qa = Mock(return_value={'pass': True, 'issues': []})
+    findings = [{'severity': 'blocking', 'text': 'Third-party watermark'}]
+    qa = Mock(side_effect=[{'pass': True, 'issues': []}] +
+        [{'pass': i >= failed_children, 'issues': findings if i < failed_children else []} for i in range(4)])
     monkeypatch.setattr(run_all, 'run_qa', qa)
     prepare = Mock(return_value={'title': 'Article', 'slug': 'article', 'body_md': 'Saved article'})
     monkeypatch.setattr(article, 'write_article', prepare)
@@ -306,8 +309,15 @@ def test_bank_long_runs_full_qa_and_prepares_article_without_publishing(tmp_path
         dry_run=False, publish=False, privacy=None, channel=channel, bank=True)
     assert qa.call_count == 5 and all(c.kwargs['vision'] for c in qa.call_args_list)
     assert prepare.call_args.kwargs['prepare_only'] is True
-    assert len(db.select('content', {'status': 'banked'})) == 5
-    assert len(result['shorts']) == 4
+    assert len(db.select('content', {'status': 'banked'})) == 5 - failed_children
+    failed = db.select('content', {'status': 'qa_failed'})
+    assert len(failed) == failed_children
+    assert all(stockpile.notes(row)['issues'] == findings for row in failed)
+    manifest = json.loads(drive.data[result['stockpile']['manifest_id']])
+    assert len(manifest['content']) == 5 - failed_children
+    assert not {r['id'] for r in failed} & {r['id'] for r in manifest['content']}
+    assert all(c.kwargs['caption_text'] for c in qa.call_args_list)
+    assert len(result['shorts']) == 4 - failed_children
     assert not db.select('publications')
     publishing.assert_not_called()
 
@@ -357,3 +367,26 @@ def test_article_preparation_never_saves_or_notifies(tmp_path, monkeypatch):
     assert row['published_at'] is None and row['body_md']
     assert not db.select('articles') and not db.select('publications')
     blocked.assert_not_called()
+
+
+def test_bank_missing_child_uses_only_present_pieces(tmp_path, monkeypatch):
+    db, cid, drive = bundle(tmp_path, monkeypatch)
+    db.conn.execute('delete from content where id=?', (cid + '-short-4',))
+    db.conn.commit()
+    metadata = stockpile.bank_bundle(db, cid, Channel(), drive=drive)
+    manifest = json.loads(drive.data[metadata['manifest_id']])
+    assert len(manifest['content']) == 4
+
+
+@pytest.mark.parametrize('failed_count', [1, 4])
+def test_release_bundle_excludes_qa_failed_children(tmp_path, monkeypatch, failed_count):
+    db, cid, drive = bundle(tmp_path, monkeypatch)
+    for i in range(1, failed_count + 1):
+        db.update('content', {'id': f'{cid}-short-{i}'},
+                  {'qa_status': 'failed', 'status': 'qa_failed',
+                   'qa_notes': json.dumps({'issues': [{'severity': 'blocking', 'text': 'watermark'}]})})
+    stockpile.bank_bundle(db, cid, Channel(), drive=drive)
+    upload = mock_publish(monkeypatch)
+    assert release_banked.release(db, Channel(), drive=drive) == 1
+    assert upload.call_count == 5 - failed_count
+    assert len(db.select('content', {'status': 'qa_failed'})) == failed_count

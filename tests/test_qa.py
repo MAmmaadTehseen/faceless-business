@@ -166,3 +166,38 @@ def test_freezes_merge_before_filtering(segments, expected):
     stderr = '\n'.join(f'freeze_start:{a}\nfreeze_end:{b}' for a, b in segments)
     findings = parse_temporal_output(stderr, 500)
     assert [f['severity'] for f in findings] == expected
+
+
+@pytest.mark.parametrize('text,caption_text,expected', [
+    ('Burnt-in text describing the product and its source in the background throughout the video, directly overlaying the subject', 'Our narration', True),
+    ('Promotional caption text overlay obscures the main content', 'Our narration', True),
+    ('Stylized black/white caption overlays cover the video content', 'Our narration', True),
+    ('Caption overlay obscures content', None, False),
+    ('Caption overlay obscures content', '', False),
+    ('Caption letters physically cropped by the frame edge', 'Our narration', False),
+    ('Subtitles cut off at the edge', 'Our narration', False),
+    ('Illegible overlay text', 'Our narration', False),
+    ('Unreadable captions', 'Our narration', False),
+    ('Third-party watermark caption overlay', 'Our narration', False),
+    ('Logo overlay covering content', 'Our narration', False),
+    ('Caption overlay with nudity', 'Our narration', False),
+    ('Caption overlay with gore', 'Our narration', False),
+    ('Black frames behind caption overlay', 'Our narration', False),
+    ('Misleading income claims in caption overlay', 'Our narration', False),
+])
+def test_narration_caption_safety_net(text, caption_text, expected, tmp_path, caplog):
+    claude = Mock()
+    claude.vision.return_value = ({
+        'pass': False, 'issues': [{'severity': 'blocking', 'text': text}],
+        'thumbnail_ok': True, 'frames_ok': False, 'frames_without_caption': 0}, {})
+    with patch('pipeline.qa.probe', return_value={'duration': 20, 'has_audio': True, 'width': 1920, 'height': 1080}), \
+         patch('pipeline.qa.temporal_findings', return_value=[]), \
+         patch('pipeline.qa.grab_frame', return_value=tmp_path / 'frame.jpg'), caplog.at_level('INFO'):
+        result = run_qa(claude, tmp_path / 'video.mp4', None, 20, 'id', tmp_path, caption_text=caption_text)
+    assert result['pass'] is expected
+    assert (result['issues'][0]['severity'] == 'minor') is expected
+    assert ('qa caption downgrade to minor:' in caplog.text) is expected
+    if caption_text:
+        prompt = claude.vision.call_args.args[1]
+        assert caption_text in prompt
+        assert 'physically cropped by the frame edge' in prompt
