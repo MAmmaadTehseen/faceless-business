@@ -295,6 +295,15 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   operation owns them. Setup, recovery, settings and exact commands: `docs/stockpile.md`.
   Dashboard Stockpile card is read-only and uses cached Drive quota; no Vercel Drive secret.
 
+## Bank upload recovery (2026-11-13)
+- `pipeline/drive.py` builds its client with a 300 s socket timeout (library default 60 s
+  caused `TimeoutError` after a 502 on run 43221170818) and `next_chunk_retrying` resumes the
+  same resumable session on transient errors (timeouts, connection/TLS/HTTP errors, 5xx/429),
+  up to 10 attempts / 15 min per file. Tests are mocked only.
+- Upload-only retry without re-producing: `gh workflow run bank.yml -f resume_id=<content-id>
+  -f artifact_run_id=<failed-run-id>` restores `bank-<channel>-<run id>` and runs
+  `python -m pipeline.stockpile --resume <id>`; details in `docs/stockpile.md`.
+
 ## Caption-aware QA (2026-11-12)
 - All video QA callers supply narration as caption_text. Matching burned-in words are
   expected captions; only physically frame-cropped letters should be flagged as captions.

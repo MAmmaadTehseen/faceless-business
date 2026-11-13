@@ -1,0 +1,13 @@
+# Owner recordings, model weights, environments and renders never enter git.
+input/
+results/
+work/
+.venv*
+*.wav
+*.m4a
+*.mp3
+*.mp4
+*.pt
+*.pth
+*.safetensors
+__pycache__/

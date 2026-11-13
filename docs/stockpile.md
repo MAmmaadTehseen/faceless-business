@@ -160,13 +160,27 @@ A killed runner leaves its settings lock intentionally fail-closed. **After conf
 matching runner/process remains active**, the owner can remove just that lock row from
 settings and retry. Do not remove a live worker's lock.
 
-If production finished but banking failed, download its retained workflow artifact and
-restore it into `out/<content-id>/`. With the channel's existing content rows intact, the
-owner can complete storage without repeating models or rendering:
+If production finished but only the Drive upload failed (log line
+`bank production failed (...); checkpoints retained`), retry storage alone from the run's
+three-day `bank-<channel>-<run id>` artifact. No script, rendering or QA is repeated:
 
 ```bash
-.venv/bin/python -c 'from pipeline.db import DB; from pipeline.common import Channel; from pipeline.stockpile import bank_bundle; bank_bundle(DB(), "<content-id>", Channel("futurework"))'
+gh workflow run bank.yml -f resume_id=<content-id> -f artifact_run_id=<failed-run-id>
 ```
+
+Only the matrix job of the channel named by the content id runs; it restores the artifact
+into `out/<content-id>/` and runs `python -m pipeline.stockpile --resume <content-id>`,
+which reuses existing content rows, QA results and `bank-article.json`. An already banked
+id is a no-op. Local equivalent after restoring the folder yourself:
+
+```bash
+LLM_PROVIDER=lunaroute .venv/bin/python -m pipeline.stockpile --resume <content-id>
+```
+
+Drive transport: the client uses a 300 s socket timeout and every resumable chunk is
+retried on timeouts, connection resets, TLS/HTTP errors and 5xx/429 responses with
+exponential backoff (up to 10 attempts or 15 minutes per file), always resuming the same
+upload session. 4xx errors are never retried.
 
 The saved `bank-article.json` avoids another article call. If it is absent, article generation
 is still necessary. Missing/failed Shorts are omitted from the release manifest and do not block banking.

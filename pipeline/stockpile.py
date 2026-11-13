@@ -143,3 +143,54 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
     db.set_setting('stockpile_drive_space', {**drive.space(), 'checked_at': now_iso()})
     # Keep local checkpoints for recovery. No local deletion is needed on ephemeral runners.
     return metadata
+
+
+def resume_bank(db, content_id, channel_key=None):
+    """Finish storage for an already produced bundle whose Drive upload failed.
+
+    Uses the restored out/<content-id>/ checkpoints and existing content rows; no production,
+    rendering or script calls. Article preparation is reused from bank-article.json when present.
+    """
+    from .common import Channel, Claude
+    key = channel_key or content_id.split('-20')[0]
+    channel = Channel(key)
+    if not content_id.startswith(channel.key + '-'):
+        raise ValueError('content id does not belong to channel ' + channel.key)
+    row = db.one('content', {'id': content_id})
+    if not row:
+        raise ValueError('Unknown content id')
+    if notes(row).get('stockpile'):
+        log.info('%s is already banked; nothing to do', content_id)
+        return notes(row)['stockpile']
+    claude = Claude(db, channel=channel)
+    if getattr(claude, 'provider', None) != 'lunaroute':
+        raise ValueError('Bank resume requires LLM_PROVIDER=lunaroute')
+    return bank_bundle(db, content_id, channel, claude=claude)
+
+
+def main():
+    import argparse
+    from .db import DB
+    ap = argparse.ArgumentParser(description='Retry Drive storage for a produced bundle (no production).')
+    ap.add_argument('--resume', required=True, help='content id with checkpoints restored into out/<id>/')
+    ap.add_argument('--channel', default=None)
+    args = ap.parse_args()
+    db = DB()
+    if db.setting('pipeline_paused', False):
+        log.warning('pipeline paused from dashboard; exiting')
+        return
+    run = db.insert('runs', {'workflow': 'bank', 'channel': args.channel or args.resume.split('-20')[0], 'status': 'running'})
+    try:
+        result = resume_bank(db, args.resume, args.channel)
+    except Exception as exc:
+        db.update('runs', {'id': run['id']}, {'status': 'failed', 'finished_at': now_iso(),
+                                             'log': json.dumps({'errors': ['Bank resume failed: ' + type(exc).__name__]})})
+        log.error('bank resume failed (%s); checkpoints retained', type(exc).__name__)
+        raise SystemExit(1)
+    db.update('runs', {'id': run['id']}, {'status': 'ok', 'finished_at': now_iso(),
+                                         'log': json.dumps({'results': [{'content_id': args.resume, 'stockpile': result}]})[:20000]})
+    print(json.dumps({'content_id': args.resume, 'folder_id': result.get('folder_id')}))
+
+
+if __name__ == '__main__':
+    main()

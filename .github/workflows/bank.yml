@@ -13,8 +13,17 @@ on:
         description: Long-video bundles per channel (1-10)
         type: number
         default: 1
+      resume_id:
+        description: Content id of a produced bundle whose Drive upload failed (retries storage only)
+        type: string
+        default: ''
+      artifact_run_id:
+        description: Run id whose bank-<channel>-<run id> artifact holds that bundle's checkpoints
+        type: string
+        default: ''
 permissions:
   contents: read
+  actions: read
 # Serializing workflow runs makes max-parallel a global bound, not just a per-run bound.
 concurrency:
   group: stockpile-global
@@ -56,36 +65,65 @@ jobs:
           EVENT: ${{ github.event_name }}
           REQUESTED: ${{ inputs.channel }}
           CHANNEL: ${{ matrix.channel }}
+          RESUME_ID: ${{ inputs.resume_id }}
         run: |
           ENABLED=false
           if [ "$EVENT" = schedule ]; then
             ENABLED=$(python -m pipeline.bank_gate | tail -1)
+          elif [ -n "$RESUME_ID" ]; then
+            # A storage retry runs only in the job of the channel that owns the content id.
+            [[ "$RESUME_ID" =~ ^[a-z]+-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$ ]] || { echo "Invalid resume_id" >&2; exit 1; }
+            if [[ "$RESUME_ID" == "$CHANNEL-"* ]]; then ENABLED=true; fi
           elif [ "$REQUESTED" = all ] || [ "$REQUESTED" = "$CHANNEL" ]; then
             ENABLED=true
           fi
           echo "enabled=$ENABLED" >> "$GITHUB_OUTPUT"
       - name: Install rendering dependencies
-        if: steps.gate.outputs.enabled == 'true'
+        if: steps.gate.outputs.enabled == 'true' && inputs.resume_id == ''
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core espeak-ng
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install kokoro soundfile
       - uses: actions/cache@v4
-        if: steps.gate.outputs.enabled == 'true'
+        if: steps.gate.outputs.enabled == 'true' && inputs.resume_id == ''
         with:
           path: .hf
           key: kokoro-82m-v1
+      - name: Restore bundle checkpoints
+        if: steps.gate.outputs.enabled == 'true' && inputs.resume_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESUME_ID: ${{ inputs.resume_id }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          CHANNEL: ${{ matrix.channel }}
+        run: |
+          [[ "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]] || { echo "artifact_run_id is required and must be numeric for resume" >&2; exit 1; }
+          mkdir -p restore
+          gh run download "$ARTIFACT_RUN_ID" -n "bank-$CHANNEL-$ARTIFACT_RUN_ID" -D restore
+          # upload-artifact strips the common prefix: out/<id>/ files may land at restore/<id>/ or restore/.
+          mkdir -p out
+          if [ -d "restore/out/$RESUME_ID" ]; then mv -- "restore/out/$RESUME_ID" "out/$RESUME_ID"
+          elif [ -d "restore/$RESUME_ID" ]; then mv -- "restore/$RESUME_ID" "out/$RESUME_ID"
+          elif [ -f "restore/$RESUME_ID.mp4" ]; then mv -- restore "out/$RESUME_ID"
+          else echo "artifact does not contain $RESUME_ID" >&2; exit 1; fi
+          ls -la "out/$RESUME_ID" | head -40
       - name: Bank finished bundles
-        if: steps.gate.outputs.enabled == 'true'
+        if: steps.gate.outputs.enabled == 'true' && inputs.resume_id == ''
         env:
           CHANNEL: ${{ matrix.channel }}
           COUNT: ${{ inputs.count || 1 }}
         run: |
           python -c 'import os; n=int(os.environ["COUNT"]); assert 1 <= n <= 10, "count must be 1-10"'
           python -m pipeline.run_all --bank --channel "$CHANNEL" --count "$COUNT"
+      - name: Retry Drive storage for a produced bundle
+        if: steps.gate.outputs.enabled == 'true' && inputs.resume_id != ''
+        env:
+          CHANNEL: ${{ matrix.channel }}
+          RESUME_ID: ${{ inputs.resume_id }}
+        run: python -m pipeline.stockpile --resume "$RESUME_ID" --channel "$CHANNEL"
       - name: Retain recovery checkpoints
-        if: always() && steps.gate.outputs.enabled == 'true'
+        if: always() && steps.gate.outputs.enabled == 'true' && inputs.resume_id == ''
         uses: actions/upload-artifact@v4
         with:
           name: bank-${{ matrix.channel }}-${{ github.run_id }}

@@ -422,3 +422,74 @@ def test_article_failure_banks_and_releases_all_passing_media(tmp_path, monkeypa
     assert stockpile.notes(db.one('content', {'id': cid}))['stockpile']['article_failed'] is True
     assert release_banked.release(db, Channel(), drive=drive) == 0
     assert upload.call_count == 5
+
+
+def test_drive_client_uses_long_socket_timeout(monkeypatch):
+    import pipeline.drive as drive_module
+    captured = {}
+    monkeypatch.setenv('GDRIVE_REFRESH_TOKEN', 'r')
+    monkeypatch.setenv('YT_CLIENT_ID', 'c')
+    monkeypatch.setenv('YT_CLIENT_SECRET', 's')
+    import httplib2
+    import googleapiclient.discovery
+    real_http = httplib2.Http
+    monkeypatch.setattr(httplib2, 'Http', lambda timeout=None: captured.setdefault('timeout', timeout) and real_http(timeout=timeout))
+    monkeypatch.setattr(googleapiclient.discovery, 'build', lambda *a, **k: (captured.setdefault('build', k), 'svc')[1])
+    assert Drive().service == 'svc'
+    assert captured['timeout'] == drive_module.SOCKET_TIMEOUT >= 300
+    assert 'http' in captured['build'] and 'credentials' not in captured['build']
+
+
+def test_upload_resumes_same_request_after_transient_errors(tmp_path, monkeypatch):
+    from googleapiclient.errors import HttpError
+    from pipeline.drive import next_chunk_retrying
+    import httplib2
+    sleeps = []
+    request = Mock()
+    five = HttpError(Mock(status=503), b'busy')
+    request.next_chunk.side_effect = [TimeoutError(), ConnectionResetError(), five, httplib2.HttpLib2Error('x'),
+                                      (None, None), (None, {'id': 'f'})]
+    assert next_chunk_retrying(request, 'upload', sleep=sleeps.append) == {'id': 'f'}
+    assert request.next_chunk.call_count == 6 and len(sleeps) == 4 and sleeps == sorted(sleeps)
+    # 4xx and unrelated errors are never retried.
+    request = Mock()
+    request.next_chunk.side_effect = HttpError(Mock(status=403), b'denied')
+    with pytest.raises(HttpError):
+        next_chunk_retrying(request, 'upload', sleep=sleeps.append)
+    assert request.next_chunk.call_count == 1
+    request = Mock()
+    request.next_chunk.side_effect = TimeoutError()
+    with pytest.raises(TimeoutError):
+        next_chunk_retrying(request, 'upload', sleep=lambda s: None)
+    assert request.next_chunk.call_count == 10
+    # Downloads finish on done=True after a retry.
+    request = Mock()
+    request.next_chunk.side_effect = [(None, False), TimeoutError(), (None, True)]
+    assert next_chunk_retrying(request, 'download', sleep=lambda s: None) is True
+
+
+def test_bank_resume_reuses_checkpoints_without_production(tmp_path, monkeypatch):
+    db, cid, drive = bundle(tmp_path, monkeypatch)
+    monkeypatch.setattr(stockpile, 'Drive', lambda: drive)
+    monkeypatch.setattr(stockpile, 'Claude', None, raising=False)
+    import pipeline.common as common
+    monkeypatch.setattr(common, 'Claude', lambda db, channel=None: Mock(provider='lunaroute'))
+    metadata = stockpile.resume_bank(db, cid)
+    assert metadata['folder_id'].endswith('/' + cid) and db.one('content', {'id': cid})['status'] == 'banked'
+    assert not db.select('publications', {}) and not db.select('articles', {})
+    # Second resume is a no-op on the checkpoint.
+    assert stockpile.resume_bank(db, cid) == metadata
+    with pytest.raises(ValueError):
+        stockpile.resume_bank(db, cid, 'tradewinds')
+
+
+def test_bank_workflow_resume_inputs():
+    import yaml
+    root = Path(__file__).resolve().parents[1]
+    workflow = yaml.load((root / '.github/workflows/bank.yml').read_text(), Loader=yaml.BaseLoader)
+    inputs = workflow[True]['workflow_dispatch']['inputs'] if True in workflow else workflow['on']['workflow_dispatch']['inputs']
+    assert {'resume_id', 'artifact_run_id'} <= set(inputs)
+    steps = {s.get('name'): s for s in workflow['jobs']['bank']['steps']}
+    assert "inputs.resume_id != ''" in steps['Retry Drive storage for a produced bundle']['if']
+    assert "inputs.resume_id == ''" in steps['Bank finished bundles']['if']
+    assert 'pipeline.stockpile --resume' in steps['Retry Drive storage for a produced bundle']['run']
