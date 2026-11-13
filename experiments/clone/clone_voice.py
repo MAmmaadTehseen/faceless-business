@@ -22,7 +22,14 @@ def sentences(text):
             if cut < 60: cut = p.rfind(" ", 0, 280)
             out.append(p[:cut + 1].strip()); p = p[cut + 1:].strip()
         if p: out.append(p)
-    return out
+    # Chatterbox has ~45 s of fixed CPU cost per generate() call on this laptop, so merge short sentences
+    # into chunks of up to ~220 characters instead of one call per sentence.
+    merged, cur = [], ""
+    for s in out:
+        if cur and len(cur) + 1 + len(s) > 220: merged.append(cur); cur = s
+        else: cur = (cur + " " + s).strip()
+    if cur: merged.append(cur)
+    return merged
 
 def chatterbox(ref, text, exaggeration, cfg, seed):
     from chatterbox.tts import ChatterboxTTS

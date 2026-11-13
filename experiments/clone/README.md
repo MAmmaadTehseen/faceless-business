@@ -55,3 +55,55 @@ cd experiments/clone
 | OpenCV + bundled Haar cascade | Apache-2.0 | frame IO, ROI suggestion | yes |
 | ffmpeg (system) | LGPL/GPL build dependent | mux/compose | yes (tool use) |
 | NOT used | — | InsightFace, DWPose, S3FD, GFPGAN, CodeFormer, Wav2Lip, F5-TTS, LatentSync | not cleared |
+
+## Measurements (2026-11-13, synthetic placeholder, **under heavy concurrent load**)
+
+The owner's recordings had not arrived, so the probes used the research-only fixtures from `experiments/avatar`
+(Kokoro `voice/ref.wav` as the voice reference; the anonymous `idle_loop.mp4` face, 512×512). Those outputs are
+**not publishable** (no likeness rights) and live only in `work/`. During every measurement another session was
+running ffmpeg + the recap batch at ~600 % CPU (load average 11–14 on a 4-core i7-1185G7), so the numbers below
+are pessimistic; the clean figures from `experiments/avatar/REPORT.md` (same models, idle laptop) are shown beside them.
+
+| step | this run (loaded laptop) | earlier clean run | notes |
+|---|---|---|---|
+| Chatterbox, 77-word excerpt → 25.7 s audio | 640 s wall, RTF 24.9, **2.4 s audio per CPU minute**, 6.7 GiB RSS | RTF 7.0 (≈8.6 s audio/min) | ≈45 s fixed cost per `generate()` call; sentences are now merged into ≤220-char chunks (6 calls for the 165-word sample script instead of 12) |
+| faster-whisper-small word timings, 25.7 s | 11 s | — | 76/77 script words recognised; peak 0.90, no clipping, RMS −21.8 dBFS |
+| MuseTalk 376-px ROI, batch 1 | 11.1 s/frame = **277 min per output minute** | 4.1 s/frame (≈104 min/min) | 7.3 GiB RSS |
+| MuseTalk, batch 8 | 8.9 s/frame = 224 min per output minute | — | batching helps ~20 % |
+| pose encode (VAE) for 22 source frames | 147–158 s | 50 s | once per source clip |
+
+Projection for one 10-minute long video with the presenter visible throughout: 17–46 h of CPU for the face alone.
+That is not viable. With the **hybrid layout** (presenter full-screen for an 8 s hook and 5 s close, corner for
+about 40 % of the middle, stock otherwise) a 10-minute video needs ≈4.2 min of lip-synced frames: **≈7 h loaded /
+≈4.5 h clean**, plus Chatterbox ≈70–170 min for the narration. A 60-second Short needs ≈1–1.5 h face + ≈7–25 min voice.
+Per week (9 longs + 40 Shorts) that is roughly 80–100 h of laptop CPU: only feasible if the laptop renders
+overnight and the pipeline keeps the presenter to hook/close plus a few corner segments, or if renders move to a
+GPU box.
+
+## Quality verdict (placeholder fixture; owner footage will differ)
+
+- **Lip sync:** the mouth does open and close with the speech (see `work/probe_b8_contact.png`), but the regenerated
+  lower face is visibly softer than the eyes and forehead: MuseTalk works at 256×256, so anything above ~300 px of
+  face width is an upscale. At 1080×1920 full-screen with a 600–700 px face this blur will be obvious; in a
+  **420 px corner box** the face is ~250 px wide and the generated region is at native resolution.
+- **Voice:** I cannot judge timbre by ear. The ASR recovered 76/77 words, levels are clean, no clipping. Chatterbox
+  paces each chunk itself, so captions must come from its output (`.srt`), not from the script timing. The owner
+  must do the listening gate (headphones + phone speaker; names, numbers, chunk joins) before any use.
+- **Head motion:** the source clip loops with a 12-frame dissolve at the wrap; blinks and head motion repeat with
+  the clip length, so a 30 s recording gives a 30 s cycle. Longer, calmer face footage looks better.
+
+## Recommendation
+
+1. **Voice only** is the first thing worth using: it costs no video rendering, the licence is clean (MIT), and if
+   the owner's listening gate passes it replaces Kokoro for one channel at a time (YouTube's distinct-channel rule
+   still needs different voices per channel, so clone one channel only, or keep Kokoro on the other two).
+2. **Corner presenter** for the hook and a few middle segments is the only face use that is both visually
+   defensible and affordable on this laptop (~1 h per Short, ~5 h per long overnight).
+3. **Full-screen presenter**: not with MuseTalk on CPU at 1080p. If the owner wants full-screen, record the real
+   hook and close on camera (the earlier report's advice) and let the clone only carry the voice.
+4. Do not integrate into `pipeline/` until the owner has reviewed `results/sample_60s.mp4` made from their own
+   recordings; the commands above produce it once `input/` is populated.
+
+## Files
+`common.py` (paths, disk floor, WAV cleanup, SRT writer) · `clone_voice.py` · `pick_roi.py` · `render_face.py` · `compose.py` · `run.sh` ·
+`work/` (probes, gitignored) · `results/` (final sample, gitignored) · `input/sample_script.txt` (Future Work excerpt used for the sample).
