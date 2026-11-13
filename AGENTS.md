@@ -45,7 +45,7 @@ Add `-f rerender=true` to rebuild the long video and Shorts from saved scripts/s
 - Claude structured-output schemas: no `minItems` > 1, no `maxItems`; put limits in the prompt.
 - YouTube Analytics API has no impressions/CTR; the `ctr` column holds averageViewPercentage and the
   optimizer compares views/day to the channel median.
-- Uploads set `containsSyntheticMedia: true` and stay private + scheduled until Google's API compliance audit passes.
+- Uploads set `containsSyntheticMedia: true`. Google lifted the forced-private rule for API uploads on 2026-11-02 and closed our compliance case on 2026-11-13 (no audit needed, quota unchanged). `publish_privacy` is `public`: uploads go up private with `publishAt` and YouTube makes them public at the scheduled slot.
 - Titles: `BANNED_TITLE` regex in `pipeline/script.py` blocks income/medical/"while you sleep" claims. Keep it.
 - Two placeholder Shorts already on YouTube are intentionally kept (status `killed` in DB). Do not delete.
 - Budget guard stops at the `monthly_budget_usd` setting (default $100, set on the Automation page) (`CostGuard` in `pipeline/common.py`). Every Claude call logs to `costs`.
