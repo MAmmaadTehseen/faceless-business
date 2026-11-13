@@ -318,3 +318,13 @@ def test_legacy_narration_reuse(tmp_path, monkeypatch):
     monkeypatch.setattr(worker, "probe", lambda _: {"duration": 2})
     voice = worker.saved_voice(tmp_path)
     assert voice["duration"] == 2 and voice["timings"][0]["start"] == 0
+
+
+def test_on_screen_captions_are_narration_word_groups(tmp_path):
+    from pipeline.recap import worker
+    timings = [{"start": 0, "end": 2, "words": [{"text": w, "start": i * 0.3, "end": i * 0.3 + 0.25} for i, w in enumerate("the gym sells a body".split())]}]
+    assert worker.caption_filter(tmp_path, timings, True).startswith("subtitles=")
+    text = (tmp_path / "on_screen.srt").read_text()
+    assert "THE GYM SELLS" in text and "the gym" not in text
+    assert all(len(line.split()) <= 3 for line in text.splitlines() if line and not line[0].isdigit())
+    assert worker.caption_filter(tmp_path, [{"start": 0, "end": 2}], False) == "null"

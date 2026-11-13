@@ -1,9 +1,38 @@
 {
-  "key": "filmreview", "name": "Frame and Argument", "handle": "frameandargument",
+  "key": "filmreview",
+  "name": "Frame and Argument",
+  "handle": "frameandargument",
   "tagline": "An opinion, supported by the frame.",
-  "niche_keywords": ["film criticism", "cinematography", "movie review"],
-  "voice": {"kokoro": "bm_daniel", "rate": "+0%"},
-  "style": {"accent": [196, 181, 253], "bg": [15, 23, 42]},
-  "schedule": {"days": ["Tue", "Fri", "Sun"], "utc_hour": 17},
-  "shorts_hour_utc": 19, "shorts_per_long": 4, "category_id": "1"
+  "niche_keywords": [
+    "film criticism",
+    "cinematography",
+    "movie review"
+  ],
+  "voice": {
+    "kokoro": "am_fenrir",
+    "rate": "+8%"
+  },
+  "style": {
+    "accent": [
+      196,
+      181,
+      253
+    ],
+    "bg": [
+      15,
+      23,
+      42
+    ]
+  },
+  "schedule": {
+    "days": [
+      "Tue",
+      "Fri",
+      "Sun"
+    ],
+    "utc_hour": 17
+  },
+  "shorts_hour_utc": 19,
+  "shorts_per_long": 4,
+  "category_id": "1"
 }

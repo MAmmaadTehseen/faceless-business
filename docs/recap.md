@@ -1,7 +1,8 @@
 # Local film reviews
 
 This opt-in tool accepts a movie on your laptop and produces an original narrated
-review and four distinct critical Shorts. **Rights basis is the owner's
+cinematic recap (hook, the story told in present tense, a short verdict) and four
+hook-driven Shorts, with our own narration burned in as upper-case word groups. **Rights basis is the owner's
 responsibility.** Selecting a basis does not establish copyright permission;
 check the licence covers excerpts, adaptations, distribution and any audio bed.
 
@@ -47,11 +48,15 @@ The film transcript stays local except as evidence sent to Claude along with
 sampled scene frames to ground criticism and scene selection.
 
 The long review is 16:9 and 5–9 minutes. Shorts are 9:16 and below 60 seconds.
-Whole-frame letterboxing preserves composition. No source audio is included
-unless the explicit low bed setting is selected; the low bed is the original
-source audio mixed underneath narration. No burned-in text, flips, speed/pitch
-changes or detection-evasion effects are used. Captions contain the new narration
-only. All five pieces undergo existing probe, temporal and vision checks; vision
+Both reframes keep the upper 80% of the picture so subtitles burned into a source
+stay out of frame; the long video is then letterboxed, Shorts are centre-cropped
+to fill 9:16. No source audio is included unless the explicit low bed setting is
+selected; the low bed is the original source audio mixed underneath narration.
+The only burned-in text is our own narration (three-word upper-case groups, under
+1.6 s each, `on_screen.srt`); the film's own text is never burned in. No flips,
+speed/pitch changes or detection-evasion effects are used. The YouTube caption
+track (`captions.srt`) contains the new narration only. The voice is Kokoro
+`am_fenrir` at +8% (set in `channels/filmreview/local.json`). All five pieces undergo existing probe, temporal and vision checks; vision
 failure blocks approval. Duration violations stop generation for regeneration.
 
 Review every video, its script and QA, edit title/description, then save, approve
@@ -60,6 +65,52 @@ Uploaded pieces are immutable. Upload acts only on approved, QA-passed pieces
 with a rights record. Upload the long review before its Shorts. A private upload
 with publishAt will become public at its assigned calendar time: private here is
 the initial API privacy, not a promise of indefinite privacy.
+
+## Running from the terminal (no dashboard)
+
+Set the provider so the owner's Claude credits are not spent, use the local SQLite
+database, and force Kokoro. Nothing in these commands uploads.
+
+```bash
+export RECAP_LOCAL_DB=1 LLM_PROVIDER=lunaroute TTS_BACKEND=kokoro
+# single film: create, then generate
+printf '%s' '{"path":"/abs/film.mkv","title":"Film","year":2026,"rights":{"basis":"own work"}}' \
+  | .venv/bin/python -m pipeline.recap.worker create          # prints state with "id"
+.venv/bin/python -m pipeline.recap.worker generate --id <id>   # transcribe, script, voice, render, QA
+.venv/bin/python -m pipeline.recap.worker rerender --id <id>   # re-render from saved script and narration
+.venv/bin/python -m pipeline.recap.worker regenerate --id <id> --piece short2
+```
+
+Outputs: `out/recap/<id>/{long,short1..4}/video.mp4`, `thumbnail.jpg`, `captions.srt`,
+`on_screen.srt`, `shots.json` (which film scene is on screen when, used to map QA
+findings to scenes) and `state.json` (status, QA per piece). Workers log to stdout
+before the final JSON line; take the last line when parsing.
+
+## Batch mode (folder of films)
+
+`pipeline.recap.batch` scans the top level of one folder (subfolders are ignored),
+registers each video in `recap_films`, and processes approved films one at a time.
+Title and year come from the filename (`Title 2026 ... .mkv`); files without a
+year are listed as `needs rights` and never processed. Duplicates are detected by a
+content hash (size plus three sampled megabytes) and by title+year or near-identical
+duration; `possible duplicate` rows wait for confirm/skip. Rights come from a
+`<file>.rights.json` sidecar, a `rights.json` sheet keyed by filename in the folder,
+or the per-film edit below. Re-running the batch never redoes a film whose project
+reached review (`already processed`); a failed film is retried only after `retry`.
+
+```bash
+export RECAP_LOCAL_DB=1 LLM_PROVIDER=lunaroute TTS_BACKEND=kokoro
+.venv/bin/python -m pipeline.recap.batch --folder ~/Videos                 # scan only, prints JSON
+printf '%s' '{"id":"<film id>","rights":{"basis":"own work"}}' \
+  | .venv/bin/python -m pipeline.recap.batch --folder ~/Videos --edit     # set rights for one film
+.venv/bin/python -m pipeline.recap.batch --folder ~/Videos --approve      # approve all "new" films and run
+.venv/bin/python -m pipeline.recap.batch --folder ~/Videos --run          # resume an approved batch
+printf '%s' '{"id":"<film id>","retry":true}' | .venv/bin/python -m pipeline.recap.batch --folder ~/Videos --edit
+```
+
+Edit decisions: `{"decision":"confirm"}` processes a possible duplicate, `{"decision":"skip"}`
+skips it. A batch holds one folder-wide lock, so two batches never run at once.
+The dashboard `/recap` page drives the same commands.
 
 ## Dedicated channel token (owner action)
 

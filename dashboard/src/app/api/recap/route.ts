@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     }
     const state = JSON.parse(await fs.readFile(path.join(directory, "state.json"), "utf8"));
     delete state.source;
-    try { Object.assign(state, JSON.parse(await worker(["spend", "--id", state.id]))); }
+    try { Object.assign(state, JSON.parse((await worker(["spend", "--id", state.id])).trim().split("\n").at(-1)!)); }
     catch { state.spend_usd = null; }
     state.rights = JSON.parse(await fs.readFile(path.join(directory, "rights.json"), "utf8"));
     return NextResponse.json(state, { headers: { "Cache-Control": "no-store" } });

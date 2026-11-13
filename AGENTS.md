@@ -299,7 +299,10 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
 - `pipeline/drive.py` builds its client with a 300 s socket timeout (library default 60 s
   caused `TimeoutError` after a 502 on run 43221170818) and `next_chunk_retrying` resumes the
   same resumable session on transient errors (timeouts, connection/TLS/HTTP errors, 5xx/429),
-  up to 10 attempts / 15 min per file. Tests are mocked only.
+  up to 10 attempts / 15 min per file. httplib2 must not treat 308 (Resume Incomplete) as a
+  redirect (`plain_http`), or every upload fails with RedirectMissingLocation. Tests are mocked only.
+- After exhausted article preparation, `bank_article_failed: true` is written to the long row's
+  `qa_notes`; later bank/resume attempts skip the article instead of paying ~40 min again.
 - Upload-only retry without re-producing: `gh workflow run bank.yml -f resume_id=<content-id>
   -f artifact_run_id=<failed-run-id>` restores `bank-<channel>-<run id>` and runs
   `python -m pipeline.stockpile --resume <id>`; details in `docs/stockpile.md`.

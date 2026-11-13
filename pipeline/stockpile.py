@@ -98,6 +98,9 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
         try:
             if cached.is_file():
                 article = json.loads(cached.read_text())
+            elif notes(root).get('bank_article_failed'):
+                # A storage retry must not pay for the article again after exhausted attempts.
+                raise RuntimeError('article preparation previously exhausted')
             else:
                 # write_article owns validation retries; exhausted retries are nonfatal here.
                 article = write_article(db, content_id, claude=claude, prepare_only=True)
@@ -105,6 +108,9 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
         except Exception as exc:
             article = None
             article_failed = True
+            db.update('content', {'id': content_id}, {'qa_notes': json.dumps({**notes(root), 'bank_article_failed': True})})
+            root = db.one('content', {'id': content_id})
+            rows[0] = root
             log.warning('Stockpile article preparation failed (%s); banking passing media without article',
                         type(exc).__name__)
     files = {}

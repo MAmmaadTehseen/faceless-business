@@ -32,6 +32,14 @@ def transient(exc):
     return isinstance(exc, (TimeoutError, socket.timeout, ConnectionError, ssl.SSLError, http.client.HTTPException))
 
 
+def plain_http():
+    """httplib2 client with a long timeout; 308 is 'Resume Incomplete' for uploads, not a redirect."""
+    import httplib2
+    http = httplib2.Http(timeout=SOCKET_TIMEOUT)
+    http.redirect_codes = http.redirect_codes - {308}
+    return http
+
+
 def next_chunk_retrying(request, label, sleep=time.sleep):
     """Drive a MediaIoBaseUpload/Download to completion, resuming after transient failures.
 
@@ -83,7 +91,7 @@ class Drive:
             credentials = Credentials(None, refresh_token=values[0], client_id=values[1], client_secret=values[2],
                                       token_uri='https://oauth2.googleapis.com/token', scopes=[SCOPE])
             # Long socket timeout: 8 MiB chunks from a busy runner regularly exceed the 60 s default.
-            http = AuthorizedHttp(credentials, http=httplib2.Http(timeout=SOCKET_TIMEOUT))
+            http = AuthorizedHttp(credentials, http=plain_http())
             service = build('drive', 'v3', http=http, cache_discovery=False)
         self.service = service
 

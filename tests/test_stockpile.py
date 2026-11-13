@@ -437,6 +437,7 @@ def test_drive_client_uses_long_socket_timeout(monkeypatch):
     monkeypatch.setattr(googleapiclient.discovery, 'build', lambda *a, **k: (captured.setdefault('build', k), 'svc')[1])
     assert Drive().service == 'svc'
     assert captured['timeout'] == drive_module.SOCKET_TIMEOUT >= 300
+    assert 308 not in drive_module.plain_http().redirect_codes
     assert 'http' in captured['build'] and 'credentials' not in captured['build']
 
 
@@ -493,3 +494,22 @@ def test_bank_workflow_resume_inputs():
     assert "inputs.resume_id != ''" in steps['Retry Drive storage for a produced bundle']['if']
     assert "inputs.resume_id == ''" in steps['Bank finished bundles']['if']
     assert 'pipeline.stockpile --resume' in steps['Retry Drive storage for a produced bundle']['run']
+
+
+def test_article_failure_marker_skips_second_attempt(tmp_path, monkeypatch):
+    db, cid, drive = bundle(tmp_path, monkeypatch)
+    (tmp_path / cid / 'bank-article.json').unlink()
+    calls = []
+    import pipeline.article as article
+    def boom(*a, **k):
+        calls.append(1)
+        raise RuntimeError('exhausted')
+    monkeypatch.setattr(article, 'write_article', boom)
+    class Flaky(FakeDrive):
+        def upload(self, path, parent):
+            raise TimeoutError()
+    with pytest.raises(TimeoutError):
+        stockpile.bank_bundle(db, cid, Channel('futurework'), drive=Flaky())
+    assert len(calls) == 1 and stockpile.notes(db.one('content', {'id': cid})).get('bank_article_failed') is True
+    metadata = stockpile.bank_bundle(db, cid, Channel('futurework'), drive=drive)
+    assert len(calls) == 1 and metadata['article_failed'] is True
