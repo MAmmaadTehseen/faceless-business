@@ -51,7 +51,6 @@ NOTES_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["n
 
 def frame_notes(claude, state, scenes):
     """One sentence per sampled frame from the vision model, so the text model gets visual evidence."""
-    from pipeline.thumbnail import grab_frame
     import base64
     work = job_dir(state["id"])
     indices = sorted(set(round(i * (len(scenes)-1) / 11) for i in range(12)))
@@ -60,12 +59,20 @@ def frame_notes(claude, state, scenes):
         raise ValueError("No sampled scenes remain; all are excluded")
     content = []
     for index in indices:
-        image = grab_frame(Path(state["source"]), scenes[index]["start"], work / f"evidence-{index}.jpg")
+        image = work / f"evidence-{index}.jpg"
+        # Small frames keep the request well under gateway limits; this is evidence, not footage.
+        run(["ffmpeg", "-y", "-v", "error", "-ss", f"{scenes[index]['start'] + 0.5:.2f}", "-i", state["source"], "-frames:v", "1", "-vf", "scale=640:-2", "-q:v", "5", str(image)])
         content.append({"type": "text", "text": f"Scene index {index} at {scenes[index]['start']:.0f}s"})
         content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(image.read_bytes()).decode()}})
     content.append({"type": "text", "text": "These are sampled frames from a film. For each scene index write one sentence: setting, what is happening, mood, "
                     "and what the camera is doing. Note any text visible on the picture. No names, no guesses about plot. Return notes for every index."})
-    value, _ = claude.run("recap_frames", content, schema=NOTES_SCHEMA, content_id="filmreview-" + state["id"], max_tokens=3000)
+    try:
+        value, _ = claude.run("recap_frames", content, schema=NOTES_SCHEMA, content_id="filmreview-" + state["id"], max_tokens=3000)
+    except Exception as exc:
+        # Frame notes are optional evidence; the transcript still grounds the script.
+        from pipeline.common import log
+        log.warning("recap frame notes unavailable (%s); writing from the transcript only", type(exc).__name__)
+        return []
     return [n for n in value["notes"] if isinstance(n.get("scene"), int) and n["scene"] in indices]
 
 

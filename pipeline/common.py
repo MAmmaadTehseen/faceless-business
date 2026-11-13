@@ -450,8 +450,9 @@ class Claude:
                 payload = json.loads("\n".join(data))
                 kind = payload.get("type", event)
                 if kind == "error":
-                    # Do not echo gateway content, which can contain request data.
-                    raise requests.ConnectionError("LunaRoute stream error event (no provider fallback)")
+                    # Echo only the error type (e.g. rate_limit_error), never gateway message text.
+                    error_type = str((payload.get("error") or {}).get("type") or "unknown")[:40]
+                    raise requests.ConnectionError(f"LunaRoute stream error event (no provider fallback): {error_type}")
                 if kind == "message_start":
                     message = payload.get("message", {})
                     body.update({k: v for k, v in message.items() if k != "content"})
@@ -523,7 +524,7 @@ class Claude:
                 elif response is None:
                     reason = "connect failure"
                 elif "stream error event" in str(exc):
-                    reason = "stream error event"
+                    reason = "stream error event: " + str(exc).rsplit(": ", 1)[-1]
                 else:
                     reason = "mid-stream disconnect"
                 log.warning("lunaroute %s attempt %d: %s", step, stream_retries + 1, reason)
