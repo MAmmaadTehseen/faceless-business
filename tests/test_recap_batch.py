@@ -52,14 +52,14 @@ def test_rights_resume_failure_and_review(tmp_path,monkeypatch):
     calls=[]
     def runner(work,state,**kw):
         calls.append(state['title'])
-        if state['title']=='film0': raise RuntimeError('fixture failure')
+        if state['title']=='Film0': raise RuntimeError('fixture failure')
         state['status']='review';core.dump(work/'state.json',state)
     assert batch.run_batch(source,db,runner=runner)['films'][0]['status']=='new'
     batch.run_batch(source,db,approve=True,runner=runner)
-    assert calls==['film0','film1']
+    assert calls==['Film0','Film1']
     assert [r['status'] for r in batch.scan(source,db)['films']]==['failed','already processed','needs rights']
     batch.run_batch(source,db,runner=runner)
-    assert calls==['film0','film1']
+    assert calls==['Film0','Film1']
 
 
 def test_restart_uses_saved_project(tmp_path,monkeypatch):

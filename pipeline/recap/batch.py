@@ -21,6 +21,14 @@ def parse_name(name):
     return title, year
 
 
+def display_title(filename, normalized):
+    """Title as written in the filename (dots/underscores as spaces); the casefolded form is only for matching."""
+    stem = Path(filename).stem
+    raw = re.sub(r'[._]+', ' ', stem)
+    match = re.search(r'(?i)\b' + r'\W+'.join(map(re.escape, normalized.split())) + r'\b', raw)
+    return (match[0].strip() if match else normalized).strip() or normalized
+
+
 def fast_hash(source, path, chunk=1024*1024):
     size = source.size(path)
     digest = hashlib.sha256(str(size).encode())
@@ -118,7 +126,7 @@ def run_batch(source, db, approve=False, auto_new=False, runner=None):
                     work = core.job_dir(row['project_id'])
                     state = json.loads((work/'state.json').read_text())
                 else:
-                    state = core.create({'path':str(source.materialize(path)), 'title':row['normalized_title'], 'year':row['year'], 'rights':rights})
+                    state = core.create({'path':str(source.materialize(path)), 'title':display_title(row['filename'], row['normalized_title']), 'year':row['year'], 'rights':rights})
                     row['project_id'] = state['id']
                     db.update('recap_films', {'id':row['id']}, {'project_id':state['id']})
                     work = core.job_dir(state['id'])
@@ -128,8 +136,14 @@ def run_batch(source, db, approve=False, auto_new=False, runner=None):
                     state['batch_resume'] = True
                     runner(work, state, db=db)
                 db.update('recap_films', {'id':row['id']}, {'status':'already processed', 'content_ids':json.dumps(['filmreview-'+state['id']+'-'+p for p in core.PIECES])})
-            except Exception:
+            except Exception as exc:
                 db.update('recap_films', {'id':row['id']}, {'status':'failed'})
+                if row.get('project_id'):
+                    # Leave the project in a resumable error state, as the single worker does.
+                    work = core.job_dir(row['project_id'])
+                    state = json.loads((work/'state.json').read_text())
+                    state.update(status='error', error=str(exc) if isinstance(exc, ValueError) else f"{type(exc).__name__} at {state.get('stage')}; check local dependencies and retry")
+                    core.dump(work/'state.json', state)
         return scan(source, db)
 
 

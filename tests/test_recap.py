@@ -122,9 +122,9 @@ def test_lavfi_end_to_end_mocked_paid_services(video, monkeypatch):
     monkeypatch.setattr(worker, "transcribe", lambda *_: [{"start":0,"end":2,"text":"Fixture dialogue"}])
     claude = Mock()
     generated = {name: {"title":f"A case for scene {index}", "description":"Original film criticism; spoilers.",
-                       "segments":[{"text":("The framing supports a compelling argument. " * (120 if name == "long" else 12)).strip(), "scene":0}]}
+                       "segments":[{"text":("The framing supports a compelling argument. " * (220 if name == "long" else 22)).strip(), "scene":0}]}
                  for index, name in enumerate(core.PIECES)}
-    claude.run.return_value = (generated, 0)
+    claude.run.side_effect = lambda step, *a, **k: ({"notes": [{"scene": 0, "note": "A lit room."}]}, 0) if step == "recap_frames" else (generated, 0)
     claude.vision.return_value = ({"pass":True,"issues":[],"thumbnail_ok":True,"frames_ok":True,"frames_without_caption":3}, 0)
     def fake_voice(item, directory, channel):
         duration = 300 if directory.name == "long" else 2
@@ -143,7 +143,7 @@ def test_lavfi_end_to_end_mocked_paid_services(video, monkeypatch):
         assert result["width"] < result["height"] if name != "long" else result["width"] > result["height"]
         assert (work / name / "captions.srt").read_text().startswith("1\n00:00:00,000 -->")
         assert "Fixture dialogue" not in (work / name / "captions.srt").read_text()
-    assert claude.run.call_count == 1 and claude.vision.call_count == 5
+    assert claude.run.call_count == 2 and claude.vision.call_count == 5  # frame notes + scripts
     # Rebuild one piece without touching the other four approvals or files.
     state["items"]["long"]["approved"] = True
     before = (work / "long" / "video.mp4").stat().st_mtime_ns
@@ -156,7 +156,7 @@ def test_lavfi_end_to_end_mocked_paid_services(video, monkeypatch):
     worker.generate(work, state, only="short2", db=db, claude=claude, rerender=True)
     assert claude.run.call_count == paid_calls
     assert "text still visible" in claude.vision.call_args.args[1]
-    assert "Transcript language:" in claude.run.call_args.args[1][-1]["text"]
+    assert "Transcript language:" in claude.run.call_args.args[1]
     assert "accuracy_check" in claude.run.call_args.kwargs["schema"]["properties"]["short2"]["required"]
 
 

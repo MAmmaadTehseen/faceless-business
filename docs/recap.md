@@ -31,7 +31,8 @@ Do not expose it through a proxy, tunnel or LAN bind. This section uses loopback
 and same-origin checks instead of dashboard login. It rejects forwarded requests
 and foreign origins; LOCAL_RECAP is never sufficient to enable it on Vercel.
 
-The worker uses `faster-whisper` CPU/int8 (`small`; override RECAP_WHISPER_MODEL),
+The worker uses `faster-whisper` CPU/int8 (`small`; override RECAP_WHISPER_MODEL, beam size
+RECAP_WHISPER_BEAM default 2, VAD on; a 107-minute film takes roughly 30–60 minutes on 8 CPU cores),
 ffmpeg scene cuts and offline Kokoro. Initial model downloads require internet
 and disk space. Claude is used only after Generate (or paid Regenerate); local
 validation and estimation do not call it. Supply ANTHROPIC_API_KEY using your

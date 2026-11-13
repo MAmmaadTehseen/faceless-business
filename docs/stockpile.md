@@ -73,7 +73,13 @@ Bank mode refuses placeholders. It runs the normal voice, footage, rendering, lo
 Short QA plus article generation, but makes no YouTube or Meta publications. Failed Shorts remain qa_failed with their QA findings; the long video and every passed
 Short are banked, including a long-only bundle when all children fail. Article text is prepared without publishing it to the hub.
 
-In existing settings storage (Supabase `settings` table), upsert these JSON values:
+Owner-run helper (reads `.env`, writes JSON values, prints values only):
+
+```bash
+.venv/bin/python scripts/bank_mode.py on 2026-11-24
+```
+
+Equivalent manual edit in existing settings storage (Supabase `settings` table):
 
 | key | JSON value | meaning |
 | --- | --- | --- |
