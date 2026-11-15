@@ -1,0 +1,3 @@
+# Only 5 Starship Launches This Year?
+
+Five. That's roughly how many Starship launches NASASpaceFlight expects in all of 2026. For a rocket meant to fly hundreds of times a year, that sounds slow. Here's why it isn't a failure. This year SpaceX switched from Block 2 to the taller Block 3 vehicles, and new hardware means new testing. Flight 14 finally reached orbit and deployed real Starlink satellites. Now Flight 15, with Booster 22 and Ship 42, aims to catch both stages back at the tower in Texas. That's a goal, not a promise. But if it works, the slow year turns into the setup for a fast one, because rockets you catch can fly again sooner. So is five launches a disappointment, or the quiet before the cadence climbs?

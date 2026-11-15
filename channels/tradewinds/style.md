@@ -29,3 +29,16 @@
 - Comment replies: courteous, two sentences, never debate politics, redirect to the economics.
 
 ## Learned adjustments (appended by weekly review; newest last)
+
+### Review 2026-11-15
+- Every upload since Nov 3 sits at zero views with no CTR or AVD, meaning the feed never tested them. Check Shorts distribution and upload settings before retiring any topic; do not conclude Red Sea or Congress content failed on merit.
+- Open on a number, a named object or a stated irony. The strongest openings all do it: 'about four and a half times what it did in February' (265 views), 'one of the world's biggest gas exporters is now buying gas from America' (137 views).
+- Abstract advice openings stall. 'Ignore the ban. Find the exemption.' pulled the weakest top-five CTR, roughly a third of the magnet short's, and only 33 percent retention. Keep the exemption insight but open on the twelve million dollar seizure or the customs form itself.
+- Second-person trace hooks are the best title formula this week: 'Follow one magnet in your own home' drew the highest CTR and near-full watches with likely loops. Book one 'trace something in your own home' short every week; it is the channel's core promise in script form.
+- One quotable number per short, spoken in the first ten seconds. The two most liked shorts lead with figures the viewer can repeat: 342 percent, and 110 versus 95 dollars.
+- Slice each long into at least three shorts with different entry points. The Oct 31 rare earth long produced two top-five shorts, one from the magnet in your home, one from the price floor. Never cut a summary short.
+- Retention benchmark is 70 to 75 percent of a 55 to 61 second short. Script under sixty seconds: the stake by 0:05, who pays by 0:20, the twist by 0:45.
+- Comments sit at zero on all ten uploads. End on a traceable task, not 'what do you think': 'name one gadget in your kitchen with a rare earth magnet', then pin the first good reply.
+- No politician's name in a title, ever. 'Trump Threatens to Double Mexico Tariffs' invites partisan framing the channel stands against. Lead with the money: 'Double Mexico Tariffs: The 800 Billion Dollar Border'.
+- Fact-plus-consequence titles beat method titles. 'Freight up 342 percent. Demand isn't.' states the event. 'Three signals that beat any Red Sea headline' promises a lecture. Keep number-consequence and contrast formulas for shorts.
+- Long-form has no usable signal this week; both longs sit at zero impressions. Keep making longs, but write the three short hooks before the long script so discovery never waits on nine-minute videos.

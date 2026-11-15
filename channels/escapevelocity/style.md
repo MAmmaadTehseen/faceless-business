@@ -32,3 +32,15 @@
 - Comment replies: friendly, factual, two sentences; questions get answers with a source.
 
 ## Learned adjustments (appended by weekly review; newest last)
+
+### Review 2026-11-15
+- Numbers and corrections won the week. All five top shorts open with a hard figure or a myth to bust in line one ("Five.", "Twenty billion dollars sounds like the price", "A thirty million dollar rescue failed"). Make this the default opening move.
+- Contrast titles (formula 5) and number-plus-consequence titles (formula 4) took every top slot. "The rescue didn't doom Swift" and "$20 Billion Isn't the Whole Moon Base Bill" both flip a common belief. Aim for contrast framing on at least half of next week's shorts.
+- Fastest payoff, best retention: the Starship cadence short answered its own question by line three with a concrete reason (Block 2 to Block 3 hardware change) and held 30 seconds of a 48-second script. Pose the tension, resolve it early, then go deeper.
+- The strongest CTR of the batch, 63.9 percent, came from a surprising number stated as a question: "Only 5 Starship Launches This Year?" Number-plus-question beat plain statement titles.
+- Stakes named early also worked: "four astronauts... never leave Earth orbit" pulled 49.5 percent CTR. A specific consequence outperforms schedule talk every time.
+- The most-viewed short (Swift, 620 views) has the weakest retention of the top five, 15 seconds of 54. The hook earned the click but the middle sagged. Front-load the explanation and cut setup lines.
+- Checklist framing is the weakest opening in the batch ("Here's the checklist"). If covering the astronaut application window again, lead with the person or the wait, Andre Douglas's five and a half years, not a list.
+- Every zero-view item is from the last three days (Nov 8 and Nov 12 uploads), so the data says nothing about those scripts yet. Re-judge the astronaut-hiring and Mars-sample shorts next week before dropping the topics.
+- Starship and Artemis each landed two shorts in the top five. Treat each big story as a two or three short cluster with genuinely different angles: cadence, the hidden test, the budget, the crew.
+- Named sources (NASASpaceflight, Katalyst Space, Isaacman, the October 23 briefing) appear in the first half of every top script. Keep in-line attribution there, it matches the persona and it is working.

@@ -33,3 +33,16 @@
 - Comment replies: warm, two sentences max, ask one follow-up question, never argue, never promise.
 
 ## Learned adjustments (appended by weekly review; newest last)
+
+### Review 2026-11-15
+- Name the actor in line one. Every top short opens with a specific institution or person: the FTC, Microsoft, the Dutch government, a CEO quoted on CNBC. Every bottom short opens with a concept or a metaphor. Rule: no script starts without a named organization.
+- Titles must state a checkable fact. 'The FTC Is Asking What Drivers Get Paid' and 'Teams wasn't hacked. That's the problem.' won. 'Nobody Lost the Pipe' and 'Follow the chip money to your desk' got zero clicks. Ban metaphor-only titles.
+- Cut hedges out of titles. 'Your job may come back without you' reads as a guess. State the reported claim and attribute it in the opening instead.
+- The contradiction hook is the strongest title pattern. Negate a common assumption first, then deliver the twist. It produced the best CTR and retention combo of the week.
+- The retention cliff sits near thirty seconds. Top shorts hold about 32 seconds whether they run 50 or 59. The 67 second short fell to 19. Front-load the biggest surprise before 0:20 and keep shorts near 50 seconds.
+- Person-level stakes beat trend-level topics. Winners are about one driver's pay, one inbox, one manager's job. Losers describe a whole economy. Frame every short around a person like the viewer.
+- One big round number earns comments. '25,000 of Them' pulled 4 comments on 25 views, our best comment rate. Put a concrete number in the title whenever the source supports it.
+- Long-form retention is the fixable leak: 74 seconds average on a 474 second video. Move the number and the stake into the first 20 seconds and preview the framework earlier than 1:30.
+- Declarative beats question titles. 'Laid off from an AI-exposed job? Expect a wait' went nowhere. Write statements, not questions.
+- Judge zero-view shorts by CTR, not age. No CTR yet usually means no impressions, not failure. The Oct 29 short shows CTR 0 after two weeks, so that title is the real flop and the anti-reference.
+- High CTR on low views means the click worked and distribution did not. The ServiceNow short pulled 0.51 CTR on tiny impressions. Reclip proven high-CTR topics with fresh titles before commissioning new ones.
