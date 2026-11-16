@@ -16,7 +16,7 @@ from . import core
 from .batch import display_title, parse_name
 
 ROOT_NAME = "Faceless Recap"
-SUBFOLDERS = ("inbox", "review", "approve", "uploaded", "done", "failed")
+SUBFOLDERS = ("inbox", "review", "approve", "uploaded", "done", "failed", "checkpoints")
 SCOPE = "https://www.googleapis.com/auth/drive"
 VIDEO_EXT = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v"}
 MAX_SLOTS = 5
@@ -217,7 +217,11 @@ def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True):
                 state["batch_resume"] = True
                 state["cloud_source"] = {"slot": account.slot, "film": f["id"], "sidecar": film["sidecar"]["id"], "registry": ident}
                 core.dump(work / "state.json", state)
-                runner(work, state, db=db)
+                restore_checkpoints(account, ident, work)
+                try:
+                    runner(work, state, db=db)
+                finally:
+                    save_checkpoints(account, ident, work)
                 state = json.loads((work / "state.json").read_text())
                 # Passing recaps go straight to the upload queue; a failed long recap waits for the owner in review.
                 ready = auto_upload and bool(state["items"].get("long", {}).get("qa", {}).get("pass"))
@@ -238,6 +242,28 @@ def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True):
             finally:
                 local.unlink(missing_ok=True)
     return results
+
+
+CHECKPOINTS = ("transcript.json", "scenes.json")
+
+
+def restore_checkpoints(account, ident, work):
+    """Transcript and scene cuts from an earlier attempt, so a retry skips the long transcription."""
+    folder = account.drive.folder(ident, account.folders()["checkpoints"])
+    for f in account.list(folder):
+        if f["name"] in CHECKPOINTS and f.get("md5Checksum"):
+            account.download(f["id"], work / f["name"], f["md5Checksum"])
+    return folder
+
+
+def save_checkpoints(account, ident, work):
+    folder = account.drive.folder(ident, account.folders()["checkpoints"])
+    for name in CHECKPOINTS:
+        if (work / name).exists():
+            try:
+                account.upload_file(work / name, folder)
+            except Exception as exc:
+                print(f"recap cloud: checkpoint {name} not saved: {type(exc).__name__}")
 
 
 def publish_review(account, work, state, destination="review"):

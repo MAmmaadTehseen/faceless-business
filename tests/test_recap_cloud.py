@@ -99,7 +99,7 @@ def test_produce_writes_review_and_moves_sources(tmp_path, monkeypatch, db, vide
     assert statuses == {"already processed", "needs rights"}
     produced = next(r for r in result if r["status"] == "already processed")
     assert produced["queued_for_upload"]  # long passed: folder sits in approve
-    assert next(iter(account.created)).startswith("f-approve/")
+    assert any(k.startswith("f-approve/") for k in account.created)
     names = {f["name"] for f in account.files.values() if f["parent"] == produced["review_folder"]}
     assert {"long.mp4", "short1.jpg", "short4.srt", "state.json", "rights.json", "qa.json", "README.txt"} <= names
     assert account.files["in0"]["parent"] == "f-done" and account.files["in1"]["parent"] == "f-done"
@@ -118,9 +118,21 @@ def test_failed_film_moves_to_failed_folder(tmp_path, monkeypatch, db, video):
     account = FakeAccount(1, {"Bad Film 2024.mp4": Path(video).read_bytes(), "Bad Film 2024.rights.json": b'{"basis": "own work"}'})
 
     def boom(work, state, **kw):
+        (work / "transcript.json").write_text('{"language": "en", "segments": []}')
         raise ValueError("narration duration outside allowed range")
     result = cloud.produce(db, [account], runner=boom, log=lambda *_: None)
     assert result[0]["status"] == "failed"
+    # The transcript survived the failure and is restored on the next attempt.
+    saved = [f for f in account.files.values() if f["name"] == "transcript.json"]
+    assert saved and saved[0]["parent"].startswith("dir-")
+    for fid in ("in0", "in1"):
+        account.files[fid]["parent"] = "f-inbox"
+    seen = {}
+    def again(work, state, **kw):
+        seen["restored"] = (work / "transcript.json").exists()
+        fake_runner(work, state, **kw)
+    assert cloud.produce(db, [account], runner=again, log=lambda *_: None)[0]["status"] == "already processed"
+    assert seen["restored"]
     failed = account.files["in0"]["parent"]
     assert failed.startswith("dir-") and "narration duration" in account.texts[(failed, "error.txt")]
     assert db.one("recap_films", {"id": result[0]["id"]})["status"] == "failed"

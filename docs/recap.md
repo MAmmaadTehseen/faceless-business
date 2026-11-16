@@ -154,6 +154,7 @@ Drive layout, created automatically in every connected account under `Faceless R
 | `approve` | workflow (or you) | passing recaps are queued here automatically; move a review folder here yourself to upload it (add `short2.skip` to hold one back) |
 | `uploaded` | workflow | folders after upload: `uploads.json` (YouTube ids), thumbnails, captions, state (MP4s deleted) |
 | `done` / `failed` | workflow | sources after production; `failed/<Title>/error.txt` says why |
+| `checkpoints` | workflow | transcript and scene cuts per film, so a retry skips transcription |
 
 Files without a year in the name or without a sidecar stay in the inbox as `needs rights`.
 The same film in two accounts is produced once (content hash). Sources are deleted only after their recap is on YouTube;
