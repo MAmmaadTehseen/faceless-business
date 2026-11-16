@@ -77,19 +77,21 @@ Not touched: bank/stockpile workflow, render, common.py, workflows. Already bank
 | Shorts still gaining views on day 3+ | none | at least one per channel | second wave earned |
 | Instagram median views, futurework and tradewinds | 19 / 5 | 60+ | spacing + captions work |
 | Instagram comments | 0 | any | question line works |
-| Facebook views | 0 (unmeasured) | real numbers | owner added `read_insights` |
+| Facebook plays (now measured) | 2 total across 85 Reels | any movement | Page needs followers first; low priority |
 | YouTube Short comments | 0 | a few | closing question works |
 
 Only Shorts whose content id date is after 2026-11-16 count; older queued Shorts (57 scheduled) carry the old scripts and only get the new descriptions when uploaded by the drain.
 
 ### Done by the agent on 2026-11-16 (no owner login needed)
 
+- Facebook measured for real: `read_insights` added to the Meta app's Pages use case, new user token generated (owner clicked the consent popup), long-lived Page tokens exchanged and written to `.env` for all four Pages. Result: 85 Reels across the three Pages have 2 plays in total (1 futurework, 1 tradewinds, 0 escapevelocity). Facebook delivers nothing to Pages with no followers; the Reels there are free but worthless until the Pages have an audience. Keep posting (no cost) but judge growth on YouTube and Instagram only.
+
 - `yt_description_links_enabled` and `cross_mentions_enabled` set to `true` in settings; hub links go into new YouTube descriptions and sister-account mentions switch on after three unmentioned Reels per account.
 - `instagram_handle` filled for all three explainer channels from the API (`futurework.explained`, `tradewindsreport`, `escapevelocitydaily`).
 
 ### Owner-only levers (one line each)
 
-- Add `read_insights` to the Facebook Page tokens (`META_ACCESS_TOKEN_<KEY>`): without it Facebook Reels views are invisible, so we cannot tell whether Facebook delivers anything.
+- Run the `gh secret set` block from the 2026-11-16 chat so GitHub Actions uses the new Facebook tokens (the agent's secret write was blocked by the permission classifier).
 - Verify the Ten Tongues channel phone number in Studio: without it custom thumbnails are refused and the pipeline logs a warning every upload.
 - Reply to every comment by hand for the first weeks and pin one: the engage job drafts replies but early comment velocity is a ranking signal the owner can supply faster than a 6-hourly cron.
 - Instagram: post one Story per Reel (all three accounts are already creator accounts, verified via the API 2026-11-16): the app surfaces Reels to followers through Stories, which the API cannot do.
