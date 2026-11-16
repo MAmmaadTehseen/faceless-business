@@ -40,6 +40,11 @@ def sync_channel(db, channel):
         meta.refresh_ig_token(db, channel)
     except Exception as e:
         log.warning("ig token refresh skipped for %s: %s", channel.key, e)
+    try:
+        from .publish.hub_share import backfill_articles
+        backfill_articles(db, channel)
+    except Exception as e:
+        log.warning("hub article share skipped for %s: %s", channel.key, e)
     ids = {c["id"] for c in db.select("content", {"channel": channel.key})}
     pubs = [p for p in db.select("publications", {"status": "live"}) if p["content_id"] in ids]
     if not pubs:

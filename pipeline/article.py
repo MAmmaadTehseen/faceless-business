@@ -444,6 +444,8 @@ def write_article(db: DB, content_id: str, *, claude: Claude | None = None, dry_
         ping_indexnow(article_slug)
         from .publish.youtube_promotion import article_saved
         article_saved(db, content_id)
+        from .publish.hub_share import share_article_to_facebook
+        share_article_to_facebook(db, row, channel)
     return saved
 
 

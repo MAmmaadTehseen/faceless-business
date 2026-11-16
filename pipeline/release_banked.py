@@ -105,6 +105,8 @@ def release_one(db, channel, row, drive):
         db.upsert('articles', article, on='id')
         ping_indexnow(article['slug'])
         article_saved(db, row['id'])
+        from .publish.hub_share import share_article_to_facebook
+        share_article_to_facebook(db, article, channel)
     elif manifest.get('article_failed'):
         log.warning('Stockpile bundle %s released without article after preparation failure', row['id'])
     # A failed move leaves a discoverable pending checkpoint and is safe to retry.

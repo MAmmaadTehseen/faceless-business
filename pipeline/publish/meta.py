@@ -169,6 +169,17 @@ def publish_facebook_reel(video_path: Path, description: str) -> dict:
     return {"id": vid, "url": f"https://www.facebook.com/reel/{vid}"}
 
 
+def publish_facebook_link_post(message: str, link: str) -> dict:
+    """Plain Page feed post with a link preview (hub article shares)."""
+    page = _current.env("META_PAGE_ID")
+    r = _publish_response(requests.post(f"{G}/{page}/feed", data={"message": message[:5000], "link": link, "access_token": _tok()}, timeout=60))
+    if "id" not in r:
+        raise RuntimeError(f"facebook link post failed: {r}")
+    post_id = r["id"]
+    log.info("facebook: post %s", post_id)
+    return {"id": post_id, "url": f"https://www.facebook.com/{post_id}"}
+
+
 def ig_insights(media_id: str) -> dict:
     r = requests.get(f"{IG}/{media_id}", params={"fields": "like_count,comments_count", "access_token": _ig_tok()}, timeout=30).json()
     views = 0
