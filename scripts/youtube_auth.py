@@ -12,15 +12,28 @@ SCOPES = ['https://www.googleapis.com/auth/youtube', 'https://www.googleapis.com
 REDIRECT = 'http://localhost:8765/'
 
 
+RECAP_SLOTS = tuple(f'recap{n}' for n in range(1, 6))
+DRIVE_FULL = 'https://www.googleapis.com/auth/drive'
+
+
 def token_variable(key):
     if key == 'drive':
         return 'GDRIVE_REFRESH_TOKEN'
+    if key in RECAP_SLOTS:
+        return 'GDRIVE_RECAP_REFRESH_TOKEN_' + key[-1]
     if key not in KEYS:
         raise ValueError('Unknown channel key')
     return 'YT_REFRESH_TOKEN' + ('' if key == 'futurework' else '_' + key.upper())
 
 
 def steps(key):
+    if key in RECAP_SLOTS:
+        return (f'1. Google Auth Platform > Audience: add the Google account that owns Drive inbox {key[-1]} as a test user '
+                '(full Drive scope is needed so films you upload through drive.google.com are visible; drive.file cannot see them).\n'
+                f'2. Run: .venv/bin/python scripts/youtube_auth.py url {key}\n'
+                f'3. Open the URL privately, signed in as that Drive account, allow access, copy the localhost redirect URL.\n'
+                f'4. Run: .venv/bin/python scripts/youtube_auth.py token "<full redirect URL>" {key}\n'
+                f'5. Owner: gh secret set {token_variable(key)} from the saved local value; never paste it in logs. Repeat per account.')
     if key == 'drive':
         return ('1. Enable Google Drive API on the existing OAuth project; add only drive.file for this grant.\n'
                 '2. Run: .venv/bin/python scripts/youtube_auth.py url drive\n'
@@ -45,10 +58,10 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
     for command in ('url', 'steps'):
         cmd = sub.add_parser(command)
-        cmd.add_argument('channel', choices=(*KEYS, 'drive'), nargs='?', default='futurework')
+        cmd.add_argument('channel', choices=(*KEYS, 'drive', *RECAP_SLOTS), nargs='?', default='futurework')
     cmd = sub.add_parser('token')
     cmd.add_argument('redirect_url')
-    cmd.add_argument('channel', choices=(*KEYS, 'drive'), nargs='?', default='futurework')
+    cmd.add_argument('channel', choices=(*KEYS, 'drive', *RECAP_SLOTS), nargs='?', default='futurework')
     args = parser.parse_args()
     if args.command == 'steps':
         print(steps(args.channel))
@@ -61,10 +74,10 @@ def main():
         parser.exit(1, 'Set YT_CLIENT_ID and YT_CLIENT_SECRET locally first.\n')
     flow = Flow.from_client_config({'installed': {'client_id': cid, 'client_secret': secret,
         'auth_uri': 'https://accounts.google.com/o/oauth2/auth', 'token_uri': 'https://oauth2.googleapis.com/token',
-        'redirect_uris': [REDIRECT]}}, ['https://www.googleapis.com/auth/drive.file'] if args.channel == 'drive' else SCOPES, redirect_uri=REDIRECT, autogenerate_code_verifier=False)
+        'redirect_uris': [REDIRECT]}}, ['https://www.googleapis.com/auth/drive.file'] if args.channel == 'drive' else [DRIVE_FULL] if args.channel in RECAP_SLOTS else SCOPES, redirect_uri=REDIRECT, autogenerate_code_verifier=False)
     if args.command == 'url':
         print(steps(args.channel))
-        url, _ = flow.authorization_url(access_type='offline', prompt='consent', include_granted_scopes='false' if args.channel == 'drive' else 'true')
+        url, _ = flow.authorization_url(access_type='offline', prompt='consent', include_granted_scopes='false' if args.channel == 'drive' or args.channel in RECAP_SLOTS else 'true')
         print(url)
         return
     code = parse_qs(urlparse(args.redirect_url).query).get('code', [None])[0]

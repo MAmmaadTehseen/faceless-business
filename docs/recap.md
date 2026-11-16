@@ -130,6 +130,47 @@ Edit decisions: `{"decision":"confirm"}` processes a possible duplicate, `{"deci
 skips it. A batch holds one folder-wide lock, so two batches never run at once.
 The dashboard `/recap` page drives the same commands.
 
+## Cloud mode: Google Drive inboxes + GitHub Actions (nothing local)
+
+`.github/workflows/recap.yml` runs every six hours (and on demand) on GitHub's free
+runners for this public repo. Each run first uploads any folder you moved to `approve`,
+then produces one inbox film (about 4–6 hours on a runner; the job limit is 350 minutes,
+so very long films may need `RECAP_WHISPER_MODEL=base` as a repository variable).
+
+Drive layout, created automatically in every connected account under `Faceless Recap/`:
+
+| folder | who writes | meaning |
+|---|---|---|
+| `inbox` | you | `Title 2024.mkv` plus `Title 2024.rights.json` (`{"basis": "own work"}`, or `written permission` + `note`, or `Creative Commons` + `licence` + `url`) |
+| `review` | workflow | `<Title (year)>/long.mp4, short1..4.mp4, *.jpg, *.srt, qa.json, state.json, rights.json, README.txt` |
+| `approve` | you | move a review folder here to upload every passing piece (add `short2.skip` to hold one back) |
+| `uploaded` | workflow | folders after upload, with `uploads.json` (YouTube ids) |
+| `done` / `failed` | workflow | sources after production; `failed/<Title>/error.txt` says why |
+
+Files without a year in the name or without a sidecar stay in the inbox as `needs rights`.
+The same film in two accounts is produced once (content hash). Nothing is deleted from Drive;
+delete `done` sources yourself to free space. Up to five accounts give 75 GB; treat the inbox as a
+queue (two or three films at a time), outputs are about 200 MB per film.
+
+Owner setup, once per Drive account (full Drive scope is required so films uploaded through
+drive.google.com are visible; the stockpile's drive.file token cannot see them):
+
+```bash
+.venv/bin/python scripts/youtube_auth.py steps recap1     # recap1 … recap5
+```
+
+Then `gh secret set GDRIVE_RECAP_REFRESH_TOKEN_1` (… `_5`), `YT_REFRESH_TOKEN_FILMREVIEW` for the
+upload step, plus the existing `LUNAROUTE_API_KEY`, `SUPABASE_*` and `YT_CLIENT_*` secrets. Apply
+migration 014 on the hosted database. Setting `recap_cloud_enabled` (JSON boolean, default true)
+pauses scheduled runs; manual dispatch ignores it. Workflow logs are public on a public repo: they
+show project ids and stage names, never titles, tokens or file names.
+
+```bash
+gh workflow run recap.yml -f action=scan            # list inbox films and their status
+gh workflow run recap.yml -f action=produce -f limit=1
+gh workflow run recap.yml -f action=upload
+```
+
 ## Dedicated channel token (owner action)
 
 Create a dedicated YouTube channel for Frame and Argument (or edit its local

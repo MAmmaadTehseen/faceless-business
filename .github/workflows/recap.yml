@@ -1,0 +1,70 @@
+name: recap
+# Cloud film recaps: films + <film>.rights.json in Google Drive "Faceless Recap/inbox" (up to five accounts)
+# are produced here and written to "review"; folders moved to "approve" are uploaded to YouTube.
+on:
+  schedule:
+    - cron: "20 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "produce (inbox films), upload (approved folders), both, scan"
+        type: choice
+        options: [both, produce, upload, scan]
+        default: both
+      limit:
+        description: "Films to produce in this run (each takes roughly 4-6 hours)"
+        type: number
+        default: 1
+permissions:
+  contents: read
+concurrency:
+  group: recap
+  cancel-in-progress: false
+jobs:
+  recap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      PYTHON_DOTENV_DISABLED: "1"
+      LLM_PROVIDER: lunaroute
+      LUNAROUTE_API_KEY: ${{ secrets.LUNAROUTE_API_KEY }}
+      LUNAROUTE_BASE_URL: ${{ vars.LUNAROUTE_BASE_URL || 'https://gw.lunaroute.com' }}
+      LUNAROUTE_THINKING_BUDGET: ${{ vars.LUNAROUTE_THINKING_BUDGET || '3000' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN_FILMREVIEW: ${{ secrets.YT_REFRESH_TOKEN_FILMREVIEW }}
+      GDRIVE_RECAP_REFRESH_TOKEN_1: ${{ secrets.GDRIVE_RECAP_REFRESH_TOKEN_1 }}
+      GDRIVE_RECAP_REFRESH_TOKEN_2: ${{ secrets.GDRIVE_RECAP_REFRESH_TOKEN_2 }}
+      GDRIVE_RECAP_REFRESH_TOKEN_3: ${{ secrets.GDRIVE_RECAP_REFRESH_TOKEN_3 }}
+      GDRIVE_RECAP_REFRESH_TOKEN_4: ${{ secrets.GDRIVE_RECAP_REFRESH_TOKEN_4 }}
+      GDRIVE_RECAP_REFRESH_TOKEN_5: ${{ secrets.GDRIVE_RECAP_REFRESH_TOKEN_5 }}
+      TTS_BACKEND: kokoro
+      RECAP_WHISPER_MODEL: ${{ vars.RECAP_WHISPER_MODEL || 'small' }}
+      HF_HOME: ${{ github.workspace }}/.hf
+      GATED: ${{ github.event_name == 'schedule' && '--gated' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: for i in 1 2 3 4; do sudo apt-get update -qq && sudo apt-get install -y -qq --fix-missing ffmpeg fonts-dejavu-core espeak-ng && break; echo "apt retry $i"; sleep 30; done; command -v ffmpeg
+      - name: Install dependencies (CPU torch, then Kokoro and faster-whisper)
+        run: |
+          pip install -r requirements.txt
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install kokoro soundfile faster-whisper
+      - name: Cache Kokoro and Whisper models
+        uses: actions/cache@v4
+        with:
+          path: .hf
+          key: recap-models-v1
+      - name: Upload approved folders
+        if: inputs.action == 'both' || inputs.action == 'upload' || github.event_name == 'schedule'
+        run: python -m pipeline.recap.cloud upload $GATED
+      - name: Scan inboxes
+        if: inputs.action == 'scan'
+        run: python -m pipeline.recap.cloud scan
+      - name: Produce inbox films
+        if: inputs.action == 'both' || inputs.action == 'produce' || github.event_name == 'schedule'
+        run: python -m pipeline.recap.cloud produce --limit "${{ inputs.limit || 1 }}" $GATED

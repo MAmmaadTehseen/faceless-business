@@ -1,0 +1,318 @@
+"""Cloud recap: films dropped into Google Drive inboxes (up to five accounts) are produced on
+GitHub Actions and written back to a review folder. YouTube upload happens only for folders
+the owner has moved to "approve". Nothing is ever deleted from Drive; sources move to done/failed."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import io
+import json
+import os
+import shutil
+import sys
+from pathlib import Path
+
+from . import core
+from .batch import display_title, parse_name
+
+ROOT_NAME = "Faceless Recap"
+SUBFOLDERS = ("inbox", "review", "approve", "uploaded", "done", "failed")
+SCOPE = "https://www.googleapis.com/auth/drive"
+VIDEO_EXT = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v"}
+MAX_SLOTS = 5
+INBOX_DIR = core.ROOT / "out" / "recap-inbox"
+README = ("Produced by the recap tool. Watch the videos, then MOVE this whole folder into 'approve' to upload "
+          "every passing piece to YouTube (long first, Shorts on following days), or leave it here. To keep a piece "
+          "out of the upload, add an empty file named <piece>.skip (for example short2.skip) before moving the folder. "
+          "Uploaded folders move to 'uploaded'. Edit titles in state.json only if you know the format.\n")
+
+
+class Account:
+    """One Drive account with full-drive scope, so films uploaded through drive.google.com are visible."""
+
+    def __init__(self, slot, token=None, service=None):
+        self.slot = slot
+        if service is None:
+            from google.oauth2.credentials import Credentials
+            from googleapiclient.discovery import build
+            from google_auth_httplib2 import AuthorizedHttp
+            from pipeline.drive import plain_http
+            cid, secret = os.getenv("YT_CLIENT_ID"), os.getenv("YT_CLIENT_SECRET")
+            if not (token and cid and secret):
+                raise RuntimeError("Drive OAuth configuration missing")
+            credentials = Credentials(None, refresh_token=token, client_id=cid, client_secret=secret,
+                                      token_uri="https://oauth2.googleapis.com/token", scopes=[SCOPE])
+            service = build("drive", "v3", http=AuthorizedHttp(credentials, http=plain_http()), cache_discovery=False)
+        from pipeline.drive import Drive
+        self.service = service
+        self.drive = Drive(service)
+        self._folders = None
+
+    def folders(self):
+        if self._folders is None:
+            root = self.drive.folder(ROOT_NAME)
+            self._folders = {name: self.drive.folder(name, root) for name in SUBFOLDERS}
+        return self._folders
+
+    def list(self, folder_id):
+        rows, token = [], None
+        while True:
+            page = self.service.files().list(q=f"'{folder_id}' in parents and trashed = false",
+                                             fields="nextPageToken,files(id,name,size,md5Checksum,mimeType)",
+                                             pageSize=200, pageToken=token).execute()
+            rows += page.get("files", [])
+            token = page.get("nextPageToken")
+            if not token:
+                return rows
+
+    def read_small(self, file_id):
+        return self.service.files().get_media(fileId=file_id).execute()
+
+    def download(self, file_id, target, md5):
+        from googleapiclient.http import MediaIoBaseDownload
+        from pipeline.drive import digest, next_chunk_retrying
+        target = Path(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() and digest(target, "md5") == md5:
+            return target
+        temporary = target.with_name(target.name + ".part")
+        try:
+            with temporary.open("wb") as output:
+                request = MediaIoBaseDownload(output, self.service.files().get_media(fileId=file_id), chunksize=8 * 1024**2)
+                next_chunk_retrying(request, "download " + target.name)
+            if digest(temporary, "md5") != md5:
+                raise RuntimeError("Drive download checksum mismatch")
+            temporary.replace(target)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return target
+
+    def upload_file(self, path, parent, name=None):
+        path = Path(path)
+        if name and name != path.name:
+            staged = path.parent / name
+            shutil.copyfile(path, staged)
+            path = staged
+        return self.drive.upload(path, parent)
+
+    def write_text(self, name, text, parent):
+        from googleapiclient.http import MediaIoBaseUpload
+        existing = [f for f in self.list(parent) if f["name"] == name]
+        media = MediaIoBaseUpload(io.BytesIO(text.encode()), mimetype="text/plain")
+        if existing:
+            return self.service.files().update(fileId=existing[0]["id"], media_body=media, fields="id").execute()["id"]
+        return self.service.files().create(body={"name": name, "parents": [parent]}, media_body=media, fields="id").execute()["id"]
+
+    def move(self, file_id, destination):
+        current = self.service.files().get(fileId=file_id, fields="parents").execute().get("parents", [])
+        if destination in current:
+            return
+        self.service.files().update(fileId=file_id, addParents=destination, removeParents=",".join(current), fields="id").execute()
+
+
+def accounts():
+    found = []
+    for slot in range(1, MAX_SLOTS + 1):
+        token = os.getenv(f"GDRIVE_RECAP_REFRESH_TOKEN_{slot}")
+        if token:
+            found.append(Account(slot, token))
+    if not found:
+        raise RuntimeError("No GDRIVE_RECAP_REFRESH_TOKEN_<n> configured")
+    return found
+
+
+def film_id(md5):
+    return hashlib.sha256(f"drive:{md5}".encode()).hexdigest()[:32]
+
+
+def inbox_films(account):
+    """Videos in the inbox paired with their rights sidecars; the same film in two accounts is one film."""
+    folders = account.folders()
+    files = account.list(folders["inbox"])
+    sidecars = {f["name"]: f for f in files if f["name"].endswith(".rights.json")}
+    films = []
+    for f in files:
+        if Path(f["name"]).suffix.lower() not in VIDEO_EXT or not f.get("md5Checksum"):
+            continue
+        films.append({"file": f, "sidecar": sidecars.get(Path(f["name"]).stem + ".rights.json")})
+    return films
+
+
+def scan(db, accounts_):
+    report = []
+    for account in accounts_:
+        for film in inbox_films(account):
+            f = film["file"]
+            row = db.one("recap_films", {"id": film_id(f["md5Checksum"])})
+            status = row["status"] if row else ("needs rights" if not film["sidecar"] else "new")
+            report.append({"account": account.slot, "id": film_id(f["md5Checksum"]), "status": status,
+                           "size": int(f.get("size", 0)), "has_rights": bool(film["sidecar"])})
+    return report
+
+
+def produce(db, accounts_, limit=1, runner=None, log=print):
+    """Produce up to `limit` inbox films, newest account order first. Returns per-film statuses."""
+    from .worker import generate
+    runner = runner or generate
+    results = []
+    for account in accounts_:
+        if len([r for r in results if r["status"] in ("already processed", "failed")]) >= limit:
+            break
+        folders = account.folders()
+        for film in inbox_films(account):
+            if len([r for r in results if r["status"] in ("already processed", "failed")]) >= limit:
+                break
+            f = film["file"]
+            ident = film_id(f["md5Checksum"])
+            row = db.one("recap_films", {"id": ident})
+            if row and row["status"] in ("already processed", "skipped"):
+                # Already produced elsewhere; clear the duplicate from this inbox.
+                account.move(f["id"], folders["done"])
+                results.append({"id": ident, "status": row["status"]})
+                continue
+            title, year = parse_name(f["name"])
+            try:
+                if not film["sidecar"]:
+                    raise ValueError("rights sidecar missing")
+                rights = core.rights_gate(json.loads(account.read_small(film["sidecar"]["id"]).decode()))
+                if not year or not title:
+                    raise ValueError("title and year required in filename")
+            except (ValueError, TypeError):
+                db.upsert("recap_films", {"id": ident, "filename": f["name"], "source": f"drive:{account.slot}:{f['id']}",
+                                          "normalized_title": title, "year": year, "file_size": int(f.get("size", 0)), "duration": 0,
+                                          "content_hash": f["md5Checksum"], "status": "needs rights", "project_id": None,
+                                          "content_ids": "[]", "rights": "{}", "duplicate_confirmed": False}, on="id")
+                results.append({"id": ident, "status": "needs rights"})
+                continue
+            local = INBOX_DIR / f["name"]
+            log(f"recap cloud: downloading film {ident} from account {account.slot}")
+            account.download(f["id"], local, f["md5Checksum"])
+            try:
+                state = core.create({"path": str(local), "title": display_title(f["name"], title), "year": year, "rights": rights})
+                work = core.job_dir(state["id"])
+                db.upsert("recap_films", {"id": ident, "filename": f["name"], "source": f"drive:{account.slot}:{f['id']}",
+                                          "normalized_title": title, "year": year, "file_size": int(f.get("size", 0)),
+                                          "duration": state["probe"]["duration"], "content_hash": f["md5Checksum"], "status": "new",
+                                          "project_id": state["id"], "content_ids": "[]", "rights": json.dumps(rights), "duplicate_confirmed": False}, on="id")
+                state["batch_resume"] = True
+                runner(work, state, db=db)
+                state = json.loads((work / "state.json").read_text())
+                folder = publish_review(account, work, state)
+                db.update("recap_films", {"id": ident}, {"status": "already processed",
+                          "content_ids": json.dumps(["filmreview-" + state["id"] + "-" + p for p in core.PIECES])})
+                for item in (f, film["sidecar"]):
+                    account.move(item["id"], folders["done"])
+                results.append({"id": ident, "status": "already processed", "project_id": state["id"], "review_folder": folder})
+            except Exception as exc:
+                log(f"recap cloud: film {ident} failed: {type(exc).__name__}")
+                db.update("recap_films", {"id": ident}, {"status": "failed"})
+                failed = account.drive.folder(f"{display_title(f['name'], title)} ({year})", folders["failed"])
+                account.write_text("error.txt", f"{type(exc).__name__}: {exc if isinstance(exc, ValueError) else 'see workflow log'}\n", failed)
+                for item in (f, film["sidecar"]):
+                    account.move(item["id"], failed)
+                results.append({"id": ident, "status": "failed"})
+            finally:
+                local.unlink(missing_ok=True)
+    return results
+
+
+def publish_review(account, work, state):
+    """Copy the finished pieces plus their records to review/<title (year)>/ and return the folder id."""
+    folders = account.folders()
+    folder = account.drive.folder(f"{state['title']} ({state['year']})", folders["review"])
+    for name in core.PIECES:
+        piece = work / name
+        if not (piece / "video.mp4").exists():
+            continue
+        account.upload_file(piece / "video.mp4", folder, f"{name}.mp4")
+        if (piece / "thumbnail.jpg").exists():
+            account.upload_file(piece / "thumbnail.jpg", folder, f"{name}.jpg")
+        if (piece / "captions.srt").exists():
+            account.upload_file(piece / "captions.srt", folder, f"{name}.srt")
+    account.upload_file(work / "state.json", folder)
+    account.upload_file(work / "rights.json", folder)
+    qa = {name: {"pass": item.get("qa", {}).get("pass"), "duration": item.get("duration"), "title": item.get("title"),
+                 "issues": item.get("qa", {}).get("issues", [])} for name, item in state.get("items", {}).items()}
+    account.write_text("qa.json", json.dumps(qa, indent=2, ensure_ascii=False), folder)
+    account.write_text("README.txt", README, folder)
+    return folder
+
+
+def upload_approved(db, accounts_, uploader=None, log=print):
+    """Upload every approve/<folder> through the normal worker; folders move to uploaded/ on success."""
+    from .worker import upload
+    uploader = uploader or upload
+    results = []
+    for account in accounts_:
+        folders = account.folders()
+        for entry in account.list(folders["approve"]):
+            if entry.get("mimeType") != "application/vnd.google-apps.folder":
+                continue
+            files = {f["name"]: f for f in account.list(entry["id"])}
+            if "state.json" not in files or "rights.json" not in files:
+                log(f"recap cloud: approve folder without state/rights skipped ({entry['id']})")
+                continue
+            state = json.loads(account.read_small(files["state.json"]["id"]).decode())
+            work = core.OUTPUT / state["id"]
+            work.mkdir(parents=True, exist_ok=True)
+            core.dump(work / "state.json", state)
+            core.dump(work / "rights.json", json.loads(account.read_small(files["rights.json"]["id"]).decode()))
+            for name, item in state.get("items", {}).items():
+                skip = f"{name}.skip" in files
+                present = f"{name}.mp4" in files
+                item["discarded"] = skip or not present
+                item["approved"] = bool(item.get("qa", {}).get("pass")) and present and not skip and not item.get("uploaded")
+                if item["approved"] or item.get("uploaded"):
+                    piece = work / name
+                    piece.mkdir(exist_ok=True)
+                    for suffix, target in ((".mp4", "video.mp4"), (".jpg", "thumbnail.jpg"), (".srt", "captions.srt")):
+                        f = files.get(name + suffix)
+                        if f:
+                            account.download(f["id"], piece / target, f["md5Checksum"])
+            core.dump(work / "state.json", state)
+            try:
+                uploader(work, state)
+                state = json.loads((work / "state.json").read_text())
+                account.write_text("uploads.json", json.dumps({n: i.get("youtube") for n, i in state["items"].items() if i.get("uploaded")}, indent=2), entry["id"])
+                account.upload_file(work / "state.json", entry["id"])
+                account.move(entry["id"], folders["uploaded"])
+                results.append({"project_id": state["id"], "status": "uploaded"})
+            except Exception as exc:
+                # Partial uploads are recorded in state.json so the next run resumes idempotently.
+                state = json.loads((work / "state.json").read_text())
+                account.upload_file(work / "state.json", entry["id"])
+                account.write_text("error.txt", f"{type(exc).__name__}: {exc if isinstance(exc, ValueError) else 'see workflow log'}\n", entry["id"])
+                results.append({"project_id": state["id"], "status": "upload failed"})
+            finally:
+                shutil.rmtree(work, ignore_errors=True)
+    return results
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=["scan", "produce", "upload"])
+    parser.add_argument("--limit", type=int, default=1)
+    parser.add_argument("--gated", action="store_true", help="Exit quietly unless setting recap_cloud_enabled is true")
+    args = parser.parse_args()
+    os.environ.setdefault("LUNAROUTE_THINKING_BUDGET", "3000")
+    from pipeline.db import DB
+    from pipeline.qa import _strict_enabled
+    db = DB()
+    if args.gated and not _strict_enabled(db.setting("recap_cloud_enabled", True)):
+        print(json.dumps({"skipped": "recap_cloud_enabled is false"}))
+        return
+    found = accounts()
+    if args.action == "scan":
+        print(json.dumps(scan(db, found)))
+        return
+    if args.action == "upload":
+        result = upload_approved(db, found)
+    else:
+        result = produce(db, found, limit=args.limit)
+    print(json.dumps(result))
+    if any(r["status"] in ("failed", "upload failed") for r in result):
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

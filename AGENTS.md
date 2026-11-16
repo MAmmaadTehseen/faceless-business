@@ -349,3 +349,14 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
 - `docs/growth-log.md` is the running measure/diagnose/change log; `scripts/growth_snapshot.py` reproduces the numbers (read-only).
 - `pipeline/publish/captions.py` builds Short descriptions, Reels captions, hashtags (channel.json `hashtags`, `caption_question`) and tags deterministically. Child Shorts post Reels when YouTube makes them public (sync `follow_youtube_to_reels`), gated by setting `reels_follow_youtube` (default true), so Reels are spaced one per day instead of four per burst.
 - Shorts scripts target 75-110 words (daily Shorts 80-115, validation 70-160 for resumed saved responses). Do not raise them back without a retention reason in the growth log.
+
+## Film recap tool (2026-11-16)
+- Local: `pipeline/recap/*`, dashboard `/recap` (LOCAL_RECAP=1, loopback only). Cinematic recap format
+  (hook, story, verdict) plus four Shorts with burned-in narration captions; voice am_fenrir.
+- LunaRoute: GLM 5.3 thinks itself to `max_tokens` on long structured prompts. Recap sets
+  `LUNAROUTE_THINKING_BUDGET=3000` for its own process (opt-in Messages `thinking` in `pipeline/common.py`)
+  and uses small per-piece calls (beat sheet, three acts, one call per Short). Keep calls small.
+- Cloud mode: `.github/workflows/recap.yml` + `pipeline/recap/cloud.py`: Drive `Faceless Recap/{inbox,review,
+  approve,uploaded,done,failed}` in up to five accounts (`GDRIVE_RECAP_REFRESH_TOKEN_1..5`, full Drive scope via
+  `scripts/youtube_auth.py url recapN`). Uploads only from `approve`. Rights sidecar required. Docs: `docs/recap.md`.
+
