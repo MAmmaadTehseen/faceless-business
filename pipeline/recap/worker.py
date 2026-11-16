@@ -14,7 +14,14 @@ from .core import PIECES, STAGES, ROOT, dump, job_dir, probe, public_state, righ
 
 
 def run(args):
-    return subprocess.run(args, check=True, capture_output=True, text=True)
+    try:
+        return subprocess.run(args, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        # ffmpeg stderr names the real cause (missing stream, codec, filter); it carries no credentials.
+        from pipeline.common import log
+        tail = "\n".join((exc.stderr or "").strip().splitlines()[-6:])
+        log.warning("recap subprocess failed (%s ... exit %s):\n%s", " ".join(map(str, args[:3])), exc.returncode, tail)
+        raise
 
 
 def transcribe(source, info):
@@ -32,7 +39,7 @@ def transcribe(source, info):
 
 def detect(source, duration):
     import re
-    result = run(["ffmpeg", "-hide_banner", "-i", str(source), "-vf", "select=gt(scene\\,0.3),showinfo", "-an", "-f", "null", "-"])
+    result = run(["ffmpeg", "-hide_banner", "-i", str(source), "-map", "0:v:0", "-vf", "select=gt(scene\\,0.3),showinfo", "-an", "-f", "null", "-"])
     cuts = [0.0] + [float(v) for v in re.findall(r"pts_time:([0-9.]+)", result.stderr)] + [duration]
     cuts = sorted(set(cuts))
     return [{"start": a, "end": b} for a, b in zip(cuts, cuts[1:]) if b - a >= 0.5] or [{"start": 0, "end": duration}]
@@ -205,7 +212,7 @@ def usable_scene(source, scene, *, reader=None):
     """False for black or nearly flat frames, sampled cheaply mid-scene."""
     import numpy as np
     middle = (scene["start"] + scene["end"]) / 2
-    command = ["ffmpeg", "-v", "error", "-ss", str(middle), "-i", str(source), "-frames:v", "1", "-vf", "scale=64:36,format=gray", "-f", "rawvideo", "-"]
+    command = ["ffmpeg", "-v", "error", "-ss", str(middle), "-i", str(source), "-map", "0:v:0", "-frames:v", "1", "-vf", "scale=64:36,format=gray", "-f", "rawvideo", "-"]
     raw = reader(command) if reader else subprocess.run(command, stdout=subprocess.PIPE, timeout=60).stdout
     if not raw:
         return False
@@ -241,7 +248,7 @@ def assemble(source, scenes, item, voice, work, short, bed=0, excluded=()):
             if take < 0.4:
                 continue
             clip = work / f"clip-{i}-{len(pieces)}.mp4"
-            run(["ffmpeg", "-y", "-v", "error", "-ss", str(scene["start"] + 0.05), "-t", str(take), "-i", str(source), "-an", "-vf", fit,
+            run(["ffmpeg", "-y", "-v", "error", "-ss", str(scene["start"] + 0.05), "-t", str(take), "-i", str(source), "-map", "0:v:0", "-an", "-vf", fit,
                  "-c:v", "libx264", "-preset", "fast", "-threads", "2", str(clip)])
             shots.append({"start": start + (end-start-need), "end": min(end, start + (end-start-need) + take), "scene": index})
             used.add(index)
