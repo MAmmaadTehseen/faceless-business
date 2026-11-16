@@ -75,6 +75,7 @@ Leave `LLM_PROVIDER=anthropic` for existing behavior and `CLAUDE_MODEL` support.
 | Recap text | glm-5.3 | LLM_MODEL_RECAP |
 | Hook / review | glm-5.3 | LLM_MODEL_HOOK / LLM_MODEL_REVIEW |
 | Optimize | glm-5.3-flash | LLM_MODEL_OPTIMIZE |
+| Short tighten (over-budget child Shorts) | glm-5.3-flash | LLM_MODEL_SHORT_TIGHTEN |
 
 Overrides apply to the selected provider; clear incompatible overrides when switching.
 `LUNAROUTE_THINKING_BUDGET` (optional) sends the Messages `thinking` parameter: `0` disables

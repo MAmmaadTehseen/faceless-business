@@ -34,6 +34,55 @@ HOOK_SCHEMA = {
     "properties": {"opening_paragraphs": {"type": "array", "items": {"type": "string"}}, "changed": {"type": "boolean"}},
 }
 
+# Shorts length budget (growth log 2026-11-16): retention cliffs near 30 s, so
+# scripts aim for 75-110 words. The prompt asks for it; tighten_shorts enforces it.
+SHORT_WORDS = (75, 110)
+SHORT_WORDS_ACCEPT = (60, 115)
+TIGHTEN_SCHEMA = {
+    "type": "object", "additionalProperties": False, "required": ["script"],
+    "properties": {"script": {"type": "string", "description": "The tightened Short script, 75-110 words"}},
+}
+
+
+def word_count(text: str) -> int:
+    return len(str(text or "").split())
+
+
+def tighten_shorts(claude, shorts: list[dict], content_id: str | None = None) -> list[dict]:
+    """Shorten any Short script over the word budget with one small model call each.
+
+    Non-fatal: a failed or still-too-long rewrite keeps the original script. Facts,
+    the first-sentence hook and the closing question must survive the rewrite.
+    """
+    out = []
+    for short in shorts:
+        words = word_count(short.get("script"))
+        log.info("short %r: %d words", short.get("hook_title"), words)
+        if words <= SHORT_WORDS[1]:
+            out.append(short)
+            continue
+        prompt = (
+            f"This Short script is {words} words; it must be {SHORT_WORDS[0]}-{SHORT_WORDS[1]} words (about 35-45 seconds spoken). "
+            "Cut it to length. Keep the first sentence as the hook (under twelve words, naming a specific actor, object or number), "
+            "keep every fact, number and attribution you retain accurate, reach the payoff by sentence three, and keep the last line "
+            "as a question or a loop back to the first line. Remove examples, repetition and transitions before anything else. "
+            "Natural spoken English, no em dashes, no headings.\n\n"
+            f"Hook title: {short.get('hook_title', '')}\n\nScript:\n{short.get('script', '')}"
+        )
+        try:
+            data, _ = claude.run("short_tighten", prompt, schema=TIGHTEN_SCHEMA, effort="low", max_tokens=1500, content_id=content_id, retries=1)
+            new = str(data.get("script") or "").strip()
+            n = word_count(new)
+            if SHORT_WORDS_ACCEPT[0] <= n <= SHORT_WORDS_ACCEPT[1]:
+                log.info("short %r tightened: %d -> %d words", short.get("hook_title"), words, n)
+                short = {**short, "script": new}
+            else:
+                log.warning("short %r tighten rejected (%d words); keeping original", short.get("hook_title"), n)
+        except Exception as e:  # non-fatal
+            log.warning("short tighten skipped for %r: %s", short.get("hook_title"), e)
+        out.append(short)
+    return out
+
 
 def strip_script_dashes(value):
     """Normalize generated text recursively, preserving numeric en-dash ranges."""
@@ -153,6 +202,8 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         seen.add(first)
         unique.append(short)
     data["shorts"] = unique[:shorts_per_long]
+    if not reused:
+        data["shorts"] = strip_script_dashes({"shorts": tighten_shorts(claude, data["shorts"], content_id)})["shorts"]
     words = sum(len(p.split()) for p in data["script"])
     log.info("script: %d paragraphs, %d words, title: %s", len(data["script"]), words, data["title"])
     return data

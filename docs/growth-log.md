@@ -66,6 +66,7 @@ Comparison: a new faceless explainer channel typically sees 100-1,000 views per 
 - `fb_insights`: tries `video_insights` Reel play metrics and keeps the larger of that and the object field; logs the missing-permission message once per video so the owner sees it.
 - `scripts/growth_snapshot.py`: the measurement above, rerunnable.
 - Tests: `tests/test_captions.py` (8 tests). Full suite: 388 passed.
+- Added later the same day: `tighten_shorts` in `pipeline/script.py`. The word budget was prompt-only and the model has overshot before (today's bank run, written on the old prompt, produced 119-126-word Shorts). Every child Short now logs its word count, and any over 110 words gets one small `short_tighten` call (glm-5.3-flash on LunaRoute, effort low, 1500 max tokens) that cuts it to 75-110 words while keeping the hook, the facts and the closing question. A rewrite outside 60-115 words or a failed call keeps the original; resumed saved scripts are never re-paid. Tests: `tests/test_tighten_shorts.py` (4). Suite: 398 passed.
 
 Not touched: bank/stockpile workflow, render, common.py, workflows. Already banked bundles keep their 110-150-word Shorts; new bank runs produce the shorter format.
 
@@ -104,6 +105,8 @@ Only Shorts whose content id date is after 2026-11-16 count; older queued Shorts
 - Consider hub articles as the Shorts "link in bio" on Instagram (one link per profile): set each profile's link to `https://hub.ammaad.online/c/<channel>`.
 
 ### Carry forward to round 2
+
+- Round 2 check: grep bank/produce logs for `short ... words` and `tightened` lines to see how often the model overshoots and whether tightened Shorts hold retention as well as natively short ones.
 
 - If retention moves but views do not, the next lever is the on-screen hook card (render) and a trimmed first 2 s of footage.
 - If Instagram tradewinds stays under 20 median with spaced posting, inspect the account itself (shadow restrictions, missing professional category) rather than captions.
