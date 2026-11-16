@@ -9,6 +9,7 @@ from ..common import Channel, log, now_iso
 from . import meta, youtube
 from .jarvis import record, update as publication_update
 from .cross_promotion import instagram_caption
+from .captions import reels_caption, short_tags, uses_legacy_description, youtube_short_description
 from .quota import THUMB_COST, UPDATE_COST, reserve
 
 
@@ -365,6 +366,40 @@ def follow_youtube_to_reels(db, channel) -> int:
     return done
 
 
+def short_description(s, channel, long_url=None) -> str:
+    """YouTube description for a Short: rebuild keyword-free legacy stubs, otherwise fill the long-video URL."""
+    if channel.cfg.get("format") != "words" and uses_legacy_description(s.get("description")):
+        return youtube_short_description(s, channel, long_url)
+    return (s.get("description") or "").replace("{LONG_URL}", long_url or "")
+
+
+def reel_caption(s, channel, desc: str) -> str:
+    """Reels caption: hook + question + niche hashtags for explainer channels; words-format channels keep their own text."""
+    if channel.cfg.get("format") == "words":
+        return f"{s['title']}\n\n{desc}".strip()
+    return reels_caption(s, channel)
+
+
+def reels_wait_for_youtube(db, s) -> bool:
+    """Child Shorts post their Reels when the YouTube copy goes public, one per day, instead of four in two minutes.
+
+    Setting `reels_follow_youtube` (default true) gates it. Standalone Shorts, Shorts without a
+    scheduled YouTube row and words-format channels publish Reels immediately as before.
+    """
+    if not s.get("parent_id") or db.setting("reels_follow_youtube", True) is not True:
+        return False
+    yt_pub = db.one("publications", {"content_id": s["id"], "platform": "youtube"})
+    if not yt_pub or yt_pub.get("status") not in ("live", "queued") or yt_pub.get("privacy") == "public":
+        return False
+    publish_at = yt_pub.get("publish_at")
+    if not publish_at:
+        return False
+    try:
+        return datetime.fromisoformat(str(publish_at).replace("Z", "+00:00")) > datetime.now(timezone.utc)
+    except ValueError:
+        return False
+
+
 def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, queue_youtube=False):
     youtube.use_channel(channel); meta.use_channel(channel)
     s = dict(short_row)
@@ -375,7 +410,7 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
             _media_url(db, s)
         except Exception as exc:
             log.warning("short media persistence deferred for %s (%s)", s["id"], type(exc).__name__)
-    desc = (s.get("description") or "").replace("{LONG_URL}", long_url or "")
+    desc = short_description(s, channel, long_url)
     s["description"] = desc
     db.update("content", {"id": s["id"]}, {"description": desc})
     results = []
@@ -387,8 +422,10 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
         except Exception as e:
             # YouTube/storage problems must not prevent independent Meta Reels.
             log.error("youtube short deferred for %s (%s)", s["id"], type(e).__name__)
-    if meta.configured() and privacy == "public":
-        caption = f"{s['title']}\n\n{desc}".strip()
+    if meta.configured() and privacy == "public" and reels_wait_for_youtube(db, s):
+        log.info("meta: reels for %s wait for its scheduled YouTube slot (sync publishes them when it goes public)", s["id"])
+    elif meta.configured() and privacy == "public":
+        caption = reel_caption(s, channel, desc)
         ig = db.one("publications", {"content_id": s["id"], "platform": "instagram"})
         fb = db.one("publications", {"content_id": s["id"], "platform": "facebook"})
         try:
@@ -452,9 +489,10 @@ def publish_all(db, content_id, privacy="private", channel=None):
     for i, short in enumerate(shorts):
         if short.get("qa_status") != "passed":
             continue
-        if not short.get("tags"):
-            short["tags"] = long.get("tags") or []
-            db.update("content", {"id": short["id"]}, {"tags": short["tags"]})
+        tags = short_tags(short, channel, long.get("tags") or [])
+        if tags != (short.get("tags") or []):
+            short["tags"] = tags
+            db.update("content", {"id": short["id"]}, {"tags": tags})
         short_slot = _next_slot(db, "short", channel, parent_slot=slot, after=previous_short, content_id=short["id"])
         results.extend(publish_short(db, short, channel, privacy, long_url, slot=short_slot))
         previous_short = short_slot

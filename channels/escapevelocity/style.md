@@ -28,7 +28,7 @@
 - Prefer real mission footage and imagery (NASA, ESA, public archives). Stock space renders only as filler.
 
 ## Platform adjustments
-- Long videos 8-12 minutes, 1,300-1,900 words. Shorts 110-150 words, one moment each.
+- Long videos 8-12 minutes, 1,300-1,900 words. Shorts 75-110 words (35-45 seconds), one moment each, opened on the figure or the myth to bust.
 - Comment replies: friendly, factual, two sentences; questions get answers with a source.
 
 ## Learned adjustments (appended by weekly review; newest last)

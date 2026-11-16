@@ -25,7 +25,7 @@
 - CTA one sentence, near the end.
 
 ## Platform adjustments
-- Long videos 8-12 minutes, 1,300-1,900 words. Shorts 110-150 words, one chokepoint or one number each.
+- Long videos 8-12 minutes, 1,300-1,900 words. Shorts 75-110 words (35-45 seconds), one chokepoint or one number each, the number spoken in the first sentence.
 - Comment replies: courteous, two sentences, never debate politics, redirect to the economics.
 
 ## Learned adjustments (appended by weekly review; newest last)

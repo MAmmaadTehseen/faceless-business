@@ -28,7 +28,11 @@ future prediction, emotional intensity (fear, excitement, awe), time-bound eleme
 future glimpse, expert concern, transformation narrative, clear pattern, acceleration/urgency.
 
 ## Shorts formula
-Line 1: the hook (a claim, a number, or a contradiction). Lines 2-6: one idea, one example, one consequence. Last line: a twist or a question. 110-150 words.
+Line 1: the hook, under twelve words, naming a specific actor, object or number (a claim, a number, or a contradiction). No setup, no "in this video", no question-only opener.
+Lines 2-3: the payoff. The viewer must know what the hook meant by the third sentence; the retention cliff on our Shorts sits near 30 seconds, so the surprise comes before it.
+Lines 4-6: one idea, one example, one consequence, attributed in-line.
+Last line: a question the viewer can answer in one comment, or a line that loops back to the first sentence so the Short rewatches cleanly.
+75-110 words, about 35-45 seconds spoken. One idea per Short, never a summary of the long video.
 
 ## Thumbnail text
 Max three words. All caps. One emotional word allowed. Must make sense next to the title without repeating it.

@@ -181,9 +181,28 @@ def ig_insights(media_id: str) -> dict:
     return {"views": views, "likes": r.get("like_count", 0), "comments": r.get("comments_count", 0)}
 
 
+FB_REEL_PLAY_METRICS = ("blue_reels_play_count", "fb_reels_total_plays", "post_video_views")
+
+
 def fb_insights(video_id: str) -> dict:
+    """Reel plays, likes and comments. The video object's `views` field is 0 for Reels; real plays come from
+    video_insights, which needs the `read_insights` permission on the Page token. Without it, views stay at the
+    object field (usually 0) and the sync log notes the missing permission once per video."""
     r = requests.get(f"{G}/{video_id}", params={"fields": "views,likes.summary(true),comments.summary(true)", "access_token": _tok()}, timeout=30).json()
-    return {"views": r.get("views", 0), "likes": r.get("likes", {}).get("summary", {}).get("total_count", 0),
+    views = int(r.get("views") or 0)
+    try:
+        ins = requests.get(f"{G}/{video_id}/video_insights", params={"metric": ",".join(FB_REEL_PLAY_METRICS), "access_token": _tok()}, timeout=30).json()
+        if ins.get("error"):
+            log.warning("facebook insights unavailable for %s: %s", video_id, ins["error"].get("message", "")[:120])
+        for m in ins.get("data", []):
+            if m.get("name") in FB_REEL_PLAY_METRICS:
+                value = (m.get("values") or [{}])[0].get("value", 0)
+                if isinstance(value, dict):
+                    value = sum(v for v in value.values() if isinstance(v, (int, float)))
+                views = max(views, int(value or 0))
+    except Exception as exc:
+        log.warning("facebook insights failed for %s: %s", video_id, type(exc).__name__)
+    return {"views": views, "likes": r.get("likes", {}).get("summary", {}).get("total_count", 0),
             "comments": r.get("comments", {}).get("summary", {}).get("total_count", 0)}
 
 

@@ -29,7 +29,7 @@
 
 ## Platform adjustments
 - YouTube long: conversational, educational, 8-12 minutes, 1,300-1,900 words.
-- Shorts/Reels: hook in the first line, one idea, 45-60 seconds, 110-150 words, ends on a line that makes people rewatch or comment.
+- Shorts/Reels: a named organisation or person in the first sentence, one idea, 35-45 seconds, 75-110 words, ends on a line that makes people rewatch or comment.
 - Comment replies: warm, two sentences max, ask one follow-up question, never argue, never promise.
 
 ## Learned adjustments (appended by weekly review; newest last)

@@ -3,17 +3,77 @@
   "name": "Escape Velocity",
   "handle": "escapevelocitydaily",
   "instagram_handle": "",
-  "cross_mention_keywords": ["NASA", "SpaceX", "satellite", "space", "rocket", "lunar", "Mars"],
+  "cross_mention_keywords": [
+    "NASA",
+    "SpaceX",
+    "satellite",
+    "space",
+    "rocket",
+    "lunar",
+    "Mars"
+  ],
   "cross_mention_line": "More on the space and science side at @{handle}.",
   "tagline": "Launches, missions and the science that gets us off this rock.",
-  "niche_keywords": ["NASA", "SpaceX launch", "Starship", "Artemis", "Mars mission", "James Webb telescope", "asteroid", "fusion energy", "ESA", "satellite"],
-  "voice": {"kokoro": "af_heart", "edge": "en-US-AvaMultilingualNeural", "rate": "+2%"},
-  "style": {"accent": [34, 211, 238], "bg": [4, 7, 14], "caption_colour": "&H00FFFFFF", "caption_outline": "&HA0000000", "font_size_long": 20, "font_size_short": 26},
-  "footage": {"providers": ["nasa", "pixabay", "pexels"], "nasa": true},
-  "schedule": {"days": ["Mon", "Thu", "Sun"], "utc_hour": 16},
+  "niche_keywords": [
+    "NASA",
+    "SpaceX launch",
+    "Starship",
+    "Artemis",
+    "Mars mission",
+    "James Webb telescope",
+    "asteroid",
+    "fusion energy",
+    "ESA",
+    "satellite"
+  ],
+  "voice": {
+    "kokoro": "af_heart",
+    "edge": "en-US-AvaMultilingualNeural",
+    "rate": "+2%"
+  },
+  "style": {
+    "accent": [
+      34,
+      211,
+      238
+    ],
+    "bg": [
+      4,
+      7,
+      14
+    ],
+    "caption_colour": "&H00FFFFFF",
+    "caption_outline": "&HA0000000",
+    "font_size_long": 20,
+    "font_size_short": 26
+  },
+  "footage": {
+    "providers": [
+      "nasa",
+      "pixabay",
+      "pexels"
+    ],
+    "nasa": true
+  },
+  "schedule": {
+    "days": [
+      "Mon",
+      "Thu",
+      "Sun"
+    ],
+    "utc_hour": 16
+  },
   "shorts_per_long": 4,
   "category_id": "28",
   "description_footer": "Sources are listed above. Footage courtesy of NASA/ESA and public archives. Narration is AI-generated. Three videos a week: subscribe.",
+  "hashtags": [
+    "Space",
+    "NASA",
+    "SpaceX",
+    "Astronomy",
+    "Rockets"
+  ],
+  "caption_question": "Which mission are you watching next? Tell us in the comments.",
   "youtube_url": "https://www.youtube.com/@escapevelocitydaily",
   "topic_playlists": [
     {

@@ -16,12 +16,14 @@ from .qa import run_qa
 from .script import BANNED_TITLE, SCRIPT_SCHEMA, strip_script_dashes
 from .shorts import make_short
 
+DAILY_WORDS = (70, 160)
+
 DAILY_SCHEMA = {
     "type": "object", "additionalProperties": False,
     "required": ["hook_title", "script", "query", "description", "tags", "facts_check"],
     "properties": {
         "hook_title": {"type": "string"},
-        "script": {"type": "string", "description": "120-160 spoken words; self-contained with a hook in the first line"},
+        "script": {"type": "string", "description": "80-115 spoken words; self-contained; first sentence under 12 words naming an actor or a number; payoff by sentence three; last line a question or a loop back to the first line"},
         "query": {"type": "string", "description": "Generic physical stock video search"},
         "description": {"type": "string"},
         "tags": {"type": "array", "items": {"type": "string"}},
@@ -43,7 +45,7 @@ def daily_script(claude, prompt, content_id, db=None, supplied_sources=None):
             if attempt or str(exc) != "max_tokens hit in step short_daily":
                 raise
             prompt += ("\nPrevious response exceeded the output limit. Return compact JSON only. "
-                       "Keep the script 120-160 words, use at most 3 concise fact checks, "
+                       "Keep the script 80-115 words, use at most 3 concise fact checks, "
                        "a two-sentence description, and one short footage query. No extra commentary.")
 
 
@@ -145,7 +147,9 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
         prompt = (
             f"Write a standalone daily Short about {topic['topic']}. Source seed: {topic.get('source_url') or ''}.\n"
             "Use web search to verify recent facts; at most 3 searches. Follow the channel persona. "
-            "120-160 spoken words, a specific hook on the first line, one clear idea with a payoff and human stakes. "
+            "80-115 spoken words (about 35-45 seconds), one clear idea with a payoff and human stakes. "
+            "The first sentence is under twelve words and names a specific actor, object or number; no setup and no question-only opener. "
+            "The payoff lands by the third sentence. The last line is a question the viewer can answer in one comment, or loops back to the first line. "
             "The Short must stand alone without a long video. Title under 50 characters. "
             "No income promises, medical/legal/financial advice, fabricated claims or unsupported statistics. "
             "Use simple natural spoken English without filler or generic transitions. Hedge uncertain causes, "
@@ -169,8 +173,9 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
         db.update("content", {"id": content_id}, {"script": data["script"], "qa_notes": json.dumps({"daily_script": data})})
     if not dry_run:
         words = len(data["script"].split())
-        if not 120 <= words <= 160:
-            raise RuntimeError(f"Daily Short script outside 120-160 word range ({words}); paid response saved for correction")
+        # 70-160 accepts both the new 80-115 target and earlier 120-160-word saved responses on resume.
+        if not DAILY_WORDS[0] <= words <= DAILY_WORDS[1]:
+            raise RuntimeError(f"Daily Short script outside {DAILY_WORDS[0]}-{DAILY_WORDS[1]} word range ({words}); paid response saved for correction")
         if any(f["confidence"] == "unverified" for f in data["facts_check"]):
             raise RuntimeError("Daily Short contains unverified claims; paid response saved for correction")
     data = strip_script_dashes(data)
