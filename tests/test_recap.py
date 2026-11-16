@@ -124,13 +124,23 @@ def test_lavfi_end_to_end_mocked_paid_services(video, monkeypatch):
     generated = {name: {"title":f"A case for scene {index}", "description":"Original film criticism; spoilers.",
                        "segments":[{"text":("The framing supports a compelling argument. " * (220 if name == "long" else 22)).strip(), "scene":0}]}
                  for index, name in enumerate(core.PIECES)}
-    claude.run.side_effect = lambda step, *a, **k: ({"notes": [{"scene": 0, "note": "A lit room."}]}, 0) if step == "recap_frames" else (generated, 0)
+    def fake_run(step, *a, **k):
+        required = k["schema"]["required"]
+        if step == "recap_frames":
+            return {"notes": [{"scene": 0, "note": "A lit room."}]}, 0
+        if required == ["segments"]:
+            return {"segments": [{"text": ("The framing supports a compelling argument. " * 70).strip(), "scene": 0}]}, 0
+        if "accuracy_check" in required and "segments" not in required:
+            return {"title": "A case for scene 0", "description": "Original film criticism; spoilers.", "accuracy_check": []}, 0
+        return {n: generated[n] for n in required}, 0
+    claude.run.side_effect = fake_run
     claude.vision.return_value = ({"pass":True,"issues":[],"thumbnail_ok":True,"frames_ok":True,"frames_without_caption":3}, 0)
     def fake_voice(item, directory, channel):
         duration = 300 if directory.name == "long" else 2
         audio = directory / "voice.wav"
         subprocess.run(["ffmpeg","-y","-v","error","-f","lavfi","-i","sine=frequency=440:sample_rate=24000","-t",str(duration), str(audio)], check=True)
-        return {"audio":audio,"duration":duration,"timings":[{"start":0,"end":duration}]}
+        n = len(item["segments"])
+        return {"audio":audio,"duration":duration,"timings":[{"start":i*duration/n,"end":(i+1)*duration/n} for i in range(n)]}
     monkeypatch.setattr(worker, "narrate", fake_voice)
     db = DB()
     worker.generate(work, state, db=db, claude=claude)
@@ -143,7 +153,7 @@ def test_lavfi_end_to_end_mocked_paid_services(video, monkeypatch):
         assert result["width"] < result["height"] if name != "long" else result["width"] > result["height"]
         assert (work / name / "captions.srt").read_text().startswith("1\n00:00:00,000 -->")
         assert "Fixture dialogue" not in (work / name / "captions.srt").read_text()
-    assert claude.run.call_count == 2 and claude.vision.call_count == 5  # frame notes + scripts
+    assert claude.run.call_count == 9 and claude.vision.call_count == 5  # frame notes, three acts + meta, four Shorts
     # Rebuild one piece without touching the other four approvals or files.
     state["items"]["long"]["approved"] = True
     before = (work / "long" / "video.mp4").stat().st_mtime_ns
