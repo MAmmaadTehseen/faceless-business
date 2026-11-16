@@ -55,6 +55,9 @@ export function SettingsForm({
       niche_keywords_escapevelocity: splitKeywords(
         channelKeywords.escapevelocity ?? "",
       ),
+      niche_keywords_tentongues: splitKeywords(
+        channelKeywords.tentongues ?? "",
+      ),
     };
     const res = await fetch("/api/settings", {
       method: "PUT",

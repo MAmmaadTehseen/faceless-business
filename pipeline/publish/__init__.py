@@ -12,6 +12,19 @@ from .cross_promotion import instagram_caption
 from .quota import THUMB_COST, UPDATE_COST, reserve
 
 
+FIXED_CALENDAR = {"futurework": ({0, 2, 4}, 6), "tradewinds": ({1, 3, 5}, 11), "escapevelocity": ({0, 3, 6}, 16)}
+DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def channel_calendar(channel: Channel) -> tuple[set[int], int]:
+    """Long-video weekdays and UTC hour: fixed for the original three, channel.json schedule otherwise."""
+    if channel.key in FIXED_CALENDAR:
+        return FIXED_CALENDAR[channel.key]
+    schedule = channel.cfg.get("schedule") or {}
+    days = {DAY_NAMES.index(d) for d in schedule.get("days", DAY_NAMES)}
+    return days, int(schedule.get("utc_hour", 6))
+
+
 def _next_slot(db, kind: str, channel: Channel | None = None, *, now=None,
                parent_slot=None, after=None, content_id=None) -> datetime:
     """Assign a channel calendar slot; failed publications do not occupy slots."""
@@ -25,24 +38,28 @@ def _next_slot(db, kind: str, channel: Channel | None = None, *, now=None,
                 and r.get("status") in ("live", "queued") and r.get("publish_at")):
             occupied.append((datetime.fromisoformat(r["publish_at"].replace("Z", "+00:00")),
                              content[r["content_id"]]["kind"]))
-    weekdays, hour = {"futurework": ({0, 2, 4}, 6), "tradewinds": ({1, 3, 5}, 11),
-                      "escapevelocity": ({0, 3, 6}, 16)}[channel.key]
+    weekdays, hour = channel_calendar(channel)
+    same_day = bool(channel.cfg.get("shorts_same_day")) and parent_slot is not None
+    spacing = timedelta(hours=float(channel.cfg.get("shorts_spacing_hours", 1))) if same_day else timedelta(days=1)
+    per_day = int(channel.cfg.get("max_youtube_per_day", 3))
     if kind == "long":
         candidate = now.replace(hour=hour, minute=0, second=0, microsecond=0)
     else:
         hour = channel.cfg.get("shorts_hour_utc", {"futurework": 13, "tradewinds": 15,
-                                                   "escapevelocity": 18}[channel.key]) if parent_slot else channel.cfg.get("daily_short_hour_utc", 20)
-        day = parent_slot + timedelta(days=1) if parent_slot else now
+                                                   "escapevelocity": 18}.get(channel.key, 13)) if parent_slot else channel.cfg.get("daily_short_hour_utc", 20)
+        day = parent_slot if same_day else parent_slot + timedelta(days=1) if parent_slot else now
         if after:
-            day = max(day, after + timedelta(days=1))
+            day = max(day, after + spacing)
         candidate = day.replace(hour=int(hour), minute=0, second=0, microsecond=0)
+        if after and same_day:
+            candidate = max(candidate, after + spacing)
     while True:
         slot = candidate
         day_count = sum(t.date() == slot.date() for t, _ in occupied)
         taken = any(t == slot or (kind == "long" and k == "long" and t.date() == slot.date()) for t, k in occupied)
-        if slot >= earliest and (kind != "long" or candidate.weekday() in weekdays) and not taken and day_count < 3:
+        if slot >= earliest and (kind != "long" or candidate.weekday() in weekdays) and not taken and day_count < per_day:
             return slot
-        candidate += timedelta(days=1)
+        candidate += spacing if (kind == "short" and same_day) else timedelta(days=1)
 
 
 BIG_FILE = 45 * 1024 * 1024   # Supabase free tier caps objects at 50 MB; larger queued files go to a GitHub release

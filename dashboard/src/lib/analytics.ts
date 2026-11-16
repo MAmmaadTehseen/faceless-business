@@ -162,7 +162,7 @@ export async function getAnalytics(
     total: sum(pubs, start, end),
     previous: sum(pubs, previous, start),
     daily,
-    channels: groups(["futurework", "tradewinds", "escapevelocity"], "channel"),
+    channels: groups(["futurework", "tradewinds", "escapevelocity", "tentongues"], "channel"),
     formats: groups(["long", "short", "daily"], "format"),
     categories: groups([...new Set(items.map(category))].sort(), "category"),
     platforms: groups(platform ? [platform] : ["youtube", "instagram", "facebook"], "platform"),

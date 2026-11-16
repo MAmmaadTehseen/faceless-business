@@ -32,6 +32,7 @@ export async function PUT(req: Request) {
     niche_keywords_futurework: strList(b.niche_keywords_futurework),
     niche_keywords_tradewinds: strList(b.niche_keywords_tradewinds),
     niche_keywords_escapevelocity: strList(b.niche_keywords_escapevelocity),
+    niche_keywords_tentongues: strList(b.niche_keywords_tentongues),
   };
 
   // Values are jsonb; supabase-js serialises each JS value as JSON.

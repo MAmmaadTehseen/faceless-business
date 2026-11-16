@@ -30,6 +30,15 @@ export const CATEGORY_MAP: Record<string, Record<string, string[]>> = {
     Policy: ["policy", "regulat", "budget"],
     Launches: ["launch", "rocket", "spacex", "orbit", "starship"],
   },
+  tentongues: {
+    "Food & drink": ["water", "food", "bread", "milk", "tea", "coffee", "rice", "egg", "fruit", "meat", "soup", "cheese"],
+    People: ["mother", "father", "brother", "sister", "friend", "family", "baby", "child", "teacher", "doctor"],
+    Home: ["house", "door", "window", "table", "chair", "bed", "kitchen", "key", "room"],
+    Nature: ["sun", "moon", "star", "sky", "rain", "snow", "wind", "fire", "sea", "river", "mountain", "tree", "flower"],
+    Travel: ["train", "bus", "car", "ticket", "map", "airport", "station", "road", "street", "city", "hotel"],
+    Verbs: ["eat", "drink", "sleep", "walk", "run", "read", "write", "speak", "listen", "go", "come", "help", "learn", "love", "work"],
+    Feelings: ["happy", "sad", "tired", "hungry", "thank", "sorry", "hello", "goodbye", "please"],
+  },
 };
 export function category(
   c: Pick<Content, "channel" | "topic" | "title"> & { tags?: string[] | null },
