@@ -1,3 +1,4 @@
+import time
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -376,3 +377,24 @@ def test_stream_overall_cap(monkeypatch):
     with pytest.raises(RuntimeError, match="overall timeout"):
         claude.run("script", "fixture")
     assert post.call_count == 1
+
+
+def test_stream_reads_bytes_split_on_newline_only(monkeypatch):
+    """UTF-8 continuation byte 0x85 (丅 = e4 b8 85) must not break an SSE JSON line (ISO-8859-1 + splitlines did)."""
+    from unittest.mock import Mock
+    from pipeline.common import Claude
+    text = "水 丅 پانی"
+    events = [("message_start", {"type": "message_start", "message": {"id": "m", "usage": {}}}),
+              ("content_block_delta", {"type": "content_block_delta", "delta": {"type": "text_delta", "text": text}}),
+              ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {}}),
+              ("message_stop", {"type": "message_stop"})]
+    raw = b"".join(f"event: {e}\ndata: {json.dumps(p, ensure_ascii=False)}\n\n".encode("utf-8") for e, p in events)
+    assert b"\x85" in raw
+    response = Mock()
+    def iter_lines(chunk_size=1, delimiter=None, decode_unicode=False):
+        assert delimiter == b"\n" and not decode_unicode
+        return iter(raw.split(b"\n"))
+    response.iter_lines.side_effect = iter_lines
+    client = Claude.__new__(Claude)
+    body = client._lunaroute_stream(response, time.monotonic() + 60)
+    assert body["content"][0]["text"] == text and body["stop_reason"] == "end_turn"

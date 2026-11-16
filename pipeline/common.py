@@ -404,7 +404,10 @@ class Claude:
 
         def read_lines():
             try:
-                for line in response.iter_lines(chunk_size=1, decode_unicode=True):
+                # Bytes split on "\n" only: requests' decode_unicode guesses ISO-8859-1 for
+                # text/event-stream, and str.splitlines() then breaks JSON on UTF-8 continuation
+                # bytes such as 0x85 (NEL) inside non-Latin text (Chinese, Urdu, Cyrillic).
+                for line in response.iter_lines(chunk_size=1, delimiter=b"\n"):
                     if stopped.is_set():
                         return
                     incoming.put(line)
@@ -436,7 +439,8 @@ class Claude:
 
         for line in lines():
             if isinstance(line, bytes):
-                line = line.decode("utf-8")
+                line = line.decode("utf-8", "replace")
+            line = line.rstrip("\r")
             if line:
                 if line.startswith("event:"):
                     event = line[6:].strip()
@@ -525,6 +529,8 @@ class Claude:
                     reason = "connect failure"
                 elif "stream error event" in str(exc):
                     reason = "stream error event: " + str(exc).rsplit(": ", 1)[-1]
+                elif "malformed stream" in str(exc):
+                    reason = "malformed stream event"
                 else:
                     reason = "mid-stream disconnect"
                 log.warning("lunaroute %s attempt %d: %s", step, stream_retries + 1, reason)
