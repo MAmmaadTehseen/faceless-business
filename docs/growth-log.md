@@ -92,7 +92,7 @@ Only Shorts whose content id date is after 2026-11-16 count; older queued Shorts
 ### Owner-only levers (one line each)
 
 - Run the `gh secret set` block from the 2026-11-16 chat so GitHub Actions uses the new Facebook tokens (the agent's secret write was blocked by the permission classifier).
-- Verify the Ten Tongues channel phone number in Studio: without it custom thumbnails are refused and the pipeline logs a warning every upload.
+- Ten Tongues phone verified 2026-11-16 (custom thumbnails now allowed).
 - Reply to every comment by hand for the first weeks and pin one: the engage job drafts replies but early comment velocity is a ranking signal the owner can supply faster than a 6-hourly cron.
 - Instagram: post one Story per Reel (all three accounts are already creator accounts, verified via the API 2026-11-16): the app surfaces Reels to followers through Stories, which the API cannot do.
 - YouTube Community tab: one post per long video asking the comment question; the API cannot post to Community.
