@@ -181,7 +181,7 @@ def ig_insights(media_id: str) -> dict:
     return {"views": views, "likes": r.get("like_count", 0), "comments": r.get("comments_count", 0)}
 
 
-FB_REEL_PLAY_METRICS = ("blue_reels_play_count", "fb_reels_total_plays", "post_video_views")
+FB_REEL_PLAY_METRICS = ("blue_reels_play_count", "fb_reels_total_plays")  # post_video_views makes the whole call fail on Reels
 
 
 def fb_insights(video_id: str) -> dict:
