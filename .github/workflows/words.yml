@@ -1,0 +1,118 @@
+name: words
+run-name: words ${{ inputs.word || github.run_id }}
+on:
+  schedule:
+    - cron: "30 3 * * *"       # tentongues: daily 03:30 UTC; long publishes 07:00, Shorts 09:00-18:00
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "words-format channel key"
+        default: tentongues
+        required: false
+      privacy:
+        description: "private | public | unlisted (default: dashboard setting)"
+        type: choice
+        options: ["", private, public, unlisted]
+        required: false
+      word:
+        description: "Force a word from channels/<key>/words.json"
+        required: false
+      resume_id:
+        description: "Content id: re-render from the saved episode (restore artifact first)"
+        required: false
+      artifact_run_id:
+        description: "Run id holding words-<channel>-<run_id> (for resume)"
+        required: false
+concurrency:
+  group: words-${{ github.event.inputs.channel || 'tentongues' }}
+  cancel-in-progress: false
+permissions:
+  contents: write
+  actions: read
+jobs:
+  words:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
+      JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'anthropic' }}
+      LUNAROUTE_API_KEY: ${{ secrets.LUNAROUTE_API_KEY }}
+      LUNAROUTE_BASE_URL: ${{ vars.LUNAROUTE_BASE_URL || 'https://gw.lunaroute.com' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN_TENTONGUES: ${{ secrets.YT_REFRESH_TOKEN_TENTONGUES }}
+      META_ACCESS_TOKEN_TENTONGUES: ${{ secrets.META_ACCESS_TOKEN_TENTONGUES }}
+      META_PAGE_ID_TENTONGUES: ${{ secrets.META_PAGE_ID_TENTONGUES }}
+      META_IG_USER_ID_TENTONGUES: ${{ secrets.META_IG_USER_ID_TENTONGUES }}
+      IG_ACCESS_TOKEN_TENTONGUES: ${{ secrets.IG_ACCESS_TOKEN_TENTONGUES }}
+      GH_TOKEN: ${{ github.token }}
+      TTS_BACKEND: kokoro
+      HF_HOME: ${{ github.workspace }}/.hf
+      PIPER_VOICES_DIR: ${{ github.workspace }}/.piper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - name: System packages (ffmpeg, espeak-ng, Noto fonts for every script)
+        run: |
+          for i in 1 2 3 4; do
+            sudo apt-get update -qq && sudo apt-get install -y -qq --fix-missing ffmpeg fonts-dejavu-core espeak-ng libfribidi0 \
+              fonts-noto-core fonts-noto-cjk fonts-noto-extra && break
+            echo "apt retry $i"; sleep 30
+          done
+          command -v ffmpeg
+          fc-list | grep -ciE "NotoSansDevanagari|NotoSansBengali|NotoNastaliqUrdu|NotoSansCJK" || { echo "Noto fonts missing" >&2; exit 1; }
+      - name: Install dependencies (CPU torch, Kokoro with ja/zh extras, Piper)
+        run: |
+          pip install -r requirements.txt
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install kokoro soundfile "misaki[zh]" piper-tts fugashi jaconv mojimoji unidic-lite pyopenjtalk-plus
+      - name: Cache Kokoro model and Piper voices
+        uses: actions/cache@v4
+        with:
+          path: |
+            .hf
+            .piper
+          key: tts-words-v1
+      - name: Restore saved episode
+        if: github.event.inputs.resume_id != ''
+        env:
+          RESUME_ID: ${{ github.event.inputs.resume_id }}
+          ARTIFACT_RUN_ID: ${{ github.event.inputs.artifact_run_id }}
+          CHANNEL: ${{ github.event.inputs.channel || 'tentongues' }}
+        run: |
+          [[ "$RESUME_ID" =~ ^[a-z]+-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$ ]] || { echo "Invalid resume_id" >&2; exit 1; }
+          [[ "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]] || { echo "artifact_run_id is required and must be numeric for resume" >&2; exit 1; }
+          gh run download "$ARTIFACT_RUN_ID" -n "words-$CHANNEL-$ARTIFACT_RUN_ID" -D .
+          if [ ! -d "out/$RESUME_ID" ] && [ -d "$RESUME_ID" ]; then mkdir -p out; mv -- "$RESUME_ID" "out/$RESUME_ID"; fi
+      - name: Produce the episode and ten Shorts
+        env:
+          CHANNEL: ${{ github.event.inputs.channel || 'tentongues' }}
+          PRIVACY: ${{ github.event.inputs.privacy }}
+          WORD: ${{ github.event.inputs.word }}
+          RESUME_ID: ${{ github.event.inputs.resume_id }}
+        run: |
+          case "$CHANNEL" in tentongues) ;; *) echo "Unknown words channel: $CHANNEL" >&2; exit 1 ;; esac
+          ARGS=(--channel "$CHANNEL" --publish)
+          if [ -n "$PRIVACY" ]; then ARGS+=(--privacy "$PRIVACY"); fi
+          if [ -n "$WORD" ]; then ARGS+=(--word "$WORD"); fi
+          if [ -n "$RESUME_ID" ]; then ARGS+=(--resume "$RESUME_ID"); fi
+          python -m pipeline.words "${ARGS[@]}"
+      - name: Keep rendered files for 3 days
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: words-${{ github.event.inputs.channel || 'tentongues' }}-${{ github.run_id }}
+          path: |
+            out/**/*.mp4
+            out/**/*.jpg
+            out/**/episode.json
+            out/**/result.json
+            out/**/voice.mp3
+            out/**/*.srt
+          retention-days: 3
+          if-no-files-found: ignore

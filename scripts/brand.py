@@ -42,6 +42,9 @@ def build(cfg: dict):
             d.line([(cx, cy - a), (cx + a, cy), (cx, cy + a)], fill=ACC, width=t, joint="curve")
         elif shape == "compass":  # diamond
             d.polygon([(cx + a / 2, cy - a), (cx + a, cy), (cx + a / 2, cy + a), (cx, cy)], fill=ACC)
+        elif shape == "speech":  # speech bubble
+            d.rounded_rectangle((cx, cy - a, cx + 2 * a, cy + a * 0.7), radius=int(a * 0.35), outline=ACC, width=t)
+            d.polygon([(cx + a * 0.4, cy + a * 0.6), (cx + a * 0.9, cy + a * 0.6), (cx + a * 0.3, cy + a * 1.1)], fill=ACC)
         elif shape == "orbit":  # ring with dot
             d.ellipse((cx - 2, cy - a, cx + 2 * a - 2, cy + a), outline=ACC, width=t)
             d.ellipse((cx + a - 2 - t, cy - a - t, cx + a - 2 + t, cy - a + t), fill=WHITE)
@@ -85,6 +88,8 @@ CHANNELS = {
                    "line1": "TRADE WINDS", "line2": "REPORT", "tagline": "Who holds the power and who pays the price: trade, energy, chips and money.", "footer": "Three videos a week  ·  youtube.com/@tradewindsreport"},
     "escapevelocity": {"out": "assets/brand/escapevelocity", "mono": "EV", "shape": "orbit", "bg": [4, 7, 14], "bg2": [8, 20, 40], "accent": [34, 211, 238], "muted": [140, 170, 190],
                        "line1": "ESCAPE", "line2": "VELOCITY", "tagline": "Launches, missions and the science that gets us off this rock.", "footer": "Three videos a week  ·  youtube.com/@escapevelocitydaily"},
+    "tentongues": {"out": "assets/brand/tentongues", "mono": "TT", "shape": "speech", "bg": [20, 14, 36], "bg2": [44, 26, 70], "accent": [167, 139, 250], "muted": [170, 160, 200],
+                   "line1": "TEN", "line2": "TONGUES", "tagline": "One everyday English word a day, taught in ten languages.", "footer": "New word every day  ·  youtube.com/@tentongues"},
 }
 
 if __name__ == "__main__":

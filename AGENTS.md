@@ -13,6 +13,7 @@ Python pipeline runs on GitHub Actions; Next.js dashboard on Vercel at https://f
 | futurework | Future Work Explained | AI and the future of work | am_michael | 251,191,36 | Mon/Wed/Fri 06:00 |
 | tradewinds | Trade Winds Report | global power and economics | bm_george (lang b) | 231,196,122 | Tue/Thu/Sat 11:00 |
 | escapevelocity | Escape Velocity | space and frontier science | af_heart | 34,211,238 | Mon/Thu/Sun 16:00 |
+| tentongues | Ten Tongues | one English word a day in ten languages | af_bella (+ per-language Kokoro/Piper) | 167,139,250 | daily 07:00 long, Shorts 09:00-18:00 |
 
 Per-channel config lives in `channels/<key>/channel.json`, persona in `beliefs.md` + `style.md`,
 shared formulas in `persona/formulas.md`. Brand assets in `assets/brand/<key>/` (regenerate: `python scripts/brand.py all`).
@@ -321,3 +322,25 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   `article: null` in the manifest and `article_failed: true` in both the manifest
   and `qa_notes.stockpile`.
   Release publishes the videos and skips the missing article without model calls.
+
+## Ten Tongues language channel (2026-11-13)
+- Key `tentongues`, format `words`: one everyday word a day -> one long episode + ten Shorts (one per
+  language) + eleven playlists (ten per-language "X word of the day" plus one for long episodes).
+  Module `pipeline/words.py` (+ `words_tts.py`, `cards.py`), workflow `words.yml` (daily 03:30 UTC).
+  Visuals are typographic cards (Pillow + raqm, Noto fonts), never stock footage. One model call
+  per episode through the shared `Claude` interface (step `words`, schema built from the configured
+  language list). Research, licences, owner setup and commands: `docs/language-channel.md`.
+- Languages, TTS voices, colours and playlists live in `channels/tentongues/channel.json`. TTS:
+  Kokoro language codes (needs `misaki[zh]`; Japanese needs fugashi/unidic-lite/pyopenjtalk-plus) and
+  Piper ONNX voices (`piper-tts`, voices cached in `data/piper` / `PIPER_VOICES_DIR`). Only
+  licence-verified voices: Bengali `bn_BD-google` is CC BY-SA and keeps its attribution line in every
+  description. Arabic and Indonesian are deferred (unclear voice licences).
+- Scheduler: `channel_calendar()` keeps the fixed calendar for the original three channels; other
+  channels use `schedule` in channel.json. `shorts_same_day`, `shorts_spacing_hours` and
+  `max_youtube_per_day` are per-channel; the three-a-day cap still applies to the original channels.
+  `playlists_for_shorts: true` lets Shorts join title-matched playlists (otherwise unchanged).
+- Word inventory `channels/tentongues/words.json`; used markers in setting `words_used_tentongues`
+  plus existing long-video topics. `--word` forces a word; `--resume <id>` re-renders a saved
+  episode (`out/<id>/episode.json`, also in `content.qa_notes.words_episode`) without paying again.
+- Owner: create the YouTube channel/Instagram/Facebook, run `scripts/youtube_auth.py ... tentongues`,
+  set `*_TENTONGUES` Actions secrets and Vercel vars, enable `yt_playlists_enabled`.

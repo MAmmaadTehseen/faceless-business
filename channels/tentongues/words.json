@@ -1,0 +1,1173 @@
+{
+ "note": "Everyday English words for Ten Tongues. Order is the default release order; used words are tracked in the settings key words_used_tentongues and in content ids.",
+ "words": [
+  {
+   "word": "water",
+   "theme": "essentials"
+  },
+  {
+   "word": "food",
+   "theme": "essentials"
+  },
+  {
+   "word": "bread",
+   "theme": "essentials"
+  },
+  {
+   "word": "milk",
+   "theme": "essentials"
+  },
+  {
+   "word": "tea",
+   "theme": "essentials"
+  },
+  {
+   "word": "coffee",
+   "theme": "essentials"
+  },
+  {
+   "word": "rice",
+   "theme": "essentials"
+  },
+  {
+   "word": "salt",
+   "theme": "essentials"
+  },
+  {
+   "word": "sugar",
+   "theme": "essentials"
+  },
+  {
+   "word": "egg",
+   "theme": "essentials"
+  },
+  {
+   "word": "fruit",
+   "theme": "essentials"
+  },
+  {
+   "word": "apple",
+   "theme": "essentials"
+  },
+  {
+   "word": "banana",
+   "theme": "essentials"
+  },
+  {
+   "word": "orange",
+   "theme": "essentials"
+  },
+  {
+   "word": "meat",
+   "theme": "essentials"
+  },
+  {
+   "word": "fish",
+   "theme": "essentials"
+  },
+  {
+   "word": "chicken",
+   "theme": "essentials"
+  },
+  {
+   "word": "soup",
+   "theme": "essentials"
+  },
+  {
+   "word": "juice",
+   "theme": "essentials"
+  },
+  {
+   "word": "cheese",
+   "theme": "essentials"
+  },
+  {
+   "word": "butter",
+   "theme": "essentials"
+  },
+  {
+   "word": "honey",
+   "theme": "essentials"
+  },
+  {
+   "word": "oil",
+   "theme": "essentials"
+  },
+  {
+   "word": "vegetable",
+   "theme": "essentials"
+  },
+  {
+   "word": "potato",
+   "theme": "essentials"
+  },
+  {
+   "word": "onion",
+   "theme": "essentials"
+  },
+  {
+   "word": "garlic",
+   "theme": "essentials"
+  },
+  {
+   "word": "lemon",
+   "theme": "essentials"
+  },
+  {
+   "word": "mother",
+   "theme": "people"
+  },
+  {
+   "word": "father",
+   "theme": "people"
+  },
+  {
+   "word": "brother",
+   "theme": "people"
+  },
+  {
+   "word": "sister",
+   "theme": "people"
+  },
+  {
+   "word": "friend",
+   "theme": "people"
+  },
+  {
+   "word": "family",
+   "theme": "people"
+  },
+  {
+   "word": "baby",
+   "theme": "people"
+  },
+  {
+   "word": "child",
+   "theme": "people"
+  },
+  {
+   "word": "boy",
+   "theme": "people"
+  },
+  {
+   "word": "girl",
+   "theme": "people"
+  },
+  {
+   "word": "man",
+   "theme": "people"
+  },
+  {
+   "word": "woman",
+   "theme": "people"
+  },
+  {
+   "word": "teacher",
+   "theme": "people"
+  },
+  {
+   "word": "doctor",
+   "theme": "people"
+  },
+  {
+   "word": "neighbour",
+   "theme": "people"
+  },
+  {
+   "word": "stranger",
+   "theme": "people"
+  },
+  {
+   "word": "guest",
+   "theme": "people"
+  },
+  {
+   "word": "name",
+   "theme": "people"
+  },
+  {
+   "word": "house",
+   "theme": "home"
+  },
+  {
+   "word": "door",
+   "theme": "home"
+  },
+  {
+   "word": "window",
+   "theme": "home"
+  },
+  {
+   "word": "table",
+   "theme": "home"
+  },
+  {
+   "word": "chair",
+   "theme": "home"
+  },
+  {
+   "word": "bed",
+   "theme": "home"
+  },
+  {
+   "word": "kitchen",
+   "theme": "home"
+  },
+  {
+   "word": "bathroom",
+   "theme": "home"
+  },
+  {
+   "word": "key",
+   "theme": "home"
+  },
+  {
+   "word": "light",
+   "theme": "home"
+  },
+  {
+   "word": "wall",
+   "theme": "home"
+  },
+  {
+   "word": "floor",
+   "theme": "home"
+  },
+  {
+   "word": "roof",
+   "theme": "home"
+  },
+  {
+   "word": "garden",
+   "theme": "home"
+  },
+  {
+   "word": "room",
+   "theme": "home"
+  },
+  {
+   "word": "mirror",
+   "theme": "home"
+  },
+  {
+   "word": "clock",
+   "theme": "home"
+  },
+  {
+   "word": "lamp",
+   "theme": "home"
+  },
+  {
+   "word": "blanket",
+   "theme": "home"
+  },
+  {
+   "word": "pillow",
+   "theme": "home"
+  },
+  {
+   "word": "towel",
+   "theme": "home"
+  },
+  {
+   "word": "soap",
+   "theme": "home"
+  },
+  {
+   "word": "hand",
+   "theme": "body"
+  },
+  {
+   "word": "head",
+   "theme": "body"
+  },
+  {
+   "word": "eye",
+   "theme": "body"
+  },
+  {
+   "word": "ear",
+   "theme": "body"
+  },
+  {
+   "word": "nose",
+   "theme": "body"
+  },
+  {
+   "word": "mouth",
+   "theme": "body"
+  },
+  {
+   "word": "heart",
+   "theme": "body"
+  },
+  {
+   "word": "foot",
+   "theme": "body"
+  },
+  {
+   "word": "hair",
+   "theme": "body"
+  },
+  {
+   "word": "tooth",
+   "theme": "body"
+  },
+  {
+   "word": "face",
+   "theme": "body"
+  },
+  {
+   "word": "finger",
+   "theme": "body"
+  },
+  {
+   "word": "back",
+   "theme": "body"
+  },
+  {
+   "word": "knee",
+   "theme": "body"
+  },
+  {
+   "word": "stomach",
+   "theme": "body"
+  },
+  {
+   "word": "day",
+   "theme": "time"
+  },
+  {
+   "word": "night",
+   "theme": "time"
+  },
+  {
+   "word": "morning",
+   "theme": "time"
+  },
+  {
+   "word": "evening",
+   "theme": "time"
+  },
+  {
+   "word": "today",
+   "theme": "time"
+  },
+  {
+   "word": "tomorrow",
+   "theme": "time"
+  },
+  {
+   "word": "yesterday",
+   "theme": "time"
+  },
+  {
+   "word": "week",
+   "theme": "time"
+  },
+  {
+   "word": "month",
+   "theme": "time"
+  },
+  {
+   "word": "year",
+   "theme": "time"
+  },
+  {
+   "word": "hour",
+   "theme": "time"
+  },
+  {
+   "word": "minute",
+   "theme": "time"
+  },
+  {
+   "word": "now",
+   "theme": "time"
+  },
+  {
+   "word": "later",
+   "theme": "time"
+  },
+  {
+   "word": "always",
+   "theme": "time"
+  },
+  {
+   "word": "never",
+   "theme": "time"
+  },
+  {
+   "word": "sometimes",
+   "theme": "time"
+  },
+  {
+   "word": "sun",
+   "theme": "nature"
+  },
+  {
+   "word": "moon",
+   "theme": "nature"
+  },
+  {
+   "word": "star",
+   "theme": "nature"
+  },
+  {
+   "word": "sky",
+   "theme": "nature"
+  },
+  {
+   "word": "rain",
+   "theme": "nature"
+  },
+  {
+   "word": "snow",
+   "theme": "nature"
+  },
+  {
+   "word": "wind",
+   "theme": "nature"
+  },
+  {
+   "word": "fire",
+   "theme": "nature"
+  },
+  {
+   "word": "earth",
+   "theme": "nature"
+  },
+  {
+   "word": "sea",
+   "theme": "nature"
+  },
+  {
+   "word": "river",
+   "theme": "nature"
+  },
+  {
+   "word": "mountain",
+   "theme": "nature"
+  },
+  {
+   "word": "tree",
+   "theme": "nature"
+  },
+  {
+   "word": "flower",
+   "theme": "nature"
+  },
+  {
+   "word": "forest",
+   "theme": "nature"
+  },
+  {
+   "word": "stone",
+   "theme": "nature"
+  },
+  {
+   "word": "cloud",
+   "theme": "nature"
+  },
+  {
+   "word": "ice",
+   "theme": "nature"
+  },
+  {
+   "word": "beach",
+   "theme": "nature"
+  },
+  {
+   "word": "island",
+   "theme": "nature"
+  },
+  {
+   "word": "desert",
+   "theme": "nature"
+  },
+  {
+   "word": "street",
+   "theme": "city"
+  },
+  {
+   "word": "road",
+   "theme": "city"
+  },
+  {
+   "word": "city",
+   "theme": "city"
+  },
+  {
+   "word": "village",
+   "theme": "city"
+  },
+  {
+   "word": "market",
+   "theme": "city"
+  },
+  {
+   "word": "shop",
+   "theme": "city"
+  },
+  {
+   "word": "school",
+   "theme": "city"
+  },
+  {
+   "word": "hospital",
+   "theme": "city"
+  },
+  {
+   "word": "bank",
+   "theme": "city"
+  },
+  {
+   "word": "station",
+   "theme": "city"
+  },
+  {
+   "word": "airport",
+   "theme": "city"
+  },
+  {
+   "word": "bridge",
+   "theme": "city"
+  },
+  {
+   "word": "park",
+   "theme": "city"
+  },
+  {
+   "word": "church",
+   "theme": "city"
+  },
+  {
+   "word": "office",
+   "theme": "city"
+  },
+  {
+   "word": "library",
+   "theme": "city"
+  },
+  {
+   "word": "hotel",
+   "theme": "city"
+  },
+  {
+   "word": "restaurant",
+   "theme": "city"
+  },
+  {
+   "word": "train",
+   "theme": "travel"
+  },
+  {
+   "word": "bus",
+   "theme": "travel"
+  },
+  {
+   "word": "car",
+   "theme": "travel"
+  },
+  {
+   "word": "bicycle",
+   "theme": "travel"
+  },
+  {
+   "word": "boat",
+   "theme": "travel"
+  },
+  {
+   "word": "ticket",
+   "theme": "travel"
+  },
+  {
+   "word": "map",
+   "theme": "travel"
+  },
+  {
+   "word": "bag",
+   "theme": "travel"
+  },
+  {
+   "word": "passport",
+   "theme": "travel"
+  },
+  {
+   "word": "left",
+   "theme": "travel"
+  },
+  {
+   "word": "right",
+   "theme": "travel"
+  },
+  {
+   "word": "straight",
+   "theme": "travel"
+  },
+  {
+   "word": "here",
+   "theme": "travel"
+  },
+  {
+   "word": "there",
+   "theme": "travel"
+  },
+  {
+   "word": "far",
+   "theme": "travel"
+  },
+  {
+   "word": "near",
+   "theme": "travel"
+  },
+  {
+   "word": "eat",
+   "theme": "verbs"
+  },
+  {
+   "word": "drink",
+   "theme": "verbs"
+  },
+  {
+   "word": "sleep",
+   "theme": "verbs"
+  },
+  {
+   "word": "walk",
+   "theme": "verbs"
+  },
+  {
+   "word": "run",
+   "theme": "verbs"
+  },
+  {
+   "word": "read",
+   "theme": "verbs"
+  },
+  {
+   "word": "write",
+   "theme": "verbs"
+  },
+  {
+   "word": "speak",
+   "theme": "verbs"
+  },
+  {
+   "word": "listen",
+   "theme": "verbs"
+  },
+  {
+   "word": "look",
+   "theme": "verbs"
+  },
+  {
+   "word": "see",
+   "theme": "verbs"
+  },
+  {
+   "word": "go",
+   "theme": "verbs"
+  },
+  {
+   "word": "come",
+   "theme": "verbs"
+  },
+  {
+   "word": "give",
+   "theme": "verbs"
+  },
+  {
+   "word": "take",
+   "theme": "verbs"
+  },
+  {
+   "word": "buy",
+   "theme": "verbs"
+  },
+  {
+   "word": "sell",
+   "theme": "verbs"
+  },
+  {
+   "word": "open",
+   "theme": "verbs"
+  },
+  {
+   "word": "close",
+   "theme": "verbs"
+  },
+  {
+   "word": "help",
+   "theme": "verbs"
+  },
+  {
+   "word": "learn",
+   "theme": "verbs"
+  },
+  {
+   "word": "love",
+   "theme": "verbs"
+  },
+  {
+   "word": "work",
+   "theme": "verbs"
+  },
+  {
+   "word": "play",
+   "theme": "verbs"
+  },
+  {
+   "word": "sing",
+   "theme": "verbs"
+  },
+  {
+   "word": "dance",
+   "theme": "verbs"
+  },
+  {
+   "word": "cook",
+   "theme": "verbs"
+  },
+  {
+   "word": "wait",
+   "theme": "verbs"
+  },
+  {
+   "word": "think",
+   "theme": "verbs"
+  },
+  {
+   "word": "remember",
+   "theme": "verbs"
+  },
+  {
+   "word": "forget",
+   "theme": "verbs"
+  },
+  {
+   "word": "wash",
+   "theme": "verbs"
+  },
+  {
+   "word": "happy",
+   "theme": "feelings"
+  },
+  {
+   "word": "sad",
+   "theme": "feelings"
+  },
+  {
+   "word": "tired",
+   "theme": "feelings"
+  },
+  {
+   "word": "hungry",
+   "theme": "feelings"
+  },
+  {
+   "word": "thirsty",
+   "theme": "feelings"
+  },
+  {
+   "word": "angry",
+   "theme": "feelings"
+  },
+  {
+   "word": "afraid",
+   "theme": "feelings"
+  },
+  {
+   "word": "calm",
+   "theme": "feelings"
+  },
+  {
+   "word": "sorry",
+   "theme": "feelings"
+  },
+  {
+   "word": "thank",
+   "theme": "feelings"
+  },
+  {
+   "word": "please",
+   "theme": "feelings"
+  },
+  {
+   "word": "welcome",
+   "theme": "feelings"
+  },
+  {
+   "word": "goodbye",
+   "theme": "feelings"
+  },
+  {
+   "word": "hello",
+   "theme": "feelings"
+  },
+  {
+   "word": "yes",
+   "theme": "feelings"
+  },
+  {
+   "word": "no",
+   "theme": "feelings"
+  },
+  {
+   "word": "maybe",
+   "theme": "feelings"
+  },
+  {
+   "word": "big",
+   "theme": "describe"
+  },
+  {
+   "word": "small",
+   "theme": "describe"
+  },
+  {
+   "word": "hot",
+   "theme": "describe"
+  },
+  {
+   "word": "cold",
+   "theme": "describe"
+  },
+  {
+   "word": "new",
+   "theme": "describe"
+  },
+  {
+   "word": "old",
+   "theme": "describe"
+  },
+  {
+   "word": "good",
+   "theme": "describe"
+  },
+  {
+   "word": "bad",
+   "theme": "describe"
+  },
+  {
+   "word": "fast",
+   "theme": "describe"
+  },
+  {
+   "word": "slow",
+   "theme": "describe"
+  },
+  {
+   "word": "beautiful",
+   "theme": "describe"
+  },
+  {
+   "word": "strong",
+   "theme": "describe"
+  },
+  {
+   "word": "weak",
+   "theme": "describe"
+  },
+  {
+   "word": "heavy",
+   "theme": "describe"
+  },
+  {
+   "word": "clean",
+   "theme": "describe"
+  },
+  {
+   "word": "dirty",
+   "theme": "describe"
+  },
+  {
+   "word": "cheap",
+   "theme": "describe"
+  },
+  {
+   "word": "expensive",
+   "theme": "describe"
+  },
+  {
+   "word": "easy",
+   "theme": "describe"
+  },
+  {
+   "word": "difficult",
+   "theme": "describe"
+  },
+  {
+   "word": "early",
+   "theme": "describe"
+  },
+  {
+   "word": "late",
+   "theme": "describe"
+  },
+  {
+   "word": "full",
+   "theme": "describe"
+  },
+  {
+   "word": "empty",
+   "theme": "describe"
+  },
+  {
+   "word": "red",
+   "theme": "colours"
+  },
+  {
+   "word": "blue",
+   "theme": "colours"
+  },
+  {
+   "word": "green",
+   "theme": "colours"
+  },
+  {
+   "word": "yellow",
+   "theme": "colours"
+  },
+  {
+   "word": "black",
+   "theme": "colours"
+  },
+  {
+   "word": "white",
+   "theme": "colours"
+  },
+  {
+   "word": "one",
+   "theme": "numbers"
+  },
+  {
+   "word": "two",
+   "theme": "numbers"
+  },
+  {
+   "word": "three",
+   "theme": "numbers"
+  },
+  {
+   "word": "five",
+   "theme": "numbers"
+  },
+  {
+   "word": "ten",
+   "theme": "numbers"
+  },
+  {
+   "word": "hundred",
+   "theme": "numbers"
+  },
+  {
+   "word": "thousand",
+   "theme": "numbers"
+  },
+  {
+   "word": "book",
+   "theme": "objects"
+  },
+  {
+   "word": "pen",
+   "theme": "objects"
+  },
+  {
+   "word": "paper",
+   "theme": "objects"
+  },
+  {
+   "word": "phone",
+   "theme": "objects"
+  },
+  {
+   "word": "money",
+   "theme": "objects"
+  },
+  {
+   "word": "bottle",
+   "theme": "objects"
+  },
+  {
+   "word": "cup",
+   "theme": "objects"
+  },
+  {
+   "word": "plate",
+   "theme": "objects"
+  },
+  {
+   "word": "knife",
+   "theme": "objects"
+  },
+  {
+   "word": "box",
+   "theme": "objects"
+  },
+  {
+   "word": "gift",
+   "theme": "objects"
+  },
+  {
+   "word": "photo",
+   "theme": "objects"
+  },
+  {
+   "word": "letter",
+   "theme": "objects"
+  },
+  {
+   "word": "song",
+   "theme": "objects"
+  },
+  {
+   "word": "dog",
+   "theme": "objects"
+  },
+  {
+   "word": "cat",
+   "theme": "objects"
+  },
+  {
+   "word": "bird",
+   "theme": "objects"
+  },
+  {
+   "word": "horse",
+   "theme": "objects"
+  },
+  {
+   "word": "cow",
+   "theme": "objects"
+  },
+  {
+   "word": "shirt",
+   "theme": "clothes"
+  },
+  {
+   "word": "shoe",
+   "theme": "clothes"
+  },
+  {
+   "word": "hat",
+   "theme": "clothes"
+  },
+  {
+   "word": "dress",
+   "theme": "clothes"
+  },
+  {
+   "word": "coat",
+   "theme": "clothes"
+  },
+  {
+   "word": "sock",
+   "theme": "clothes"
+  },
+  {
+   "word": "spring",
+   "theme": "weather_and_seasons"
+  },
+  {
+   "word": "summer",
+   "theme": "weather_and_seasons"
+  },
+  {
+   "word": "autumn",
+   "theme": "weather_and_seasons"
+  },
+  {
+   "word": "winter",
+   "theme": "weather_and_seasons"
+  },
+  {
+   "word": "weather",
+   "theme": "weather_and_seasons"
+  },
+  {
+   "word": "storm",
+   "theme": "weather_and_seasons"
+  },
+  {
+   "word": "music",
+   "theme": "society"
+  },
+  {
+   "word": "art",
+   "theme": "society"
+  },
+  {
+   "word": "film",
+   "theme": "society"
+  },
+  {
+   "word": "game",
+   "theme": "society"
+  },
+  {
+   "word": "sport",
+   "theme": "society"
+  },
+  {
+   "word": "team",
+   "theme": "society"
+  },
+  {
+   "word": "medicine",
+   "theme": "society"
+  },
+  {
+   "word": "peace",
+   "theme": "society"
+  },
+  {
+   "word": "war",
+   "theme": "society"
+  },
+  {
+   "word": "news",
+   "theme": "society"
+  },
+  {
+   "word": "language",
+   "theme": "society"
+  },
+  {
+   "word": "word",
+   "theme": "society"
+  },
+  {
+   "word": "question",
+   "theme": "society"
+  },
+  {
+   "word": "answer",
+   "theme": "society"
+  },
+  {
+   "word": "problem",
+   "theme": "society"
+  },
+  {
+   "word": "idea",
+   "theme": "society"
+  },
+  {
+   "word": "dream",
+   "theme": "society"
+  },
+  {
+   "word": "story",
+   "theme": "society"
+  },
+  {
+   "word": "truth",
+   "theme": "society"
+  },
+  {
+   "word": "lie",
+   "theme": "society"
+  }
+ ]
+}

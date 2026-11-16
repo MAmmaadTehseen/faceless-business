@@ -36,7 +36,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
     if ((data ?? []).length < 500) break;
   }
   const scheduled = (await getPlatformContent(channel, undefined, sp.platform)).flatMap(c => c.publications.map(p => ({...p,title:c.title}))).filter(p => p.status !== "failed" && p.publish_at && Date.parse(p.publish_at) > Date.now()).sort((a,b) => Date.parse(a.publish_at!) - Date.parse(b.publish_at!));
-  const schedules: Record<string, { days: number[]; hour: number }> = { futurework: { days: [1,3,5], hour: 6 }, tradewinds: { days: [2,4,6], hour: 11 }, escapevelocity: { days: [1,4,0], hour: 16 } };
+  const schedules: Record<string, { days: number[]; hour: number }> = { futurework: { days: [1,3,5], hour: 6 }, tradewinds: { days: [2,4,6], hour: 11 }, escapevelocity: { days: [1,4,0], hour: 16 }, tentongues: { days: [0,1,2,3,4,5,6], hour: 7 } };
   const positions = new Map<string, number>();
   const slots = new Map<number, { at: string; run: number }>();
   const now = Date.now();

@@ -57,7 +57,8 @@ def new_upload(db, row, channel, video_id):
     except Exception as exc:
         log.warning('YouTube link eligibility not saved (%s)', type(exc).__name__)
     try:
-        if row['kind'] != 'long' or db.setting('yt_playlists_enabled', False) is not True:
+        shorts_ok = row['kind'] == 'short' and channel.cfg.get('playlists_for_shorts') is True
+        if (row['kind'] != 'long' and not shorts_ok) or db.setting('yt_playlists_enabled', False) is not True:
             return
         key = 'yt_playlist_video_' + video_id
         if db.setting(key):
