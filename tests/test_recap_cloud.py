@@ -122,6 +122,9 @@ def test_failed_film_moves_to_failed_folder(tmp_path, monkeypatch, db, video):
         raise ValueError("narration duration outside allowed range")
     result = cloud.produce(db, [account], runner=boom, log=lambda *_: None)
     assert result[0]["status"] == "failed"
+    failed = account.files["in0"]["parent"]
+    assert failed.startswith("dir-") and "narration duration" in account.texts[(failed, "error.txt")]
+    assert db.one("recap_films", {"id": result[0]["id"]})["status"] == "failed"
     # The transcript survived the failure and is restored on the next attempt.
     saved = [f for f in account.files.values() if f["name"] == "transcript.json"]
     assert saved and saved[0]["parent"].startswith("dir-")
@@ -133,9 +136,6 @@ def test_failed_film_moves_to_failed_folder(tmp_path, monkeypatch, db, video):
         fake_runner(work, state, **kw)
     assert cloud.produce(db, [account], runner=again, log=lambda *_: None)[0]["status"] == "already processed"
     assert seen["restored"]
-    failed = account.files["in0"]["parent"]
-    assert failed.startswith("dir-") and "narration duration" in account.texts[(failed, "error.txt")]
-    assert db.one("recap_films", {"id": result[0]["id"]})["status"] == "failed"
 
 
 def test_upload_approved_uses_worker_and_moves_folder(tmp_path, monkeypatch, db):
