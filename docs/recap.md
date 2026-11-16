@@ -67,6 +67,23 @@ with a rights record. Upload the long review before its Shorts. A private upload
 with publishAt will become public at its assigned calendar time: private here is
 the initial API privacy, not a promise of indefinite privacy.
 
+## Model calls and the LunaRoute thinking cap
+
+Script generation is nine bounded calls: a beat sheet (synopsis plus 12–16 timed beats
+from the transcript), three acts of the long recap, one call for its title, description
+and accuracy claims, and one call per Short that is told the other Shorts' openings.
+Segments carry `at_seconds` (film time); the worker maps them to scene indices locally,
+so the model never sees the scene list. There is no frame-notes vision call: it looped.
+
+On LunaRoute, GLM 5.3 spends its whole output budget thinking about a feature-length
+transcript (36k–120k tokens, then `max_tokens`), so the recap worker and batch set
+`LUNAROUTE_THINKING_BUDGET=3000` for their own process unless the owner exports another
+value (`0` disables thinking). Other pipeline steps are unchanged unless that variable is
+exported. The narration pace is roughly 3.5 words per second, so the worker validates
+1100–1900 words for the long recap and 90–185 per Short before paying for narration.
+A Short whose narration still exceeds 60 seconds fails only that piece; regenerate it with
+`--piece`.
+
 ## Running from the terminal (no dashboard)
 
 Set the provider so the owner's Claude credits are not spent, use the local SQLite

@@ -155,6 +155,7 @@ def main():
     parser.add_argument('--run', action='store_true', help='Resume previously approved batch')
     parser.add_argument('--edit', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
+    os.environ.setdefault('LUNAROUTE_THINKING_BUDGET', '3000')
     if os.environ.get('RECAP_LOCAL_DB'):
         os.environ['DB_BACKEND'] = 'sqlite'
     from pipeline.db import DB

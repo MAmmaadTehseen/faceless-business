@@ -56,6 +56,17 @@ def slugify(text: str, max_len: int = 48) -> str:
     return s[:max_len].rstrip("-") or "item"
 
 
+
+def _lunaroute_thinking() -> dict | None:
+    """Opt-in reasoning cap for LunaRoute (Messages `thinking`): LUNAROUTE_THINKING_BUDGET=0 disables thinking,
+    N>0 caps it at N tokens, unset keeps the gateway default (unbounded; long structured tasks can run to max_tokens)."""
+    raw = os.getenv("LUNAROUTE_THINKING_BUDGET", "").strip()
+    if not raw:
+        return None
+    budget = int(raw)
+    return {"type": "disabled"} if budget <= 0 else {"type": "enabled", "budget_tokens": max(1024, budget)}
+
+
 LUNAROUTE_MODELS = {
     "script": "glm-5.3", "article": "glm-5.3", "qa": "glm-5.3-vision",
     "vision": "glm-5.3-vision", "reply": "glm-5.3-flash", "ideate": "glm-5.3",
@@ -507,10 +518,13 @@ class Claude:
             response = None
             body = None
             try:
+                payload = {"model": model, "max_tokens": max_tokens, "system": system, "messages": messages, "stream": streaming}
+                thinking = _lunaroute_thinking()
+                if thinking is not None:
+                    payload["thinking"] = thinking
                 response = requests.post(endpoint, headers={"LUNAROUTE-API-KEY": self.api_key,
                     "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
-                    json={"model": model, "max_tokens": max_tokens, "system": system,
-                          "messages": messages, "stream": streaming}, stream=True,
+                    json=payload, stream=True,
                     timeout=(10, min(120, max(1, deadline - time.monotonic()))), allow_redirects=False)
                 if response.status_code == 200:
                     if streaming and "text/event-stream" not in response.headers.get("Content-Type", "").lower():

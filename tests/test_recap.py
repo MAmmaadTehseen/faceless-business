@@ -122,14 +122,14 @@ def test_lavfi_end_to_end_mocked_paid_services(video, monkeypatch):
     monkeypatch.setattr(worker, "transcribe", lambda *_: [{"start":0,"end":2,"text":"Fixture dialogue"}])
     claude = Mock()
     generated = {name: {"title":f"A case for scene {index}", "description":"Original film criticism; spoilers.",
-                       "segments":[{"text":("The framing supports a compelling argument. " * (220 if name == "long" else 22)).strip(), "scene":0}]}
+                       "segments":[{"text":("The framing supports a compelling argument. " * (220 if name == "long" else 22)).strip(), "at_seconds":0}]}
                  for index, name in enumerate(core.PIECES)}
     def fake_run(step, *a, **k):
         required = k["schema"]["required"]
-        if step == "recap_frames":
-            return {"notes": [{"scene": 0, "note": "A lit room."}]}, 0
+        if step == "recap_beats":
+            return {"synopsis": "A fixture story.", "beats": [{"at_seconds": 0, "event": "It begins."}]}, 0
         if required == ["segments"]:
-            return {"segments": [{"text": ("The framing supports a compelling argument. " * 70).strip(), "scene": 0}]}, 0
+            return {"segments": [{"text": ("The framing supports a compelling argument. " * 70).strip(), "at_seconds": 0}]}, 0
         if "accuracy_check" in required and "segments" not in required:
             return {"title": "A case for scene 0", "description": "Original film criticism; spoilers.", "accuracy_check": []}, 0
         return {n: generated[n] for n in required}, 0
@@ -153,7 +153,7 @@ def test_lavfi_end_to_end_mocked_paid_services(video, monkeypatch):
         assert result["width"] < result["height"] if name != "long" else result["width"] > result["height"]
         assert (work / name / "captions.srt").read_text().startswith("1\n00:00:00,000 -->")
         assert "Fixture dialogue" not in (work / name / "captions.srt").read_text()
-    assert claude.run.call_count == 9 and claude.vision.call_count == 5  # frame notes, three acts + meta, four Shorts
+    assert claude.run.call_count == 9 and claude.vision.call_count == 5  # beat sheet, three acts + meta, four Shorts
     # Rebuild one piece without touching the other four approvals or files.
     state["items"]["long"]["approved"] = True
     before = (work / "long" / "video.mp4").stat().st_mtime_ns
@@ -338,3 +338,13 @@ def test_on_screen_captions_are_narration_word_groups(tmp_path):
     assert "THE GYM SELLS" in text and "the gym" not in text
     assert all(len(line.split()) <= 3 for line in text.splitlines() if line and not line[0].isdigit())
     assert worker.caption_filter(tmp_path, [{"start": 0, "end": 2}], False) == "null"
+
+
+def test_lunaroute_thinking_budget_is_opt_in(monkeypatch):
+    from pipeline.common import _lunaroute_thinking
+    monkeypatch.delenv("LUNAROUTE_THINKING_BUDGET", raising=False)
+    assert _lunaroute_thinking() is None
+    monkeypatch.setenv("LUNAROUTE_THINKING_BUDGET", "0")
+    assert _lunaroute_thinking() == {"type": "disabled"}
+    monkeypatch.setenv("LUNAROUTE_THINKING_BUDGET", "3000")
+    assert _lunaroute_thinking() == {"type": "enabled", "budget_tokens": 3000}

@@ -77,6 +77,9 @@ Leave `LLM_PROVIDER=anthropic` for existing behavior and `CLAUDE_MODEL` support.
 | Optimize | glm-5.3-flash | LLM_MODEL_OPTIMIZE |
 
 Overrides apply to the selected provider; clear incompatible overrides when switching.
+`LUNAROUTE_THINKING_BUDGET` (optional) sends the Messages `thinking` parameter: `0` disables
+reasoning, `N` caps it at N tokens (minimum 1024). Unset keeps the gateway default. The recap
+tool sets 3000 for itself; long structured tasks otherwise run to `max_tokens` on glm-5.3.
 LunaRoute included inference records zero marginal USD, retaining one costs row per
 request attempt, including JSON repair responses and failed HTTP attempts (zero
 usage when no response usage is available). The existing costs schema has no
