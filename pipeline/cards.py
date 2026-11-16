@@ -93,7 +93,7 @@ def _text(draw, xy, text, f, fill, script="latin", anchor="la"):
 def render_card(out: Path, *, size: tuple[int, int], bg: tuple, accent: tuple, colour: tuple,
                 kicker: str, headline: str, headline_script: str = "latin", sub: str = "",
                 sub2: str = "", lines: list[tuple[str, str]] | None = None, footer: str = "",
-                chips: list[tuple[str, str]] | None = None) -> Path:
+                chips: list[tuple[str, str]] | None = None, headline_scale: float = 1.0) -> Path:
     """Draw one card. lines = [(text, script)] paragraphs beneath the headline block, shrunk to fit
     above the caption area; chips = [(text, script)] short items drawn inline on one row."""
     w, h = size
@@ -112,8 +112,10 @@ def render_card(out: Path, *, size: tuple[int, int], bg: tuple, accent: tuple, c
     d.rectangle((0, 0, w, bar), fill=tuple(colour))
     margin = int(w * 0.07)
     max_w = w - 2 * margin
-    # Burned captions sit at the bottom; keep card text above them.
-    bottom = h - int(h * (0.14 if portrait else 0.17))
+    # Burned captions: landscape at the bottom (keep text above), portrait around 46-62 percent of
+    # the height (libass scales MarginV), so portrait paragraphs start below that band.
+    bottom = h - int(h * (0.09 if portrait else 0.24))
+    caption_band_end = int(h * 0.64)
     y = bar + int(h * (0.06 if portrait else 0.07))
     kf = font("latin", int(h * (0.024 if portrait else 0.034)))
     _text(d, (margin, y), kicker.upper(), kf, tuple(accent))
@@ -121,9 +123,9 @@ def render_card(out: Path, *, size: tuple[int, int], bg: tuple, accent: tuple, c
         _text(d, (w - margin, y), footer, kf, (150, 150, 170), anchor="ra")
     elif footer:
         # Narrow cards: the footer sits just above the caption area instead.
-        _text(d, (margin, bottom), footer, kf, (150, 150, 170), anchor="ld")
+        _text(d, (margin, h - int(margin * 1.3)), footer, kf, (150, 150, 170), anchor="ld")
     y += int(kf.size * 2.2)
-    hf = _fit(d, headline, headline_script, max_w, int(h * (0.16 if portrait else 0.26)))
+    hf = _fit(d, headline, headline_script, max_w, int(h * (0.16 if portrait else 0.26) * headline_scale))
     # Nastaliq needs extra vertical room for its descenders.
     box = d.textbbox((margin, y), headline, font=hf, anchor="la")
     extra = int(hf.size * (0.6 if headline_script == "nastaliq" else 0.15))
@@ -140,18 +142,23 @@ def render_card(out: Path, *, size: tuple[int, int], bg: tuple, accent: tuple, c
     if chips:
         cf = font("latin", int(h * (0.036 if portrait else 0.05)))
         x = margin
+        row = int(cf.size * 1.7)
         for i, (text, script) in enumerate(chips):
             f = font(script, cf.size)
-            if i:
-                _text(d, (x, y), " · ", cf, (150, 150, 170))
-                x += d.textlength(" · ", font=cf)
+            sep = d.textlength(" · ", font=cf) if x > margin else 0
             width = d.textlength(text, font=f, direction=_direction(script))
-            if x + width > w - margin:
-                break
+            if x > margin and x + sep + width > w - margin:
+                x, y = margin, y + row
+                sep = 0
+            if sep:
+                _text(d, (x, y), " · ", cf, (150, 150, 170))
+                x += sep
             _text(d, (x, y), text, f, (235, 235, 245), script)
             x += width
-        y += int(cf.size * 1.8)
+        y += row
     y += int(h * 0.02)
+    if lines and portrait:
+        y = max(y, caption_band_end)
     if lines:
         size_px = int(h * (0.04 if portrait else 0.05))
         while True:

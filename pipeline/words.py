@@ -203,7 +203,7 @@ def _sentence_card(channel, cfg, lang, n, total, word):
 
 def _hook_card(channel, cfg, lang, n, total, word):
     return {"kicker": f"{n} / {total}  ·  {cfg['name']}  ·  remember it", "headline": lang["romanisation"],
-            "headline_script": "latin", "sub": f"{word} in {cfg['name']}",
+            "headline_script": "latin", "headline_scale": 0.62, "sub": f"{word} in {cfg['name']}",
             "lines": [(lang["memory_hook"], "latin"), (lang["cultural_note"], "latin")],
             "colour": cfg["colour"], "footer": channel.name}
 
@@ -214,9 +214,9 @@ def _title_card(channel, word, sub, colour):
 
 
 def _recap_card(channel, data, langs):
-    lines = [(f"{cfg['name']}: {lang['romanisation']}", "latin") for cfg, lang in zip(langs, data["languages"])]
+    chips = [(f"{cfg['name']} {lang['romanisation']}", "latin") for cfg, lang in zip(langs, data["languages"])]
     return {"kicker": f"{channel.name}  ·  recap", "headline": data["word"].upper(), "headline_script": "latin",
-            "sub": "in 10 languages", "lines": lines, "colour": channel.style.get("accent", [167, 139, 250]),
+            "sub": "in 10 languages", "chips": chips, "colour": channel.style.get("accent", [167, 139, 250]),
             "footer": "Which one surprised you? Tell us in the comments."}
 
 
@@ -288,7 +288,8 @@ def render_cards_video(timings: list[dict], audio: Path, srt: Path, out: Path, o
                                         accent=tuple(style.get("accent", (167, 139, 250))), colour=tuple(card["colour"]),
                                         kicker=card["kicker"], headline=card["headline"], headline_script=card.get("headline_script", "latin"),
                                         sub=card.get("sub", ""), sub2=card.get("sub2", ""), lines=card.get("lines"), footer=card.get("footer", ""),
-                                        chips=[tuple(c) for c in card.get("chips", [])] or None)
+                                        chips=[tuple(c) for c in card.get("chips", [])] or None,
+                                        headline_scale=card.get("headline_scale", 1.0))
             sec = max(until - t["start"], 0.5)
             clips.append(card_clip(pngs[key], sec, work / f"seg_{t['index']:03d}.mp4", orientation))
         listing = work / "list.txt"
