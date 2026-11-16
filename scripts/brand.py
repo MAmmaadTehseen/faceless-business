@@ -88,6 +88,8 @@ CHANNELS = {
                    "line1": "TRADE WINDS", "line2": "REPORT", "tagline": "Who holds the power and who pays the price: trade, energy, chips and money.", "footer": "Three videos a week  ·  youtube.com/@tradewindsreport"},
     "escapevelocity": {"out": "assets/brand/escapevelocity", "mono": "EV", "shape": "orbit", "bg": [4, 7, 14], "bg2": [8, 20, 40], "accent": [34, 211, 238], "muted": [140, 170, 190],
                        "line1": "ESCAPE", "line2": "VELOCITY", "tagline": "Launches, missions and the science that gets us off this rock.", "footer": "Three videos a week  ·  youtube.com/@escapevelocitydaily"},
+    "filmreview": {"out": "assets/brand/filmreview", "mono": "FA", "shape": "chevron", "bg": [15, 23, 42], "bg2": [30, 27, 75], "accent": [196, 181, 253], "muted": [160, 160, 200],
+                   "line1": "FRAME AND", "line2": "ARGUMENT", "tagline": "Film recaps told like the movie, with a verdict at the end.", "footer": "New recaps every week  ·  youtube.com/@frameandargument"},
     "tentongues": {"out": "assets/brand/tentongues", "mono": "TT", "shape": "speech", "bg": [20, 14, 36], "bg2": [44, 26, 70], "accent": [167, 139, 250], "muted": [170, 160, 200],
                    "line1": "TEN", "line2": "TONGUES", "tagline": "One everyday English word a day, taught in ten languages.", "footer": "New word every day  ·  youtube.com/@tentongues"},
 }
