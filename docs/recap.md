@@ -149,7 +149,7 @@ Drive layout, created automatically in every connected account under `Faceless R
 
 | folder | who writes | meaning |
 |---|---|---|
-| `inbox` | you | `Title 2024.mkv` plus `Title 2024.rights.json` (`{"basis": "own work"}`, or `written permission` + `note`, or `Creative Commons` + `licence` + `url`) |
+| `inbox` | you | `Title 2024.mkv` plus `Title 2024.rights.json` (or plain `Title 2024.json`) (`{"basis": "own work"}`, or `written permission` + `note`, or `Creative Commons` + `licence` + `url`) |
 | `review` | workflow | `<Title (year)>/long.mp4, short1..4.mp4, *.jpg, *.srt, qa.json, state.json, rights.json, README.txt` |
 | `approve` | workflow (or you) | passing recaps are queued here automatically; move a review folder here yourself to upload it (add `short2.skip` to hold one back) |
 | `uploaded` | workflow | folders after upload: `uploads.json` (YouTube ids), thumbnails, captions, state (MP4s deleted) |

@@ -93,7 +93,7 @@ def test_produce_writes_review_and_moves_sources(tmp_path, monkeypatch, db, vide
     monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
     monkeypatch.setattr(cloud, "INBOX_DIR", tmp_path / "inbox")
     rights = json.dumps({"basis": "own work"}).encode()
-    account = FakeAccount(1, {"My Film 2024.mp4": Path(video).read_bytes(), "My Film 2024.rights.json": rights, "No Rights 2023.mp4": Path(video).read_bytes()})
+    account = FakeAccount(1, {"My Film 2024.mp4": Path(video).read_bytes(), "My Film 2024.json": rights, "No Rights 2023.mp4": Path(video).read_bytes()})
     result = cloud.produce(db, [account], limit=2, runner=fake_runner, log=lambda *_: None)
     statuses = {r["status"] for r in result}
     assert statuses == {"already processed", "needs rights"}

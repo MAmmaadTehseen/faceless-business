@@ -133,12 +133,14 @@ def inbox_films(account):
     """Videos in the inbox paired with their rights sidecars; the same film in two accounts is one film."""
     folders = account.folders()
     files = account.list(folders["inbox"])
-    sidecars = {f["name"]: f for f in files if f["name"].endswith(".rights.json")}
+    sidecars = {f["name"]: f for f in files if f["name"].lower().endswith(".json")}
     films = []
     for f in files:
         if Path(f["name"]).suffix.lower() not in VIDEO_EXT or not f.get("md5Checksum"):
             continue
-        films.append({"file": f, "sidecar": sidecars.get(Path(f["name"]).stem + ".rights.json")})
+        stem = Path(f["name"]).stem
+        # Either "<film>.rights.json" or plain "<film>.json" next to the video.
+        films.append({"file": f, "sidecar": sidecars.get(stem + ".rights.json") or sidecars.get(stem + ".json")})
     return films
 
 
