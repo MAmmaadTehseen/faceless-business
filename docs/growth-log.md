@@ -82,14 +82,17 @@ Not touched: bank/stockpile workflow, render, common.py, workflows. Already bank
 
 Only Shorts whose content id date is after 2026-11-16 count; older queued Shorts (57 scheduled) carry the old scripts and only get the new descriptions when uploaded by the drain.
 
+### Done by the agent on 2026-11-16 (no owner login needed)
+
+- `yt_description_links_enabled` and `cross_mentions_enabled` set to `true` in settings; hub links go into new YouTube descriptions and sister-account mentions switch on after three unmentioned Reels per account.
+- `instagram_handle` filled for all three explainer channels from the API (`futurework.explained`, `tradewindsreport`, `escapevelocitydaily`).
+
 ### Owner-only levers (one line each)
 
 - Add `read_insights` to the Facebook Page tokens (`META_ACCESS_TOKEN_<KEY>`): without it Facebook Reels views are invisible, so we cannot tell whether Facebook delivers anything.
-- Set `yt_description_links_enabled` to JSON `true`: puts the hub article link in every new YouTube description for free and starts hub traffic from YouTube.
 - Verify the Ten Tongues channel phone number in Studio: without it custom thumbnails are refused and the pipeline logs a warning every upload.
-- Fill `instagram_handle` for futurework and escapevelocity in channel.json and set `cross_mentions_enabled` true: sister-account mentions on Reels, already built, currently off.
 - Reply to every comment by hand for the first weeks and pin one: the engage job drafts replies but early comment velocity is a ranking signal the owner can supply faster than a 6-hourly cron.
-- Instagram: switch the three accounts to professional (creator) accounts if not already, and post one Story per Reel: the app surfaces Reels to followers through Stories, which the API cannot do.
+- Instagram: post one Story per Reel (all three accounts are already creator accounts, verified via the API 2026-11-16): the app surfaces Reels to followers through Stories, which the API cannot do.
 - YouTube Community tab: one post per long video asking the comment question; the API cannot post to Community.
 - Subscribe the three channels to each other and like each other's Shorts from the owner account once; a single early engagement helps the test pool on a brand-new channel.
 - Consider hub articles as the Shorts "link in bio" on Instagram (one link per profile): set each profile's link to `https://hub.ammaad.online/c/<channel>`.
