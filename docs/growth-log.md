@@ -94,7 +94,20 @@ Only Shorts whose content id date is after 2026-11-16 count; older queued Shorts
 - Comments: the only two in the database are the owner's own test comments, already answered. Nothing to reply to yet.
 - Instagram Stories cannot be created from the desktop web app, so Reel-to-Story shares stay a phone task.
 
+### Facebook and hub push (2026-11-16, owner asked for a hard effort on both)
+
+Facts first: the four Pages have 0 followers each and no website link; the hub has 25 published articles, Search Console shows 2 indexed and 24 "Discovered, currently not indexed" (sitemap submitted 2026-10-30, last read 2026-11-15, 31 URLs), 1 search click in 30 days.
+
+- Shipped: `pipeline/publish/hub_share.py`. Every published hub article becomes a Facebook Page link post on its channel's Page: new articles right after saving (produce and banked release), older ones backfilled by sync one per Page per UTC day, newest first. Message = title, the article's quick answer (two sentences), the channel's comment question, the link, two niche hashtags. No model calls, idempotent via `fb_article_post_<id>` settings, gated by `fb_article_posts_enabled` (default true). First three posts went out by hand on 2026-11-16 (one per explainer Page). Tests: `tests/test_hub_share.py` (4).
+- Done in the browser: requested Google indexing for 8 articles (layoffs, China Busan deal, October jobs report, NASA astronauts, asteroid 1998 KY26, Suez, Kenya rare earths, AI chips seized). Google stopped accepting after that, which matches its daily quota. 16 remain; repeat on later days ("index more").
+- Tried and blocked: setting each Page's website to its hub channel page needs `pages_manage_metadata` (API) and the facebook.com About view in the pane has no edit control; Bing Webmaster Tools needs a Google sign-in and OAuth consent that I will not do on the owner's behalf.
+- Expectation: Facebook Pages with zero followers will not grow from posts alone. The link posts give the Pages a feed that is not just Reels and give the hub its first inbound links, but follower count is the gate, and the only free lever for that is the owner inviting their own friends from each Page. Hub: indexing requests usually land within days; judge by indexed count and search clicks in round 2, not by views.
+
 ### Owner-only levers (one line each)
+
+- Facebook: on each of the three explainer Pages, "Invite friends" from your personal profile (196 followers there). This is the one action that gives the Pages a starting audience; nothing in the pipeline can.
+- Facebook: add `pages_manage_metadata` to the app's Pages use case and regenerate the token the same way as `read_insights`, or set Website = https://hub.ammaad.online/c/<channel> by hand in each Page's details.
+- Bing Webmaster Tools: sign in with the Google account, "Import from Google Search Console", accept. One minute, and it also covers DuckDuckGo.
 
 - Run the `gh secret set` block from the 2026-11-16 chat so GitHub Actions uses the new Facebook tokens (the agent's secret write was blocked by the permission classifier).
 - Ten Tongues phone verified 2026-11-16 (custom thumbnails now allowed).
