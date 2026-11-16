@@ -166,8 +166,8 @@ Resume after a QA block: `gh workflow run words.yml -f resume_id=<content-id> -f
    channel switcher already lists Ten Tongues.
 6. **Enable**: set `yt_playlists_enabled` to JSON `true` in settings so the eleven playlists are
    created (private) on first upload; make them public in Studio when ready. Optionally
-   `yt_description_links_enabled`. Keep `publish_privacy` private until the API compliance audit
-   passes (same rule as the other channels).
+   `yt_description_links_enabled`. `publish_privacy` is public: uploads go up with a scheduled
+   publish time and YouTube makes them public at that slot (same as the other channels).
 7. **First run**: `gh workflow run words.yml -f privacy=private`, then check the three-day artifact
    `words-tentongues-<run id>` and the Content page. Review the Bengali and Urdu pronunciation
    yourself; swap voices in `channel.json` if a different Piper speaker sounds better
