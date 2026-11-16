@@ -89,13 +89,17 @@ Only Shorts whose content id date is after 2026-11-16 count; older queued Shorts
 - `yt_description_links_enabled` and `cross_mentions_enabled` set to `true` in settings; hub links go into new YouTube descriptions and sister-account mentions switch on after three unmentioned Reels per account.
 - `instagram_handle` filled for all three explainer channels from the API (`futurework.explained`, `tradewindsreport`, `escapevelocitydaily`).
 
+- Community posts published 2026-11-16 on all four channels from the browser, each with the latest long video's closing question and link (Future Work: buyout list; Trade Winds: tariff ruling prices; Escape Velocity: asteroid suspects; Ten Tongues: bread). Repeat per long video.
+- Comments: the only two in the database are the owner's own test comments, already answered. Nothing to reply to yet.
+- Instagram Stories cannot be created from the desktop web app, so Reel-to-Story shares stay a phone task.
+
 ### Owner-only levers (one line each)
 
 - Run the `gh secret set` block from the 2026-11-16 chat so GitHub Actions uses the new Facebook tokens (the agent's secret write was blocked by the permission classifier).
 - Ten Tongues phone verified 2026-11-16 (custom thumbnails now allowed).
 - Reply to every comment by hand for the first weeks and pin one: the engage job drafts replies but early comment velocity is a ranking signal the owner can supply faster than a 6-hourly cron.
 - Instagram: post one Story per Reel (all three accounts are already creator accounts, verified via the API 2026-11-16): the app surfaces Reels to followers through Stories, which the API cannot do.
-- YouTube Community tab: one post per long video asking the comment question; the API cannot post to Community.
+- YouTube Community posts: the agent can post them from the browser pane each round; ask for it with "community posts".
 - Subscribe the three channels to each other and like each other's Shorts from the owner account once; a single early engagement helps the test pool on a brand-new channel.
 - Consider hub articles as the Shorts "link in bio" on Instagram (one link per profile): set each profile's link to `https://hub.ammaad.online/c/<channel>`.
 
