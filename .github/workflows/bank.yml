@@ -21,9 +21,13 @@ on:
         description: Run id whose bank-<channel>-<run id> artifact holds that bundle's checkpoints
         type: string
         default: ''
+      chained:
+        description: Internal; set by the previous run so banking continues back-to-back (gated like the cron)
+        type: boolean
+        default: false
 permissions:
   contents: read
-  actions: read
+  actions: write
 # Serializing workflow runs makes max-parallel a global bound, not just a per-run bound.
 concurrency:
   group: stockpile-global
@@ -63,12 +67,13 @@ jobs:
         id: gate
         env:
           EVENT: ${{ github.event_name }}
+          CHAINED: ${{ inputs.chained }}
           REQUESTED: ${{ inputs.channel }}
           CHANNEL: ${{ matrix.channel }}
           RESUME_ID: ${{ inputs.resume_id }}
         run: |
           ENABLED=false
-          if [ "$EVENT" = schedule ]; then
+          if [ "$EVENT" = schedule ] || [ "$CHAINED" = true ]; then
             ENABLED=$(python -m pipeline.bank_gate | tail -1)
           elif [ -n "$RESUME_ID" ]; then
             # A storage retry runs only in the job of the channel that owns the content id.
@@ -135,3 +140,14 @@ jobs:
             out/**/*.jpg
           retention-days: 3
           if-no-files-found: ignore
+  # GitHub's hourly cron fires unreliably while the concurrency group is busy (observed 5-7 h gaps),
+  # so each gated run dispatches the next one; the cron remains as a fallback. The gate still applies.
+  chain:
+    needs: bank
+    if: always() && (github.event_name == 'schedule' || inputs.chained)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run bank.yml -R "$GITHUB_REPOSITORY" -f chained=true
