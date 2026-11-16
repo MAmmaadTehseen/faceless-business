@@ -48,7 +48,7 @@ E. When done, run the GitHub secrets sync:
 
 ## Ten Tongues (fourth channel, key `tentongues`, added 2026-11-16)
 
-Handle `@tentongues` on YouTube and Instagram; Facebook Page "Ten Tongues". Brand files in `assets/brand/tentongues/`
+Handle `@tentongues` on YouTube; Instagram `@ten.tongues` (`tentongues` was taken, created 2026-11-16); Facebook Page "Ten Tongues" (profile id 61596311564829, Page/API id 1404506206082740, created 2026-11-16). Brand files in `assets/brand/tentongues/`
 (avatar-800.png, youtube-banner-2560x1440.png, watermark-150.png, facebook-cover-1640x624.png, profile-card-1080.png).
 Palette: violet (167,139,250) on dark aubergine. Voice: Kokoro af_bella (narrator) plus one voice per language.
 

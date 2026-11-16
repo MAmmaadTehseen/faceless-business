@@ -73,8 +73,8 @@ word-by-word captions.
 - Narrator: Kokoro `af_bella` (grade A-, US female), slowed 4 percent. Distinct from
   `am_michael`, `bm_george` and `af_heart`. Persona in `channels/tentongues/beliefs.md` and
   `style.md`: patient polyglot teacher, honest that the audio is synthetic, no accent claims.
-- Name "Ten Tongues", handle `@tentongues`, tagline "One everyday English word a day, taught in
-  ten languages." Owner must confirm the handle is free when creating the channel.
+- Name "Ten Tongues", YouTube handle `@tentongues` (channel UC2dnxne4REEYkB4houyR3Lg), Instagram
+  `@ten.tongues`, tagline "One everyday English word a day, taught in ten languages."
 
 ### Schedule and word choice
 - Workflow `words.yml` runs daily at 03:30 UTC. The long video is scheduled for 07:00 UTC the same
@@ -147,8 +147,8 @@ Resume after a QA block: `gh workflow run words.yml -f resume_id=<content-id> -f
 2. **OAuth**: `.venv/bin/python scripts/youtube_auth.py steps tentongues`, then `url tentongues`,
    authorise with the new channel selected, then `token "<redirect url>" tentongues`. The token is
    saved to `.env` as `YT_REFRESH_TOKEN_TENTONGUES`, never printed.
-3. **Instagram + Facebook**: create an Instagram account and a Facebook Page named Ten Tongues
-   (use `facebook-cover-1640x624.png`, `profile-card-1080.png`). Follow
+3. **Instagram + Facebook**: DONE 2026-11-16 (Instagram `@ten.tongues`, Facebook Page id 1404506206082740,
+   both branded). Follow
    `docs/setup/channel-setup-brief.md` for the Instagram Login API token and Page token, then
    fill `IG_ACCESS_TOKEN_TENTONGUES`, `META_IG_USER_ID_TENTONGUES`, `META_ACCESS_TOKEN_TENTONGUES`,
    `META_PAGE_ID_TENTONGUES` in `.env`. Put the Instagram handle into `instagram_handle` in

@@ -2,7 +2,7 @@
   "key": "tentongues",
   "name": "Ten Tongues",
   "handle": "tentongues",
-  "instagram_handle": "",
+  "instagram_handle": "ten.tongues",
   "format": "words",
   "cross_mention_keywords": ["language", "languages", "word", "learn", "pronunciation", "vocabulary"],
   "cross_mention_line": "One everyday word, ten languages, every day at @{handle}.",
