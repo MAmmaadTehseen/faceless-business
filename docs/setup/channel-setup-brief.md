@@ -46,5 +46,31 @@ E. When done, run the GitHub secrets sync:
    `cd ~/Documents/faceless-business && grep -E "^[A-Z_]+=.+" .env | grep -vE "^(CLAUDE_MODEL|PEXELS_RATE_LIMIT_PER_HOUR|OUT_DIR)=" > /tmp/secrets.env && gh secret set -f /tmp/secrets.env -R MAmmaadTehseen/faceless-business && rm /tmp/secrets.env`
    and add the new META_* and YT_REFRESH_TOKEN_* variables to Vercel, then redeploy.
 
+## Ten Tongues (fourth channel, key `tentongues`, added 2026-11-16)
+
+Handle `@tentongues` on YouTube and Instagram; Facebook Page "Ten Tongues". Brand files in `assets/brand/tentongues/`
+(avatar-800.png, youtube-banner-2560x1440.png, watermark-150.png, facebook-cover-1640x624.png, profile-card-1080.png).
+Palette: violet (167,139,250) on dark aubergine. Voice: Kokoro af_bella (narrator) plus one voice per language.
+
+- Tagline: One everyday English word a day, taught in ten languages.
+- YouTube description:
+  Ten Tongues teaches one everyday English word a day in ten languages: Mandarin, Hindi, Spanish, French, Bengali, Portuguese, Russian, Urdu, Japanese and Italian. In every episode you hear the word twice from a native-language voice, one example sentence, a memory hook and a cultural note. One full episode every day at 07:00 UTC, then one Short per language, each collected in its own playlist (Spanish word of the day, Hindi word of the day, and so on).
+  Narration and pronunciation audio are AI-generated. Pronunciation is a guide, not a native speaker: check it with one before an exam.
+  Bengali voice: Piper bn_BD-google (OpenSLR 37, CC BY-SA 4.0; CMU Indic).
+  New word every day: subscribe.
+- Keywords: learn languages, word of the day, how to say, pronunciation, vocabulary, language learning, polyglot, Spanish, Hindi, Mandarin, French, Japanese, Urdu, Bengali, Portuguese, Russian, Italian
+- Channel links (Basic info): Future Work Explained https://www.youtube.com/@futurework.explained, Trade Winds Report https://www.youtube.com/@tradewindsreport, Escape Velocity https://www.youtube.com/@escapevelocitydaily
+- Instagram bio (136 chars): One everyday English word a day in ten languages. AI narration and pronunciation, one Reel per language daily. Full episodes on YouTube.
+- Facebook Page about: Ten Tongues teaches one everyday English word a day in ten languages: Mandarin, Hindi, Spanish, French, Bengali, Portuguese, Russian, Urdu, Japanese and Italian. Daily full episode and one Short per language on YouTube (@tentongues). Narration and pronunciation audio are AI-generated; pronunciation is a guide, not a native speaker. Bengali voice: Piper bn_BD-google (CC BY-SA 4.0). Page category: Education website.
+- Settings > Channel: country Pakistan, keywords above; Advanced: not made for kids.
+- Upload defaults: category Education, video language English, not made for kids, altered or synthetic content Yes, visibility Private (the pipeline sets its own privacy and publishAt).
+
+Meta tokens follow section C above with the same app. The Instagram token uses the "Instagram API with Instagram Login"
+route (add @tentongues as an Instagram Tester on the app's "API setup with Instagram login" page, accept the invite in
+Instagram, generate the 60-day token there). Variables: META_PAGE_ID_TENTONGUES, META_ACCESS_TOKEN_TENTONGUES
+(from `scripts/meta_token.py`), META_IG_USER_ID_TENTONGUES and IG_ACCESS_TOKEN_TENTONGUES (from the Instagram Login page;
+`GET https://graph.instagram.com/v21.0/me?fields=user_id,username` returns the id). Then the owner runs
+`gh secret set` for those four names plus YT_REFRESH_TOKEN_TENTONGUES and adds them in Vercel.
+
 ## Done looks like
 `.env` contains YT_REFRESH_TOKEN_TRADEWINDS, YT_REFRESH_TOKEN_ESCAPEVELOCITY, and META_PAGE_ID/META_IG_USER_ID/META_ACCESS_TOKEN for all three channel suffixes; GitHub secrets updated; both new channels branded; all three Instagram profiles branded.
