@@ -377,7 +377,7 @@ def main():
                 break
             if args.bank:
                 errors.append("Bank production failed: " + type(e).__name__)
-                log.error("bank production failed (%s); checkpoints retained", type(e).__name__)
+                log.error("bank production failed (%s: %s); checkpoints retained", type(e).__name__, str(e)[:300])
             else:
                 errors.append(f"{e}\n{traceback.format_exc()}")
                 log.error("produce failed: %s", e)

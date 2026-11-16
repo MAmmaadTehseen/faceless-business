@@ -253,7 +253,11 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
                 r"nudity|nude|gore|black[ -]?frames?|black footage|mislead|claims?|"
                 r"(?:income|medical|health|financial).{0,30}(?:promis|guarantee)|"
                 r"(?:promis|guarantee).{0,30}(?:income|medical|health|financial)", text)
-            if finding["severity"] == "blocking" and caption and not protected:
+            # Our captions are wrapped by libass inside explicit side margins, so a "cropped" caption
+            # whose quoted words are in the narration is a chunk boundary misread, not a real crop.
+            crop_only = protected and re.fullmatch(r"crop|cut[ -]?off", protected.group(0)) and not re.search(
+                r"illegible|unreadable|watermark|logo|third[ -]party|nudity|nude|gore|black|mislead|claims?", text)
+            if finding["severity"] == "blocking" and caption and (not protected or (crop_only and _quotes_narration(finding["text"], caption_text))):
                 finding["severity"] = "minor"
                 log.info("qa caption downgrade to minor: %s", finding["text"])
     res["thumbnail"] = thumbnail
@@ -262,6 +266,14 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
     res["issues"] = issues + res["issues"]
     finalize_qa(res, strict)
     return res
+
+
+def _quotes_narration(finding: str, narration: str) -> bool:
+    """True when every quoted fragment in the finding appears in our narration text."""
+    norm = lambda t: re.sub(r"[^a-z0-9 ]+", " ", t.lower())
+    quotes = [q for q in re.findall(r"['\"\u2018\u201c]([^'\"\u2019\u201d]{3,})['\"\u2019\u201d]", finding)]
+    body = " ".join(norm(narration).split())
+    return bool(quotes) and all(" ".join(norm(q).split()) in body for q in quotes)
 
 
 def _retry_thumbnail(claude: Claude, video: Path, thumbnail: Path, content_id: str, res: dict) -> Path:
