@@ -65,12 +65,19 @@ Palette: violet (167,139,250) on dark aubergine. Voice: Kokoro af_bella (narrato
 - Settings > Channel: country Pakistan, keywords above; Advanced: not made for kids.
 - Upload defaults: category Education, video language English, not made for kids, altered or synthetic content Yes, visibility Private (the pipeline sets its own privacy and publishAt).
 
-Meta tokens follow section C above with the same app. The Instagram token uses the "Instagram API with Instagram Login"
-route (add @tentongues as an Instagram Tester on the app's "API setup with Instagram login" page, accept the invite in
-Instagram, generate the 60-day token there). Variables: META_PAGE_ID_TENTONGUES, META_ACCESS_TOKEN_TENTONGUES
-(from `scripts/meta_token.py`), META_IG_USER_ID_TENTONGUES and IG_ACCESS_TOKEN_TENTONGUES (from the Instagram Login page;
-`GET https://graph.instagram.com/v21.0/me?fields=user_id,username` returns the id). Then the owner runs
-`gh secret set` for those four names plus YT_REFRESH_TOKEN_TENTONGUES and adds them in Vercel.
+Meta tokens (DONE 2026-11-16, all four `*_TENTONGUES` values verified in `.env`). How they were obtained, for the next channel:
+- Page token: Facebook Login code flow with redirect `http://localhost:8765/` (allowed in Development mode), caught by a
+  one-shot local HTTP listener and exchanged in-process with META_APP_ID/META_APP_SECRET, then `/me/accounts` picks the
+  Page. Avoids Graph API Explorer and never shows the token.
+- Instagram token: the dashboard "Generate token" popup fails in the app browser. Instead: add the account as Instagram
+  Tester (developer page, section 2, Add account; accept under Instagram Settings > Apps and websites > Tester invites),
+  then Instagram business login: OAuth redirect URIs on the app now include `https://faceless.ammaad.online/` and
+  `https://faceless.ammaad.online/login` (use `/login`; the root redirects and drops `?code=`). Open
+  `https://www.instagram.com/oauth/authorize?client_id=<IG_APP_ID>&redirect_uri=https://faceless.ammaad.online/login&response_type=code&scope=instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights`
+  logged in as the account, Allow, copy `code=` from the landing URL, exchange at `api.instagram.com/oauth/access_token`
+  with `IG_APP_SECRET` (now in `.env`; Instagram app secret, distinct from META_APP_SECRET), then
+  `graph.instagram.com/access_token?grant_type=ig_exchange_token` for the 60-day token. `/me?fields=user_id` gives META_IG_USER_ID.
+- The profile card was posted through the Instagram API from the public repo raw URL.
 
 ## Done looks like
 `.env` contains YT_REFRESH_TOKEN_TRADEWINDS, YT_REFRESH_TOKEN_ESCAPEVELOCITY, and META_PAGE_ID/META_IG_USER_ID/META_ACCESS_TOKEN for all three channel suffixes; GitHub secrets updated; both new channels branded; all three Instagram profiles branded.
