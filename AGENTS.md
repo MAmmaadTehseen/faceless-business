@@ -110,6 +110,7 @@ Open, in order:
 5. Phase 2: TikTok (funnel only, no payout in Pakistan). X skipped.
 
 ## TODO (owner-approved, not started; give to Codex)
+- Growth (2026-11-16): Facebook Page tokens must carry `read_insights` (added to the app's Pages use case; regenerate the user token in Graph API Explorer with 11 permissions, exchange with `scripts/meta_token.py`, update `META_ACCESS_TOKEN_<KEY>` in `.env` + Actions secrets). Verify Ten Tongues phone number in Studio. Owner daily: reply to and pin comments, share each Reel to a Story, one Community post per long video. Re-measure with `scripts/growth_snapshot.py` on/after 2026-11-19.
 - LinkedIn: one automated daily post per channel from its own Company Page, official API only (organization posting needs LinkedIn app approval; owner creates Pages and app first).
 - Dashboard: live progress for runs in flight. Show each running produce/shorts job as a card with stage (ideate, script, voice, footage, render, QA, upload, article), percent done and an estimated time left based on median durations of past runs; progress bar on Content and home. Source: `runs` table rows (pipeline writes stage + timestamp per step) and/or GitHub Actions run status via /api/actions.
 - Comments: fetch reply threads (YouTube `commentThreads.list` part=snippet,replies; IG/FB replies) so viewer replies to our
