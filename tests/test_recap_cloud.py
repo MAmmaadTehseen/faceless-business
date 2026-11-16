@@ -65,6 +65,9 @@ class FakeAccount:
     def move(self, file_id, destination):
         self.files[file_id]["parent"] = destination
 
+    def delete(self, file_id):
+        self.deleted = getattr(self, "deleted", []) + [self.files.pop(file_id)["name"]]
+
 
 @pytest.fixture
 def db(tmp_path, monkeypatch):
@@ -95,6 +98,8 @@ def test_produce_writes_review_and_moves_sources(tmp_path, monkeypatch, db, vide
     statuses = {r["status"] for r in result}
     assert statuses == {"already processed", "needs rights"}
     produced = next(r for r in result if r["status"] == "already processed")
+    assert produced["queued_for_upload"]  # long passed: folder sits in approve
+    assert next(iter(account.created)).startswith("f-approve/")
     names = {f["name"] for f in account.files.values() if f["parent"] == produced["review_folder"]}
     assert {"long.mp4", "short1.jpg", "short4.srt", "state.json", "rights.json", "qa.json", "README.txt"} <= names
     assert account.files["in0"]["parent"] == "f-done" and account.files["in1"]["parent"] == "f-done"
@@ -148,3 +153,62 @@ def test_upload_approved_uses_worker_and_moves_folder(tmp_path, monkeypatch, db)
     assert account.files[folder]["parent"] == "f-uploaded"
     assert set(json.loads(account.texts[(folder, "uploads.json")])) == {"long", "short1", "short4"}
     assert not (tmp_path / "recap" / ("a" * 32)).exists()
+
+
+def test_sequels_are_distinct_but_same_film_is_duplicate(tmp_path, monkeypatch, db, video):
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    monkeypatch.setattr(cloud, "INBOX_DIR", tmp_path / "inbox")
+    data = Path(video).read_bytes()
+    account = FakeAccount(1, {"Dune 2021.mp4": data, "Dune 2021.rights.json": b'{"basis": "own work"}'})
+    first = cloud.produce(db, [account], runner=fake_runner, log=lambda *_: None)
+    assert first[0]["status"] == "already processed"
+    account = FakeAccount(2, {"Dune 2 2024.mp4": data + b"a", "Dune 2 2024.rights.json": b'{"basis": "own work"}',
+                             "DUNE.2021.1080p.mkv": data + b"b", "DUNE.2021.1080p.rights.json": b'{"basis": "own work"}'})
+    second = cloud.produce(db, [account], limit=5, runner=fake_runner, log=lambda *_: None)
+    assert sorted(r["status"] for r in second) == ["already processed", "duplicate"]
+    assert {f["parent"] for f in account.files.values() if f["name"].startswith("DUNE")} == {"f-done"}
+
+
+def test_upload_frees_space_and_records(tmp_path, monkeypatch, db):
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    src = FakeAccount(1, {"Film 2024.mp4": b"m", "Film 2024.rights.json": b"{}"})
+    src.files["in0"]["parent"] = "f-done"; src.files["in1"]["parent"] = "f-done"
+    db.upsert("recap_films", {"id": "r" * 32, "filename": "Film 2024.mp4", "source": "drive:1:in0", "normalized_title": "film", "year": 2024,
+                              "file_size": 1, "duration": 1, "content_hash": "h", "status": "already processed", "project_id": "b" * 32,
+                              "content_ids": "[]", "rights": "{}", "duplicate_confirmed": False}, on="id")
+    account = FakeAccount(2, {})
+    folder = "appr-1"
+    account.files[folder] = {"id": folder, "name": "Film (2024)", "md5Checksum": "", "size": "0", "mimeType": "application/vnd.google-apps.folder", "parent": "f-approve", "bytes": b""}
+    state = {"id": "b" * 32, "title": "Film", "year": 2024, "cloud_source": {"slot": 1, "film": "in0", "sidecar": "in1", "registry": "r" * 32},
+             "items": {n: {"title": n, "description": "d", "segments": [], "qa": {"pass": True}, "duration": 30} for n in core.PIECES}}
+    account.upload_file_bytes("state.json", json.dumps(state).encode(), folder)
+    account.upload_file_bytes("rights.json", b'{"basis": "own work"}', folder)
+    for n in core.PIECES:
+        for suffix in (".mp4", ".jpg", ".srt"):
+            account.upload_file_bytes(n + suffix, b"x", folder)
+
+    def fake_upload(work, st):
+        for i in st["items"].values():
+            i.update(uploaded=True, youtube={"id": "yt"})
+        core.dump(work / "state.json", st)
+    result = cloud.upload_approved(db, [src, account], uploader=fake_upload, log=lambda *_: None)
+    assert result[0]["status"] == "uploaded"
+    assert sorted(src.deleted) == ["Film 2024.mp4", "Film 2024.rights.json"]
+    remaining = {f["name"] for f in account.files.values() if f["parent"] == folder}
+    assert not any(n.endswith(".mp4") for n in remaining) and {"long.jpg", "state.json", "uploads.json"} <= remaining
+    assert db.one("recap_films", {"id": "r" * 32})["status"] == "uploaded"
+
+
+def test_shorts_wait_when_long_failed(tmp_path, monkeypatch, db):
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    account = FakeAccount(1, {})
+    folder = "appr-2"
+    account.files[folder] = {"id": folder, "name": "F (2024)", "md5Checksum": "", "size": "0", "mimeType": "application/vnd.google-apps.folder", "parent": "f-approve", "bytes": b""}
+    state = {"id": "c" * 32, "title": "F", "year": 2024, "items": {n: {"title": n, "description": "d", "segments": [], "qa": {"pass": n != "long"}, "duration": 30} for n in core.PIECES}}
+    account.upload_file_bytes("state.json", json.dumps(state).encode(), folder)
+    account.upload_file_bytes("rights.json", b'{"basis": "own work"}', folder)
+    for n in core.PIECES:
+        account.upload_file_bytes(n + ".mp4", b"x", folder)
+    seen = {}
+    cloud.upload_approved(db, [account], uploader=lambda w, st: seen.update({n: i["approved"] for n, i in st["items"].items()}), log=lambda *_: None)
+    assert not any(seen.values())

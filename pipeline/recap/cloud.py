@@ -103,6 +103,10 @@ class Account:
             return self.service.files().update(fileId=existing[0]["id"], media_body=media, fields="id").execute()["id"]
         return self.service.files().create(body={"name": name, "parents": [parent]}, media_body=media, fields="id").execute()["id"]
 
+    def delete(self, file_id):
+        """Permanent delete (not trash), used only after a confirmed YouTube upload."""
+        self.service.files().delete(fileId=file_id).execute()
+
     def move(self, file_id, destination):
         current = self.service.files().get(fileId=file_id, fields="parents").execute().get("parents", [])
         if destination in current:
@@ -150,7 +154,7 @@ def scan(db, accounts_):
     return report
 
 
-def produce(db, accounts_, limit=1, runner=None, log=print):
+def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True):
     """Produce up to `limit` inbox films, newest account order first. Returns per-film statuses."""
     from .worker import generate
     runner = runner or generate
@@ -165,12 +169,26 @@ def produce(db, accounts_, limit=1, runner=None, log=print):
             f = film["file"]
             ident = film_id(f["md5Checksum"])
             row = db.one("recap_films", {"id": ident})
-            if row and row["status"] in ("already processed", "skipped"):
+            if row and row["status"] in ("already processed", "uploaded", "skipped", "duplicate"):
                 # Already produced elsewhere; clear the duplicate from this inbox.
                 account.move(f["id"], folders["done"])
                 results.append({"id": ident, "status": row["status"]})
                 continue
             title, year = parse_name(f["name"])
+            same = [r for r in db.select("recap_films", {"normalized_title": title}) if r["id"] != ident and r.get("year") == year
+                    and r.get("status") in ("already processed", "uploaded", "new")]
+            if same and year:
+                # Same title and year as a film already handled (a different file of the same movie). Sequels
+                # and remakes differ by title or year ("Dune" vs "Dune 2", "Avengers 2012" vs "Avengers 2016") and are produced.
+                db.upsert("recap_films", {"id": ident, "filename": f["name"], "source": f"drive:{account.slot}:{f['id']}",
+                                          "normalized_title": title, "year": year, "file_size": int(f.get("size", 0)), "duration": 0,
+                                          "content_hash": f["md5Checksum"], "status": "duplicate", "project_id": same[0].get("project_id"),
+                                          "content_ids": "[]", "rights": "{}", "duplicate_confirmed": False}, on="id")
+                account.move(f["id"], folders["done"])
+                if film["sidecar"]:
+                    account.move(film["sidecar"]["id"], folders["done"])
+                results.append({"id": ident, "status": "duplicate"})
+                continue
             try:
                 if not film["sidecar"]:
                     raise ValueError("rights sidecar missing")
@@ -195,14 +213,18 @@ def produce(db, accounts_, limit=1, runner=None, log=print):
                                           "duration": state["probe"]["duration"], "content_hash": f["md5Checksum"], "status": "new",
                                           "project_id": state["id"], "content_ids": "[]", "rights": json.dumps(rights), "duplicate_confirmed": False}, on="id")
                 state["batch_resume"] = True
+                state["cloud_source"] = {"slot": account.slot, "film": f["id"], "sidecar": film["sidecar"]["id"], "registry": ident}
+                core.dump(work / "state.json", state)
                 runner(work, state, db=db)
                 state = json.loads((work / "state.json").read_text())
-                folder = publish_review(account, work, state)
+                # Passing recaps go straight to the upload queue; a failed long recap waits for the owner in review.
+                ready = auto_upload and bool(state["items"].get("long", {}).get("qa", {}).get("pass"))
+                folder = publish_review(account, work, state, "approve" if ready else "review")
                 db.update("recap_films", {"id": ident}, {"status": "already processed",
                           "content_ids": json.dumps(["filmreview-" + state["id"] + "-" + p for p in core.PIECES])})
                 for item in (f, film["sidecar"]):
                     account.move(item["id"], folders["done"])
-                results.append({"id": ident, "status": "already processed", "project_id": state["id"], "review_folder": folder})
+                results.append({"id": ident, "status": "already processed", "project_id": state["id"], "review_folder": folder, "queued_for_upload": ready})
             except Exception as exc:
                 log(f"recap cloud: film {ident} failed: {type(exc).__name__}")
                 db.update("recap_films", {"id": ident}, {"status": "failed"})
@@ -216,10 +238,10 @@ def produce(db, accounts_, limit=1, runner=None, log=print):
     return results
 
 
-def publish_review(account, work, state):
-    """Copy the finished pieces plus their records to review/<title (year)>/ and return the folder id."""
+def publish_review(account, work, state, destination="review"):
+    """Copy the finished pieces plus their records to <destination>/<title (year)>/ and return the folder id."""
     folders = account.folders()
-    folder = account.drive.folder(f"{state['title']} ({state['year']})", folders["review"])
+    folder = account.drive.folder(f"{state['title']} ({state['year']})", folders[destination])
     for name in core.PIECES:
         piece = work / name
         if not (piece / "video.mp4").exists():
@@ -269,6 +291,10 @@ def upload_approved(db, accounts_, uploader=None, log=print):
                         f = files.get(name + suffix)
                         if f:
                             account.download(f["id"], piece / target, f["md5Checksum"])
+            long_ok = state.get("items", {}).get("long", {}).get("approved") or state.get("items", {}).get("long", {}).get("uploaded")
+            if not long_ok:
+                for name, item in state.get("items", {}).items():
+                    item["approved"] = False  # Shorts never go up without their long recap.
             core.dump(work / "state.json", state)
             try:
                 uploader(work, state)
@@ -276,6 +302,10 @@ def upload_approved(db, accounts_, uploader=None, log=print):
                 account.write_text("uploads.json", json.dumps({n: i.get("youtube") for n, i in state["items"].items() if i.get("uploaded")}, indent=2), entry["id"])
                 account.upload_file(work / "state.json", entry["id"])
                 account.move(entry["id"], folders["uploaded"])
+                free_space(account, accounts_, entry["id"], files, state, log)
+                registry = state.get("cloud_source", {}).get("registry")
+                if registry:
+                    db.update("recap_films", {"id": registry}, {"status": "uploaded"})
                 results.append({"project_id": state["id"], "status": "uploaded"})
             except Exception as exc:
                 # Partial uploads are recorded in state.json so the next run resumes idempotently.
@@ -286,6 +316,25 @@ def upload_approved(db, accounts_, uploader=None, log=print):
             finally:
                 shutil.rmtree(work, ignore_errors=True)
     return results
+
+
+def free_space(account, accounts_, folder_id, files, state, log):
+    """After a confirmed upload: delete the source film, its sidecar and the produced MP4s from Drive.
+    Thumbnails, captions, state.json and uploads.json stay as the record."""
+    source = state.get("cloud_source") or {}
+    owner = next((a for a in accounts_ if a.slot == source.get("slot")), None)
+    for key in ("film", "sidecar"):
+        if owner and source.get(key):
+            try:
+                owner.delete(source[key])
+            except Exception as exc:
+                log(f"recap cloud: could not delete source {key}: {type(exc).__name__}")
+    for name, f in files.items():
+        if name.endswith(".mp4"):
+            try:
+                account.delete(f["id"])
+            except Exception as exc:
+                log(f"recap cloud: could not delete {name}: {type(exc).__name__}")
 
 
 def main():
@@ -308,7 +357,9 @@ def main():
     if args.action == "upload":
         result = upload_approved(db, found)
     else:
-        result = produce(db, found, limit=args.limit)
+        result = produce(db, found, limit=args.limit, auto_upload=_strict_enabled(db.setting("recap_auto_upload", True)))
+        if any(r.get("queued_for_upload") for r in result):
+            result += upload_approved(db, found)
     print(json.dumps(result))
     if any(r["status"] in ("failed", "upload failed") for r in result):
         sys.exit(1)

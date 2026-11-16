@@ -133,9 +133,17 @@ The dashboard `/recap` page drives the same commands.
 ## Cloud mode: Google Drive inboxes + GitHub Actions (nothing local)
 
 `.github/workflows/recap.yml` runs every six hours (and on demand) on GitHub's free
-runners for this public repo. Each run first uploads any folder you moved to `approve`,
+runners for this public repo. Each run first uploads whatever is queued in `approve`,
 then produces one inbox film (about 4–6 hours on a runner; the job limit is 350 minutes,
 so very long films may need `RECAP_WHISPER_MODEL=base` as a repository variable).
+Your only work is uploading a movie and its permission JSON. A recap whose long video
+passes QA is queued and uploaded to YouTube in the same run (setting `recap_auto_upload`,
+default true); only a film whose long recap fails QA waits in `review` for you. After a
+confirmed upload the source movie, its sidecar and the produced MP4s are deleted from Drive
+to free space; the title, year, YouTube ids and status stay in `recap_films` and in the
+folder's `uploads.json`, so the same movie is never produced twice. Sequels and remakes
+are distinct films: "Avengers 2012" and "Avengers 2016", "Dune" and "Dune 2" each get a recap;
+a second file of the same title and year is marked `duplicate` and moved to `done`.
 
 Drive layout, created automatically in every connected account under `Faceless Recap/`:
 
@@ -143,13 +151,13 @@ Drive layout, created automatically in every connected account under `Faceless R
 |---|---|---|
 | `inbox` | you | `Title 2024.mkv` plus `Title 2024.rights.json` (`{"basis": "own work"}`, or `written permission` + `note`, or `Creative Commons` + `licence` + `url`) |
 | `review` | workflow | `<Title (year)>/long.mp4, short1..4.mp4, *.jpg, *.srt, qa.json, state.json, rights.json, README.txt` |
-| `approve` | you | move a review folder here to upload every passing piece (add `short2.skip` to hold one back) |
-| `uploaded` | workflow | folders after upload, with `uploads.json` (YouTube ids) |
+| `approve` | workflow (or you) | passing recaps are queued here automatically; move a review folder here yourself to upload it (add `short2.skip` to hold one back) |
+| `uploaded` | workflow | folders after upload: `uploads.json` (YouTube ids), thumbnails, captions, state (MP4s deleted) |
 | `done` / `failed` | workflow | sources after production; `failed/<Title>/error.txt` says why |
 
 Files without a year in the name or without a sidecar stay in the inbox as `needs rights`.
-The same film in two accounts is produced once (content hash). Nothing is deleted from Drive;
-delete `done` sources yourself to free space. Up to five accounts give 75 GB; treat the inbox as a
+The same film in two accounts is produced once (content hash). Sources are deleted only after their recap is on YouTube;
+failed or unapproved films stay in `failed`/`done` until you remove them. Up to five accounts give 75 GB; treat the inbox as a
 queue (two or three films at a time), outputs are about 200 MB per film.
 
 Owner setup, once per Drive account (full Drive scope is required so films uploaded through
