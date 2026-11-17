@@ -487,6 +487,15 @@ def calendar(db, channel, kind, content_id, parent=None):
     return slot
 
 
+def _try_captions(db, youtube, work, name, item, video_id):
+    """Captions are optional: quota or API trouble is logged and retried on a later run, never a failed upload."""
+    from pipeline.common import log
+    try:
+        _captions(db, youtube, work, name, item, video_id)
+    except Exception as exc:
+        log.warning("recap captions for %s deferred: %s", name, type(exc).__name__ if not isinstance(exc, ValueError) else exc)
+
+
 def _captions(db, youtube, work, name, item, video_id):
     """captions.list (50) plus captions.insert (400); reconciles a crash after insert before inserting again."""
     from pipeline.publish.quota import reserve
@@ -532,7 +541,7 @@ def upload(work, state):
             if name == "long" and existing and existing.get("publish_at"):
                 parent_slot = datetime.fromisoformat(existing["publish_at"].replace("Z", "+00:00"))
             if not item.get("captions_uploaded") and item.get("youtube", {}).get("id"):
-                _captions(db, youtube, work, name, item, item["youtube"]["id"])
+                _try_captions(db, youtube, work, name, item, item["youtube"]["id"])
                 dump(work / "state.json", state)
             continue
         if not item.get("approved") or item.get("discarded") or not item.get("qa", {}).get("pass"):
@@ -560,7 +569,7 @@ def upload(work, state):
         item["youtube"] = result
         dump(work / "state.json", state)
         if not item.get("captions_uploaded"):
-            _captions(db, youtube, work, name, item, result["id"])
+            _try_captions(db, youtube, work, name, item, result["id"])
             dump(work / "state.json", state)
         parent_slot = slot
     state.update(status="review", stage="review")

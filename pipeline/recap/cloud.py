@@ -367,6 +367,12 @@ def upload_approved(db, accounts_, uploader=None, log=print):
                 state = json.loads((work / "state.json").read_text())
                 account.write_text("uploads.json", json.dumps({n: i.get("youtube") for n, i in state["items"].items() if i.get("uploaded")}, indent=2), entry["id"])
                 account.upload_file(work / "state.json", entry["id"])
+                pending = [n for n, i in state["items"].items() if i.get("uploaded") and not i.get("captions_uploaded")]
+                if pending:
+                    # Videos are up; captions wait for quota. The folder stays queued so a later run finishes them.
+                    account.write_text("error.txt", "captions pending (YouTube quota): " + ", ".join(pending) + "\n", entry["id"])
+                    results.append({"project_id": state["id"], "status": "uploaded, captions pending"})
+                    continue
                 account.move(entry["id"], folders["uploaded"])
                 free_space(account, accounts_, entry["id"], files, state, log)
                 registry = state.get("cloud_source", {}).get("registry")

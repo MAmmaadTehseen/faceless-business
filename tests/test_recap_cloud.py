@@ -157,7 +157,7 @@ def test_upload_approved_uses_worker_and_moves_folder(tmp_path, monkeypatch, db)
         assert (work / "long" / "video.mp4").exists() and not (work / "short2").exists()
         for n, i in st["items"].items():
             if i["approved"]:
-                i.update(uploaded=True, youtube={"id": "yt-" + n})
+                i.update(uploaded=True, youtube={"id": "yt-" + n}, captions_uploaded=True)
         core.dump(work / "state.json", st)
     result = cloud.upload_approved(db, [account], uploader=fake_upload, log=lambda *_: None)
     assert result == [{"project_id": "a" * 32, "status": "uploaded"}]
@@ -199,9 +199,16 @@ def test_upload_frees_space_and_records(tmp_path, monkeypatch, db):
         for suffix in (".mp4", ".jpg", ".srt"):
             account.upload_file_bytes(n + suffix, b"x", folder)
 
-    def fake_upload(work, st):
+    def no_captions(work, st):
         for i in st["items"].values():
             i.update(uploaded=True, youtube={"id": "yt"})
+        core.dump(work / "state.json", st)
+    assert cloud.upload_approved(db, [src, account], uploader=no_captions, log=lambda *_: None)[0]["status"] == "uploaded, captions pending"
+    assert account.files[folder]["parent"] == "f-approve" and not getattr(src, "deleted", [])
+
+    def fake_upload(work, st):
+        for i in st["items"].values():
+            i.update(uploaded=True, youtube={"id": "yt"}, captions_uploaded=True)
         core.dump(work / "state.json", st)
     result = cloud.upload_approved(db, [src, account], uploader=fake_upload, log=lambda *_: None)
     assert result[0]["status"] == "uploaded"
