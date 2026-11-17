@@ -15,8 +15,9 @@ on:
         description: "Films to produce in this run (each takes roughly 4-6 hours)"
         type: number
         default: 1
+# contents: write lets large queued media (>45 MB) be checkpointed as release assets before upload, like shorts.yml.
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: recap
   cancel-in-progress: false
@@ -40,6 +41,7 @@ jobs:
       GDRIVE_RECAP_REFRESH_TOKEN_3: ${{ secrets.GDRIVE_RECAP_REFRESH_TOKEN_3 }}
       GDRIVE_RECAP_REFRESH_TOKEN_4: ${{ secrets.GDRIVE_RECAP_REFRESH_TOKEN_4 }}
       GDRIVE_RECAP_REFRESH_TOKEN_5: ${{ secrets.GDRIVE_RECAP_REFRESH_TOKEN_5 }}
+      GH_TOKEN: ${{ github.token }}
       TTS_BACKEND: kokoro
       RECAP_WHISPER_MODEL: ${{ vars.RECAP_WHISPER_MODEL || 'small' }}
       HF_HOME: ${{ github.workspace }}/.hf
