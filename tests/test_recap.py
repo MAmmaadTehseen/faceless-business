@@ -358,3 +358,36 @@ def test_bars_are_minor_not_blocking():
     qa = {"pass": False, "issues": [{"severity": "blocking", "text": "Frame 2 is entirely black."}]}
     worker.downgrade_geometry_findings(qa)
     assert not qa["pass"]
+
+
+def test_upload_resumes_after_long_already_uploaded(video, monkeypatch):
+    from pipeline.db import DB
+    from pipeline.publish import youtube
+    import pipeline.publish
+    import pipeline.publish.quota
+    state = core.create(payload(video))
+    work = core.job_dir(state["id"])
+    for name in core.PIECES:
+        state["items"][name] = {"title": "T", "description": "D", "approved": name != "long", "discarded": False, "qa": {"pass": True}}
+        (work / name).mkdir()
+        (work / name / "video.mp4").write_bytes(b"f")
+        (work / name / "thumbnail.jpg").write_bytes(b"f")
+        (work / name / "captions.srt").write_text("1\n00:00:00,000 --> 00:00:01,000\nHi.\n")
+    state["items"]["long"].update(uploaded=True, youtube={"id": "yt-long"})
+    db = DB()
+    slot = datetime(2030, 1, 3, 17, tzinfo=timezone.utc)
+    db.conn.execute("insert into content (id, channel, kind, topic, title, status) values (?, ?, ?, ?, ?, ?)", ("filmreview-" + state["id"] + "-long", "filmreview", "long", "T", "T", "published"))
+    db.upsert("publications", {"id": 901, "content_id": "filmreview-" + state["id"] + "-long", "platform": "youtube", "status": "live",
+                               "platform_id": "yt-long", "publish_at": slot.isoformat()}, on="id")
+    monkeypatch.setattr("pipeline.db.DB", lambda: db)
+    monkeypatch.setattr(youtube, "configured", lambda: True)
+    monkeypatch.setattr(pipeline.publish.quota, "reserve", lambda *a, **k: True)
+    mocked = Mock()
+    mocked.captions.return_value.list.return_value.execute.return_value = {"items": []}
+    monkeypatch.setattr(youtube, "yt", lambda: mocked)
+    calls = []
+    monkeypatch.setattr(pipeline.publish, "_youtube_publish", lambda db, row, channel, privacy, s: calls.append((row["id"], s)) or {"id": row["id"]})
+    worker.upload(work, state)
+    assert [c[0].rsplit("-", 1)[1] for c in calls] == ["short1", "short2", "short3", "short4"]
+    assert all(c[1] > slot for c in calls)
+    assert mocked.captions.return_value.insert.call_count == 5 and state["items"]["long"]["captions_uploaded"]

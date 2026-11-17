@@ -487,6 +487,22 @@ def calendar(db, channel, kind, content_id, parent=None):
     return slot
 
 
+def _captions(db, youtube, work, name, item, video_id):
+    """captions.list (50) plus captions.insert (400); reconciles a crash after insert before inserting again."""
+    from pipeline.publish.quota import reserve
+    from googleapiclient.http import MediaFileUpload
+    if not (work / name / "captions.srt").exists():
+        return
+    if not reserve(db, 450):
+        raise ValueError("Caption quota unavailable; retry Upload to finish captions without reuploading video")
+    service = youtube.yt()
+    tracks = service.captions().list(part="snippet", videoId=video_id).execute().get("items", [])
+    if not any(t.get("snippet", {}).get("name") == "Original review narration" for t in tracks):
+        service.captions().insert(part="snippet", body={"snippet": {"videoId": video_id, "language": "en", "name": "Original review narration", "isDraft": False}},
+                                  media_body=MediaFileUpload(str(work / name / "captions.srt"), mimetype="application/octet-stream")).execute()
+    item["captions_uploaded"] = True
+
+
 def upload(work, state):
     from pipeline.db import DB
     from pipeline.publish import _youtube_publish, youtube
@@ -509,10 +525,18 @@ def upload(work, state):
     dump(work / "state.json", state)
     for name in PIECES:
         item = state["items"].get(name, {})
-        if not item.get("approved") or item.get("discarded") or not item.get("qa", {}).get("pass"):
-            continue
         cid = "filmreview-" + state["id"] + "-" + name
         existing = db.one("publications", {"content_id": cid, "platform": "youtube"})
+        if item.get("uploaded"):
+            # Resume after a partial run: the long's slot anchors the Shorts, and captions may still be owed.
+            if name == "long" and existing and existing.get("publish_at"):
+                parent_slot = datetime.fromisoformat(existing["publish_at"].replace("Z", "+00:00"))
+            if not item.get("captions_uploaded") and item.get("youtube", {}).get("id"):
+                _captions(db, youtube, work, name, item, item["youtube"]["id"])
+                dump(work / "state.json", state)
+            continue
+        if not item.get("approved") or item.get("discarded") or not item.get("qa", {}).get("pass"):
+            continue
         slot = datetime.fromisoformat(existing["publish_at"].replace("Z", "+00:00")) if existing and existing.get("publish_at") else calendar(db, channel, "long" if name == "long" else "short", cid, parent_slot)
         if slot < datetime.now(timezone.utc) + timedelta(hours=1):
             slot = calendar(db, channel, "long" if name == "long" else "short", cid, parent_slot)
@@ -536,15 +560,7 @@ def upload(work, state):
         item["youtube"] = result
         dump(work / "state.json", state)
         if not item.get("captions_uploaded"):
-            # captions.list (50) plus captions.insert (400).
-            if not reserve(db, 450):
-                raise ValueError("Caption quota unavailable; retry Upload to finish captions without reuploading video")
-            # Reconcile a crash after captions.insert before issuing another insert.
-            service = youtube.yt()
-            tracks = service.captions().list(part="snippet", videoId=result["id"]).execute().get("items", [])
-            if not any(t.get("snippet", {}).get("name") == "Original review narration" for t in tracks):
-                service.captions().insert(part="snippet", body={"snippet": {"videoId": result["id"], "language": "en", "name": "Original review narration", "isDraft": False}}, media_body=MediaFileUpload(str(work / name / "captions.srt"), mimetype="application/octet-stream")).execute()
-            item["captions_uploaded"] = True
+            _captions(db, youtube, work, name, item, result["id"])
             dump(work / "state.json", state)
         parent_slot = slot
     state.update(status="review", stage="review")
