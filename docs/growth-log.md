@@ -124,3 +124,53 @@ Facts first: the four Pages have 0 followers each and no website link; the hub h
 - If retention moves but views do not, the next lever is the on-screen hook card (render) and a trimmed first 2 s of footage.
 - If Instagram tradewinds stays under 20 median with spaced posting, inspect the account itself (shadow restrictions, missing professional category) rather than captions.
 - Ten Tongues: judge after seven episodes; its Shorts are 10 per day on one channel, which is a different test from the explainer channels.
+
+
+## Round 2: 2026-11-17
+
+### Snapshot (last 30 days, public only; round 1 in brackets)
+
+| platform | channel | kind | n | median views | views/day | retention % | zero-view |
+|---|---|---|---|---|---|---|---|
+| youtube | escapevelocity | short | 25 | 28 (26) | 3.4 | 36 | 0 |
+| youtube | tradewinds | short | 27 | 45 (41) | 7.0 | 58 | 1 |
+| youtube | futurework | short | 25 | 15 (15) | 1.5 | 39 | 2 |
+| youtube | all | long | 28 | 2-7 | 0.2-1.0 | 11-27 | 4 |
+| instagram | escapevelocity | short | 33 | 126 (126) | 9.9 | | 0 |
+| instagram | tentongues | short | 9 | 107 | 107 | | 0 |
+| instagram | futurework | short | 23 | 19 (19.5) | 1.5 | | 0 |
+| instagram | tradewinds | short | 32 | 6 (5) | 0.8 | | 3 |
+| facebook | all | short | 98 | 0 | 0 | | 96 |
+| hub | | | | 71 views, 34 uniques (48 / ~20) | | | US 22 (was ~8) |
+
+Nothing material moved in one day, as expected. Hub uniques and US visits roughly doubled after the Facebook link posts and indexing requests; six Facebook link posts (three by hand, three by sync's backfill) show 0 clicks so far.
+
+### Diagnosis: why round-1 changes cannot show yet
+
+- Every explainer channel had one YouTube upload per day scheduled through 2026-12-09, all produced before round 1. The scheduler placed four child Shorts on four consecutive days per long video while each channel makes three longs a week, so the backlog grew by five days every week. The shorter hook-first Shorts (now consistently 82-110 words in bank runs) would not have reached the public until December.
+- Bank mode (until 2026-11-24) banks everything new; `banked_release_per_day` is unset, so releases only add to the end of that queue.
+- A regression from round 1: child Reels now wait for the YouTube slot, and sync's follow-up then ran on a fresh runner without the mp4 (`No such file or directory` in sync 44033158218 for old Shorts with no `media_url`). It also tried to post Reels for Shorts that went public weeks ago.
+- The project's real YouTube quota ran out at 11:50 UTC today although our `quota_log` showed 7,380 of 10,000 units. Yesterday's log shows 1,268 units; before the playlists/description features it was 60-70 a day. Our accounting undercounts something (likely playlist creation plus insertion per upload, 27 uploads today) and counts UTC days while Google resets at 08:00 UTC. Owner-only check: Google Cloud console > APIs > YouTube Data API > Quotas for project 6170817069.
+
+### Shipped in round 2
+
+- Scheduler: the three explainer channels now use `shorts_same_day: true`, `shorts_spacing_hours: 4`, `max_youtube_per_day: 3` in channel.json. Child Shorts fill the parent's day (long plus two Shorts, then the next day at the Shorts hour), never spilling past midnight. Ten Tongues unchanged.
+- `pipeline/publish/reschedule.py` + `scripts/compress_schedule.py`: re-slots every future, non-public YouTube publication of a channel under the new calendar in its original order and pushes the new `publishAt` to YouTube (51 units each) and the database. Dry run today: futurework 18 uploads, last slot 2026-12-02 -> 2026-11-22; tradewinds 21, 2026-12-03 -> 2026-11-23; escapevelocity 26, 2026-12-09 -> 2026-11-28. The apply hit Google's quota wall at the first update, so sync now runs `compress()` every six hours (setting `compress_schedule_enabled`, default true) and stops cleanly on quota errors; the backlog moves as quota allows, starting after the 08:00 UTC reset.
+- Reels follow-up: restores media through the existing retry/queue paths, skips Shorts with no media on the runner instead of raising, and only follows Shorts whose YouTube copy went public in the last 7 days.
+- Tests: `tests/test_reschedule.py` (2), same-day scheduler test, Reels follow-up regression test. Suite: 410 passed.
+
+### What should move by round 3 (2026-11-21 or later)
+
+| metric | now | expect |
+|---|---|---|
+| explainer uploads going public per channel per day | 1 | 2-3 within a week (watch `compressed schedule` lines in sync logs) |
+| days until the hook-first Shorts are public | ~20 | 5-9 |
+| Reels follow-up errors in sync | several per run | 0 |
+| Facebook link-post clicks (6 posts) | 0 | still ~0 until Pages have followers |
+| hub uniques / 30 days | 34 | 60+ once 24 articles are indexed |
+
+### Carry forward / owner
+
+- Sign in to Google in the browser pane again (it came back signed out) so I can request indexing for the remaining 16 articles, 8 a day.
+- Check the real YouTube quota usage in Google Cloud; if playlists are the cost, set `yt_playlists_enabled` to false until the 16k insert quota and a higher general quota are granted.
+- Decide whether to release banked bundles before 2026-11-24 (`banked_release_per_day` = 1 per channel) now that the calendar can absorb 2-3 uploads a day.

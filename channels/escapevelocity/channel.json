@@ -116,5 +116,8 @@
         "ESA"
       ]
     }
-  ]
+  ],
+  "shorts_same_day": true,
+  "shorts_spacing_hours": 4,
+  "max_youtube_per_day": 3
 }

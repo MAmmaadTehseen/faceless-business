@@ -95,14 +95,32 @@ def apply(db, channel: Channel, items: list[dict]) -> int:
             if not reserve(db, 51):
                 log.warning("reschedule: quota exhausted before %s; stopping", p["content_id"])
                 break
-            v = youtube.yt().videos().list(part="status", id=p["platform_id"]).execute()["items"][0]
-            if v["status"].get("privacyStatus") == "public":
-                log.info("reschedule: %s already public, skipped", p["content_id"])
+            try:
+                v = youtube.yt().videos().list(part="status", id=p["platform_id"]).execute()["items"][0]
+                if v["status"].get("privacyStatus") == "public":
+                    log.info("reschedule: %s already public, skipped", p["content_id"])
+                    continue
+                v["status"]["privacyStatus"] = "private"
+                v["status"]["publishAt"] = new.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                youtube.yt().videos().update(part="status", body={"id": p["platform_id"], "status": v["status"]}).execute()
+            except Exception as e:
+                details = youtube.error_details(e)
+                if any(r in str(details.get("reason")) for r in youtube.QUOTA_REASONS):
+                    log.warning("reschedule: YouTube quota exhausted at %s; the rest waits for the next run", p["content_id"])
+                    break
+                log.warning("reschedule: %s not moved (%s)", p["content_id"], details.get("reason"))
                 continue
-            v["status"]["privacyStatus"] = "private"
-            v["status"]["publishAt"] = new.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            youtube.yt().videos().update(part="status", body={"id": p["platform_id"], "status": v["status"]}).execute()
         db.update("publications", {"id": p["id"]}, {"publish_at": new.isoformat()})
         log.info("reschedule: %s %s -> %s", p["content_id"], it["old"].isoformat(), new.isoformat())
         changed += 1
     return changed
+
+
+def compress(db, channel: Channel) -> int:
+    """Sync entry point: re-slot the channel's future uploads under its calendar and push changes."""
+    if db.setting("compress_schedule_enabled", True) is False:
+        return 0
+    items = plan(db, channel)
+    if not any(i["new"] != i["old"] for i in items):
+        return 0
+    return apply(db, channel, items)

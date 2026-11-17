@@ -116,3 +116,21 @@ def test_standalone_and_setting_off_publish_reels_immediately(meta_db):
                                "status": "live", "publish_at": future})
     publish.publish_short(db, r2, Channel("futurework"), "public")
     assert ig.call_count == 2
+
+
+def test_follow_up_skips_old_shorts_and_missing_media(meta_db, monkeypatch):
+    db, ig, fb = meta_db
+    old = row(id="futurework-2026-10-01-old-short-1", media_url=None, file_path="/nonexistent/old.mp4")
+    db.insert("content", {k: old[k] for k in ("id", "kind", "parent_id", "title", "script", "channel", "description", "qa_status", "topic", "media_url", "file_path")})
+    db.insert("publications", {"content_id": old["id"], "platform": "youtube", "platform_id": "ytold", "privacy": "public",
+                               "status": "live", "publish_at": "2026-10-02T13:00:00+00:00"})
+    new = row(id="futurework-2026-11-16-new-short-1", media_url=None, file_path="/nonexistent/new.mp4")
+    db.insert("content", {k: new[k] for k in ("id", "kind", "parent_id", "title", "script", "channel", "description", "qa_status", "topic", "media_url", "file_path")})
+    db.insert("publications", {"content_id": new["id"], "platform": "youtube", "platform_id": "ytnew", "privacy": "public",
+                               "status": "live", "publish_at": (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()})
+    monkeypatch.setattr(publish.meta, "ig_configured", lambda: True)
+    monkeypatch.setattr(publish.meta, "fb_configured", lambda: True)
+    import pipeline.retry as retry
+    monkeypatch.setattr(retry, "restore", lambda db, s, p: (_ for _ in ()).throw(FileNotFoundError("gone")))
+    assert publish.follow_youtube_to_reels(db, Channel("futurework")) == 0
+    assert ig.call_count == fb.call_count == 0  # old one ignored, new one skipped without media, nothing raised

@@ -64,6 +64,8 @@ def _next_slot(db, kind: str, channel: Channel | None = None, *, now=None,
             candidate = (candidate + timedelta(days=1)).replace(hour=int(hour), minute=0, second=0, microsecond=0)
         else:
             candidate += spacing if (kind == "short" and same_day) else timedelta(days=1)
+            if kind == "short" and same_day and candidate.date() != slot.date():
+                candidate = candidate.replace(hour=int(hour), minute=0, second=0, microsecond=0)  # never spill into the night
 
 
 BIG_FILE = 45 * 1024 * 1024   # Supabase free tier caps objects at 50 MB; larger queued files go to a GitHub release
@@ -342,6 +344,9 @@ def _local_file(db, s) -> Path:
     return target
 
 
+REELS_FOLLOW_DAYS = 7
+
+
 def follow_youtube_to_reels(db, channel) -> int:
     """Shorts whose YouTube copy has gone public (scheduled publish) get their Instagram/Facebook Reels now."""
     meta.use_channel(channel)
@@ -350,14 +355,24 @@ def follow_youtube_to_reels(db, channel) -> int:
     shorts = {c["id"]: c for c in db.select("content", {"channel": channel.key, "kind": "short"})
               if c.get("qa_status") == "passed" and not c.get("placeholder")}
     done = 0
+    recent = (datetime.now(timezone.utc) - timedelta(days=REELS_FOLLOW_DAYS)).isoformat()
     for p in db.select("publications", {"platform": "youtube", "status": "live"}):
         s = shorts.get(p["content_id"])
         if not s or p.get("privacy") != "public":
             continue
+        if (p.get("publish_at") or p.get("published_at") or "") < recent:
+            continue  # old backlog: Reels days or weeks late add nothing and would flood the accounts
         have = {q["platform"] for q in db.select("publications", {"content_id": s["id"]}) if q.get("status") == "live"}
         want = ({"instagram"} if meta.ig_configured() else set()) | ({"facebook"} if meta.fb_configured() else set())
         if want <= have:
             continue
+        if not s.get("media_url") and not Path(s.get("file_path") or "").is_file():
+            try:
+                from ..retry import restore
+                s = restore(db, s, p)
+            except Exception as e:
+                log.warning("reels follow-up: no media for %s on this runner (%s); skipped", s["id"], type(e).__name__)
+                continue
         parent = db.one("publications", {"content_id": s.get("parent_id") or "", "platform": "youtube"}) if s.get("parent_id") else None
         try:
             res = publish_short(db, s, channel, "public", long_url=(parent or {}).get("url"))

@@ -19,6 +19,7 @@ from pipeline.sync import sync_channel
 def main():
     with TemporaryDirectory() as tmp, patch("pipeline.db.DATA_DIR", Path(tmp)):
         db = DB()
+        db.set_setting("compress_schedule_enabled", False)  # this check measures queue/quota accounting only
         channel = Channel("tradewinds")
         video = Path(tmp) / "test.mp4"
         video.write_bytes(b"mock upload content")

@@ -90,6 +90,13 @@ def sync_channel(db, channel):
         follow_youtube_to_reels(db, channel)
     except Exception as e:
         log.error("reels follow-up failed for %s: %s", channel.key, e)
+    try:
+        from .publish.reschedule import compress
+        moved = compress(db, channel)
+        if moved:
+            log.info("sync[%s]: compressed schedule, %d uploads moved earlier", channel.key, moved)
+    except Exception as e:
+        log.warning("schedule compression skipped for %s: %s", channel.key, e)
     log.info("sync[%s]: %d publications", channel.key, len(pubs))
 
 
