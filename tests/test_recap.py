@@ -348,3 +348,13 @@ def test_lunaroute_thinking_budget_is_opt_in(monkeypatch):
     assert _lunaroute_thinking() == {"type": "disabled"}
     monkeypatch.setenv("LUNAROUTE_THINKING_BUDGET", "3000")
     assert _lunaroute_thinking() == {"type": "enabled", "budget_tokens": 3000}
+
+
+def test_bars_are_minor_not_blocking():
+    qa = {"pass": False, "issues": [{"severity": "blocking", "text": "Thumbnailed video is vertically pillarboxed: the top and bottom thirds of every frame are black bars."},
+                                    {"severity": "minor", "text": "soft focus"}]}
+    worker.downgrade_geometry_findings(qa)
+    assert qa["pass"] and all(i["severity"] == "minor" for i in qa["issues"])
+    qa = {"pass": False, "issues": [{"severity": "blocking", "text": "Frame 2 is entirely black."}]}
+    worker.downgrade_geometry_findings(qa)
+    assert not qa["pass"]

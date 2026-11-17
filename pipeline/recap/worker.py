@@ -425,11 +425,28 @@ def generate(work, state, only=None, *, db=None, claude=None, rerender=False):
         if checked.failed:
             qa["pass"] = False
             qa["issues"].append({"severity": "blocking", "text": "Vision QA did not complete"})
+        downgrade_geometry_findings(qa)
         annotate_findings(qa, piece)
         item.update(qa=qa, duration=duration)
         dump(work / "state.json", state)
     state.update(status="review", stage="review", percent=100)
     dump(work / "state.json", state)
+
+
+def downgrade_geometry_findings(qa):
+    """Letterbox and pillarbox bars are the chosen reframe (16:9 long videos keep whole shots; 9:16 Shorts
+    fill the frame); the shared QA rules call them minor, and actual black frames are measured locally."""
+    import re
+    from pipeline.qa import finalize_qa
+    changed = False
+    for issue in qa.get("issues", []):
+        text = issue["text"].lower()
+        if issue["severity"] == "blocking" and re.search(r"letterbox|pillarbox|black bars?|black bands?", text) \
+                and not re.search(r"entire(ly)? black|whole frame|completely black|all black", text):
+            issue["severity"] = "minor"
+            changed = True
+    if changed and not any(i["text"] == "Vision QA did not complete" for i in qa.get("issues", [])):
+        finalize_qa(qa)
 
 
 def annotate_findings(qa, piece):
