@@ -110,12 +110,24 @@ class Account:
         return target
 
     def upload_file(self, path, parent, name=None):
+        """Upload or replace a file of that name in the folder; never leaves two copies of state.json behind."""
+        from googleapiclient.http import MediaFileUpload
+        from pipeline.drive import next_chunk_retrying
         path = Path(path)
         if name and name != path.name:
             staged = path.parent / name
             shutil.copyfile(path, staged)
             path = staged
-        return retrying(lambda: self.drive.upload(path, parent), f"upload {path.name}")
+        existing = [f for f in self.list(parent) if f["name"] == path.name]
+        if not existing:
+            return retrying(lambda: self.drive.upload(path, parent), f"upload {path.name}")
+        def replace():
+            request = self.service.files().update(fileId=existing[0]["id"], media_body=MediaFileUpload(str(path), resumable=True, chunksize=8 * 1024**2), fields="id")
+            return next_chunk_retrying(request, "replace " + path.name)["id"]
+        file_id = retrying(replace, f"replace {path.name}")
+        for duplicate in existing[1:]:
+            self.delete(duplicate["id"])
+        return file_id
 
     def write_text(self, name, text, parent):
         from googleapiclient.http import MediaIoBaseUpload

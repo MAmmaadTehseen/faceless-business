@@ -254,3 +254,31 @@ def test_assembly_repeats_short_scenes_without_stream_loop(tmp_path, monkeypatch
     chain = (tmp_path / "chain-0.txt").read_text().splitlines()
     assert len(chain) >= 4 and all(line.startswith("file '/") for line in chain)
     assert abs(core.probe(out)["duration"] - 6.0) < 0.6
+
+
+def test_upload_file_replaces_same_name(tmp_path):
+    class Service:
+        def __init__(self):
+            self.rows = [{"id": "s1", "name": "state.json", "md5Checksum": "old", "size": "1", "mimeType": "x"}]
+            self.updated = []
+        def files(self):
+            svc = self
+            class Files:
+                def list(self, **kw):
+                    class R:
+                        def execute(_):
+                            return {"files": svc.rows}
+                    return R()
+                def update(self, fileId, media_body, fields):
+                    class R:
+                        resumable = True
+                        def next_chunk(_, **kw):
+                            svc.updated.append(fileId)
+                            return None, {"id": fileId}
+                    return R()
+            return Files()
+    service = Service()
+    account = cloud.Account(1, service=service)
+    local = tmp_path / "state.json"
+    local.write_text("{}")
+    assert account.upload_file(local, "folder") == "s1" and service.updated == ["s1"]
