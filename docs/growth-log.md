@@ -150,7 +150,7 @@ Nothing material moved in one day, as expected. Hub uniques and US visits roughl
 - Every explainer channel had one YouTube upload per day scheduled through 2026-12-09, all produced before round 1. The scheduler placed four child Shorts on four consecutive days per long video while each channel makes three longs a week, so the backlog grew by five days every week. The shorter hook-first Shorts (now consistently 82-110 words in bank runs) would not have reached the public until December.
 - Bank mode (until 2026-11-24) banks everything new; `banked_release_per_day` is unset, so releases only add to the end of that queue.
 - A regression from round 1: child Reels now wait for the YouTube slot, and sync's follow-up then ran on a fresh runner without the mp4 (`No such file or directory` in sync 44033158218 for old Shorts with no `media_url`). It also tried to post Reels for Shorts that went public weeks ago.
-- The project's real YouTube quota ran out at 11:50 UTC today although our `quota_log` showed 7,380 of 10,000 units. Yesterday's log shows 1,268 units; before the playlists/description features it was 60-70 a day. Our accounting undercounts something (likely playlist creation plus insertion per upload, 27 uploads today) and counts UTC days while Google resets at 08:00 UTC. Owner-only check: Google Cloud console > APIs > YouTube Data API > Quotas for project 6170817069.
+- The YouTube quota ran out at 11:50 UTC today. Correction after the fact: the parent session's `scripts/remove_ai_label.py` made 107 `videos.update` calls (about 5,350 units) at that time to clear the synthetic-media label, and they are in the 7,380 logged. Playlists are not the cause. The remaining 80 videos (about 4,000 units) are cleared after the 08:00 UTC reset on 2026-11-18, so schedule compression is capped per sync run (`compress_schedule_max_per_run`, default 20 updates = 1,020 units) and both fit in one day. Normal days should settle around 2-3k units.
 
 ### Shipped in round 2
 
@@ -172,5 +172,4 @@ Nothing material moved in one day, as expected. Hub uniques and US visits roughl
 ### Carry forward / owner
 
 - Sign in to Google in the browser pane again (it came back signed out) so I can request indexing for the remaining 16 articles, 8 a day.
-- Check the real YouTube quota usage in Google Cloud; if playlists are the cost, set `yt_playlists_enabled` to false until the 16k insert quota and a higher general quota are granted.
 - Decide whether to release banked bundles before 2026-11-24 (`banked_release_per_day` = 1 per channel) now that the calendar can absorb 2-3 uploads a day.

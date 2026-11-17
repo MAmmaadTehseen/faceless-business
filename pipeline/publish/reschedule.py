@@ -83,18 +83,27 @@ def plan(db, channel: Channel, now=None) -> list[dict]:
     return out
 
 
-def apply(db, channel: Channel, items: list[dict]) -> int:
-    """Push changed slots to YouTube (live rows) and the database. Returns rows changed."""
+def apply(db, channel: Channel, items: list[dict], max_updates: int | None = None) -> int:
+    """Push changed slots to YouTube (live rows) and the database. Returns rows changed.
+
+    max_updates caps YouTube status updates per call (51 units each) so a sync run leaves
+    quota for other work; the rest moves on a later run.
+    """
     youtube.use_channel(channel)
     changed = 0
+    updates = 0
     for it in items:
         p, new = it["publication"], it["new"]
         if new == it["old"]:
             continue
+        if p["status"] == "live" and p.get("platform_id") and max_updates is not None and updates >= max_updates:
+            log.info("reschedule: per-run cap of %d YouTube updates reached; the rest waits", max_updates)
+            break
         if p["status"] == "live" and p.get("platform_id"):
             if not reserve(db, 51):
                 log.warning("reschedule: quota exhausted before %s; stopping", p["content_id"])
                 break
+            updates += 1
             try:
                 v = youtube.yt().videos().list(part="status", id=p["platform_id"]).execute()["items"][0]
                 if v["status"].get("privacyStatus") == "public":
@@ -123,4 +132,4 @@ def compress(db, channel: Channel) -> int:
     items = plan(db, channel)
     if not any(i["new"] != i["old"] for i in items):
         return 0
-    return apply(db, channel, items)
+    return apply(db, channel, items, max_updates=int(db.setting("compress_schedule_max_per_run", 20)))

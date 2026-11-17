@@ -64,3 +64,24 @@ def test_apply_updates_youtube_for_live_rows_and_db_for_all(monkeypatch):
     assert sorted(b["id"] for b in calls) == ["v0", "v1", "vL"]  # queued rows need no API call
     assert all(b["status"]["privacyStatus"] == "private" and b["status"]["publishAt"].endswith("Z") for b in calls)
     assert db.one("publications", {"content_id": "S3"})["publish_at"] == items[-1]["new"].isoformat()
+
+
+def test_apply_respects_per_run_update_cap(monkeypatch):
+    db, channel = MemoryDB(), Channel("tradewinds")
+    _seed(db, channel)
+    items = reschedule.plan(db, channel, now=NOW)
+    calls = []
+
+    class V:
+        def list(self, part, id):
+            return type("E", (), {"execute": lambda s: {"items": [{"status": {"privacyStatus": "private"}}]}})()
+
+        def update(self, part, body):
+            calls.append(body["id"])
+            return type("E", (), {"execute": lambda s: {}})()
+
+    monkeypatch.setattr(reschedule.youtube, "yt", lambda: type("Y", (), {"videos": lambda s: V()})())
+    monkeypatch.setattr(reschedule.youtube, "use_channel", lambda c: None)
+    monkeypatch.setattr(reschedule, "reserve", lambda db, units: True)
+    assert reschedule.apply(db, channel, items, max_updates=1) == 1
+    assert calls == ["vL"]
