@@ -48,7 +48,9 @@ def main():
             continue
         rows = [r for r in db.select("publications", {"platform": "youtube"})
                 if r.get("platform_id") and r["content_id"].startswith(key + "-") and r.get("status") == "live"]
-        ids = sorted({r["platform_id"] for r in rows})
+        # videos.list never reports the flag back, so cleared IDs are remembered in a setting.
+        cleared = set(db.setting("synthetic_label_cleared", []) or [])
+        ids = sorted({r["platform_id"] for r in rows} - cleared)
         reads = (len(ids) + 49) // 50
         if not ids or not reserve(db, reads):
             print(f"{key}: {len(ids)} videos, read quota unavailable" if ids else f"{key}: no videos")
@@ -70,6 +72,8 @@ def main():
                 budget = 0
                 break
             service.videos().update(part="status", body={"id": v["id"], "status": status}).execute()
+            cleared.add(v["id"])
+            db.set_setting("synthetic_label_cleared", sorted(cleared))
             done += 1
             budget -= 1
         print(f"{key}: cleared {done}, {len(flagged) - done} left")

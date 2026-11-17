@@ -56,7 +56,7 @@ Add `-f rerender=true` to rebuild the long video and Shorts from saved scripts/s
 - YouTube's 2026 inauthentic-content rule: channels must stay distinct (voice, style, persona, schedule).
 
 - Each long video requests four distinct-angle Shorts (channel `shorts_per_long: 4`); each Short gets its own QA including vision on real footage.
-- YouTube quotas are shared across channels in two independent UTC-day buckets:
+- YouTube quotas are shared across channels in two independent daily buckets keyed on Google's reset day (midnight America/Los_Angeles = 08:00 UTC; migration 016, `quota_day()` in `pipeline/publish/quota.py`; UTC keys before 2026-11-17 caused quotaExceeded before 08:00 UTC):
   `youtube_uploads_per_day=100` (one per videos.insert attempt, with 2 reserved for retries),
   and `youtube_quota_units_per_day=10000` (50 per thumbnail/update/reply, with 1000 reserved
   for sync/engage reads). Atomic reservations check both buckets and retain failed/uncertain

@@ -1,5 +1,13 @@
 """Atomic, project-wide upload reservations; never refund uncertain API attempts."""
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+# Google resets YouTube Data API quota at midnight Pacific time, not UTC.
+QUOTA_TZ = ZoneInfo("America/Los_Angeles")
+
+
+def quota_day() -> str:
+    return datetime.now(QUOTA_TZ).date().isoformat()
 
 THUMB_COST = 50
 UPDATE_COST = 50
@@ -16,7 +24,7 @@ def reserve(db, units, keep_reserve=RESERVE, *, uploads=0, keep_upload_reserve=U
         return bool(db.sb.rpc("record_youtube_retry_usage", {"p_units": units, "p_uploads": uploads}).execute().data)
     if db.sb:
         return bool(db.sb.rpc("reserve_youtube_quota", {"p_units": units, "p_reserve": keep_reserve, "p_uploads": uploads, "p_upload_reserve": keep_upload_reserve}).execute().data)
-    day = datetime.now(timezone.utc).date().isoformat()
+    day = quota_day()
     db.conn.execute("begin immediate")
     try:
         row = db.conn.execute("select units, uploads from quota_log where day=?", (day,)).fetchone()
