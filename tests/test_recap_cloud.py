@@ -224,3 +224,33 @@ def test_shorts_wait_when_long_failed(tmp_path, monkeypatch, db):
     seen = {}
     cloud.upload_approved(db, [account], uploader=lambda w, st: seen.update({n: i["approved"] for n, i in st["items"].items()}), log=lambda *_: None)
     assert not any(seen.values())
+
+
+def test_drive_metadata_calls_retry_transient_errors():
+    calls = []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise BrokenPipeError("ssl send")
+        return "ok"
+    assert cloud.retrying(flaky, "move", sleep=lambda _: None) == "ok" and len(calls) == 3
+
+    def fatal():
+        raise ValueError("bad request")
+    with pytest.raises(ValueError):
+        cloud.retrying(fatal, "move", sleep=lambda _: None)
+
+
+def test_assembly_repeats_short_scenes_without_stream_loop(tmp_path, monkeypatch, video):
+    from pipeline.recap import worker
+    monkeypatch.setattr(worker, "RENDER_SIZES", {False: (160, 90), True: (90, 160)})
+    scenes = [{"start": 0.0, "end": 1.0}, {"start": 1.0, "end": 2.0}]
+    item = {"segments": [{"text": "a b c", "scene": 0}]}
+    audio = tmp_path / "voice.wav"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=24000", "-t", "6", str(audio)], check=True)
+    voice = {"audio": audio, "duration": 6.0, "timings": [{"start": 0, "end": 6, "words": [{"text": "a", "start": 0, "end": 1}]}]}
+    out = worker.assemble(Path(video), scenes, item, voice, tmp_path, False)
+    chain = (tmp_path / "chain-0.txt").read_text().splitlines()
+    assert len(chain) >= 4 and all(line.startswith("file '/") for line in chain)
+    assert abs(core.probe(out)["duration"] - 6.0) < 0.6

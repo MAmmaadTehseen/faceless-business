@@ -27,6 +27,25 @@ README = ("Produced by the recap tool. Watch the videos, then MOVE this whole fo
           "Uploaded folders move to 'uploaded'. Edit titles in state.json only if you know the format.\n")
 
 
+TRANSIENT_STATUS = {429, 500, 502, 503, 504}
+
+
+def retrying(fn, label, attempts=6, sleep=None):
+    """Repeat a small Drive metadata call on transient network/API errors (broken SSL pipes, 5xx, 429)."""
+    import time
+    sleep = sleep or time.sleep
+    for attempt in range(1, attempts + 1):
+        try:
+            return fn()
+        except Exception as exc:
+            from pipeline.drive import transient
+            status = getattr(getattr(exc, "resp", None), "status", None)
+            if attempt == attempts or not (transient(exc) or isinstance(exc, (OSError, ConnectionError)) or status in TRANSIENT_STATUS):
+                raise
+            print(f"recap cloud: {label} attempt {attempt} failed ({type(exc).__name__}); retrying")
+            sleep(min(60, 5 * attempt))
+
+
 class Account:
     """One Drive account with full-drive scope, so films uploaded through drive.google.com are visible."""
 
@@ -50,23 +69,26 @@ class Account:
 
     def folders(self):
         if self._folders is None:
-            root = self.drive.folder(ROOT_NAME)
-            self._folders = {name: self.drive.folder(name, root) for name in SUBFOLDERS}
+            root = self.folder(ROOT_NAME)
+            self._folders = {name: self.folder(name, root) for name in SUBFOLDERS}
         return self._folders
+
+    def folder(self, name, parent=None):
+        return retrying(lambda: self.drive.folder(name, parent), f"folder {name}")
 
     def list(self, folder_id):
         rows, token = [], None
         while True:
-            page = self.service.files().list(q=f"'{folder_id}' in parents and trashed = false",
-                                             fields="nextPageToken,files(id,name,size,md5Checksum,mimeType)",
-                                             pageSize=200, pageToken=token).execute()
+            page = retrying(lambda: self.service.files().list(q=f"'{folder_id}' in parents and trashed = false",
+                                                              fields="nextPageToken,files(id,name,size,md5Checksum,mimeType)",
+                                                              pageSize=200, pageToken=token).execute(), "list")
             rows += page.get("files", [])
             token = page.get("nextPageToken")
             if not token:
                 return rows
 
     def read_small(self, file_id):
-        return self.service.files().get_media(fileId=file_id).execute()
+        return retrying(lambda: self.service.files().get_media(fileId=file_id).execute(), "read")
 
     def download(self, file_id, target, md5):
         from googleapiclient.http import MediaIoBaseDownload
@@ -93,25 +115,29 @@ class Account:
             staged = path.parent / name
             shutil.copyfile(path, staged)
             path = staged
-        return self.drive.upload(path, parent)
+        return retrying(lambda: self.drive.upload(path, parent), f"upload {path.name}")
 
     def write_text(self, name, text, parent):
         from googleapiclient.http import MediaIoBaseUpload
         existing = [f for f in self.list(parent) if f["name"] == name]
-        media = MediaIoBaseUpload(io.BytesIO(text.encode()), mimetype="text/plain")
-        if existing:
-            return self.service.files().update(fileId=existing[0]["id"], media_body=media, fields="id").execute()["id"]
-        return self.service.files().create(body={"name": name, "parents": [parent]}, media_body=media, fields="id").execute()["id"]
+        def write():
+            media = MediaIoBaseUpload(io.BytesIO(text.encode()), mimetype="text/plain")
+            if existing:
+                return self.service.files().update(fileId=existing[0]["id"], media_body=media, fields="id").execute()["id"]
+            return self.service.files().create(body={"name": name, "parents": [parent]}, media_body=media, fields="id").execute()["id"]
+        return retrying(write, f"write {name}")
 
     def delete(self, file_id):
         """Permanent delete (not trash), used only after a confirmed YouTube upload."""
-        self.service.files().delete(fileId=file_id).execute()
+        retrying(lambda: self.service.files().delete(fileId=file_id).execute(), "delete")
 
     def move(self, file_id, destination):
-        current = self.service.files().get(fileId=file_id, fields="parents").execute().get("parents", [])
-        if destination in current:
-            return
-        self.service.files().update(fileId=file_id, addParents=destination, removeParents=",".join(current), fields="id").execute()
+        def move():
+            current = self.service.files().get(fileId=file_id, fields="parents").execute().get("parents", [])
+            if destination in current:
+                return
+            self.service.files().update(fileId=file_id, addParents=destination, removeParents=",".join(current), fields="id").execute()
+        retrying(move, "move")
 
 
 def accounts():
@@ -234,7 +260,7 @@ def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True):
             except Exception as exc:
                 log(f"recap cloud: film {ident} failed: {type(exc).__name__}")
                 db.update("recap_films", {"id": ident}, {"status": "failed"})
-                failed = account.drive.folder(f"{display_title(f['name'], title)} ({year})", folders["failed"])
+                failed = account.folder(f"{display_title(f['name'], title)} ({year})", folders["failed"])
                 account.write_text("error.txt", f"{type(exc).__name__}: {exc if isinstance(exc, ValueError) else 'see workflow log'}\n", failed)
                 for item in (f, film["sidecar"]):
                     account.move(item["id"], failed)
@@ -249,7 +275,7 @@ CHECKPOINTS = ("transcript.json", "scenes.json")
 
 def restore_checkpoints(account, ident, work):
     """Transcript and scene cuts from an earlier attempt, so a retry skips the long transcription."""
-    folder = account.drive.folder(ident, account.folders()["checkpoints"])
+    folder = account.folder(ident, account.folders()["checkpoints"])
     for f in account.list(folder):
         if f["name"] in CHECKPOINTS and f.get("md5Checksum"):
             account.download(f["id"], work / f["name"], f["md5Checksum"])
@@ -257,7 +283,7 @@ def restore_checkpoints(account, ident, work):
 
 
 def save_checkpoints(account, ident, work):
-    folder = account.drive.folder(ident, account.folders()["checkpoints"])
+    folder = account.folder(ident, account.folders()["checkpoints"])
     for name in CHECKPOINTS:
         if (work / name).exists():
             try:
@@ -269,7 +295,7 @@ def save_checkpoints(account, ident, work):
 def publish_review(account, work, state, destination="review"):
     """Copy the finished pieces plus their records to <destination>/<title (year)>/ and return the folder id."""
     folders = account.folders()
-    folder = account.drive.folder(f"{state['title']} ({state['year']})", folders[destination])
+    folder = account.folder(f"{state['title']} ({state['year']})", folders[destination])
     for name in core.PIECES:
         piece = work / name
         if not (piece / "video.mp4").exists():

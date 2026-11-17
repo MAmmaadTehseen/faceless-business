@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import math
 import os
 import subprocess
 from datetime import datetime, timedelta, timezone
@@ -234,7 +235,7 @@ def assemble(source, scenes, item, voice, work, short, bed=0, excluded=()):
         start = timings[i]["start"]
         end = timings[i+1]["start"] if i+1 < len(timings) else voice["duration"]
         need = end - start
-        pieces = []
+        pieces, takes = [], []
         # Cut through consecutive usable scenes from the chosen point instead of looping one clip.
         for index in scene_walk(scenes, segment["scene"], used, excluded):
             if need <= 0:
@@ -253,13 +254,18 @@ def assemble(source, scenes, item, voice, work, short, bed=0, excluded=()):
             shots.append({"start": start + (end-start-need), "end": min(end, start + (end-start-need) + take), "scene": index})
             used.add(index)
             pieces.append(clip)
+            takes.append(take)
             need -= take
         if not pieces:
             raise ValueError("No usable film scenes for a segment")
+        # Repeat the clip list explicitly when the cut scenes are shorter than the narration: the concat
+        # demuxer cannot rewind for -stream_loop on every ffmpeg build ("Illegal seek" on Ubuntu runners).
+        cycle = sum(takes)
+        repeats = max(1, math.ceil((end - start) / cycle) + 1) if cycle > 0 else 1
         chain = work / f"chain-{i}.txt"
-        chain.write_text("\n".join(f"file '{p.name}'" for p in pieces))
+        chain.write_text("\n".join(f"file '{p.resolve()}'" for _ in range(repeats) for p in pieces))
         part = work / f"part-{i}.mp4"
-        run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-stream_loop", "-1", "-i", str(chain), "-t", str(end-start), "-an",
+        run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(chain), "-t", str(end-start), "-an",
              "-c:v", "libx264", "-preset", "fast", "-threads", "2", str(part)])
         clips.append(part)
         # The concat loops when the available scenes are shorter than narration.
@@ -272,7 +278,7 @@ def assemble(source, scenes, item, voice, work, short, bed=0, excluded=()):
                     shots.append({**shot, "start": shot["start"]+offset, "end": min(end, shot["end"]+offset)})
             offset += cycle
     listing = work / "concat.txt"
-    listing.write_text("\n".join(f"file '{p.name}'" for p in clips))
+    listing.write_text("\n".join(f"file '{p.resolve()}'" for p in clips))
     silent = work / "silent.mp4"
     run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy", str(silent)])
     target = work / "video.mp4"
