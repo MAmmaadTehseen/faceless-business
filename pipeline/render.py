@@ -19,6 +19,54 @@ def _font() -> str | None:
     return None
 
 
+HOOK_SECONDS = 2.5
+
+
+def hook_lines(text: str, max_chars: int = 18, max_lines: int = 3) -> list[str]:
+    """Wrap a hook title into short bold lines a phone viewer can read in one glance."""
+    words = str(text or "").split()
+    lines, cur = [], ""
+    for w in words:
+        if cur and len(cur) + 1 + len(w) > max_chars:
+            lines.append(cur)
+            cur = w
+        else:
+            cur = f"{cur} {w}".strip()
+    if cur:
+        lines.append(cur)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1].rstrip(".,;:") + "..."
+    return lines
+
+
+def _hook_filter(text: str, work: Path, orientation: str) -> str | None:
+    """drawtext filter showing the hook title for the first HOOK_SECONDS of a portrait Short.
+
+    Growth log 2026-11-17: Shorts autoplay muted and faceless openers have no face to
+    carry them; every source agrees the first frame must state the topic in text, and
+    the same frame is Instagram's cover (thumb offset 2 s). Placed in the upper third,
+    clear of the right-hand action rail and the burned captions at the bottom.
+    """
+    lines = hook_lines(text)
+    if not lines or orientation != "portrait":
+        return None
+    font = _font()
+    fontfile = f"fontfile='{str(Path(font).resolve()).replace(chr(92), '/')}':" if font else ""
+    size, gap = 68, 22
+    parts = []
+    # One drawtext per line: ffmpeg 8 renders the newline itself as a missing glyph.
+    for i, line in enumerate(lines):
+        tf = work / f"hook_{i}.txt"
+        tf.write_text(line, encoding="utf-8")
+        path = str(tf.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+        y = f"h*0.12+{i * (size + gap)}"
+        parts.append(f"drawtext={fontfile}textfile='{path}':fontsize={size}:fontcolor=white:"
+                     f"borderw=3:bordercolor=black:box=1:boxcolor=black@0.5:boxborderw=18:"
+                     f"x=(w-text_w)/2:y={y}:enable='lt(t,{HOOK_SECONDS})'")
+    return ",".join(parts)
+
+
 def _music() -> Path | None:
     tracks = sorted((ASSETS_DIR / "music").glob("*.mp3"))
     return tracks[0] if tracks else None
@@ -146,7 +194,7 @@ def _check_black(video: Path) -> None:
 
 
 def _render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation: str = "landscape",
-           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None) -> Path:
+           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None, hook_text: str | None = None) -> Path:
     """segments: [{query, mood, start, end}] in order, covering the narration."""
     footage = footage or Footage()
     work = out.parent / f"{out.stem}_work"
@@ -169,6 +217,9 @@ def _render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation
     srt_path = str(srt.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     fontsdir = f":fontsdir={FONT_DIR}" if _font() else ""
     vf = f"subtitles='{srt_path}':force_style='{_caption_style(orientation, style)}'{fontsdir}"
+    hook = _hook_filter(hook_text, work, orientation) if hook_text else None
+    if hook:
+        vf = f"{vf},{hook}"
     cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(visual), "-i", str(audio)]
     music = _music()
     if music:
@@ -218,9 +269,9 @@ def _render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation
 
 
 def render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation: str = "landscape",
-           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None) -> Path:
+           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None, hook_text: str | None = None) -> Path:
     try:
-        return _render(segments, audio, srt, out, orientation, footage, music_db, style)
+        return _render(segments, audio, srt, out, orientation, footage, music_db, style, hook_text)
     finally:
         shutil.rmtree(out.parent / f"{out.stem}_work", ignore_errors=True)
 

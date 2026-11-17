@@ -293,3 +293,22 @@ def test_frozen_card_fails_closed_and_cleans_work(monkeypatch, tmp_path):
         render.render([{'query': 'static', 'start': 0, 'end': 6}],
                       tmp_path / 'audio', tmp_path / 'srt', tmp_path / 'final.mp4', footage=Mock())
     assert not (tmp_path / 'final_work').exists()
+
+
+def test_hook_lines_wrap_and_cap():
+    from pipeline.render import hook_lines
+    assert hook_lines("Only 5 Starship Launches This Year?") == ["Only 5 Starship", "Launches This", "Year?"]
+    assert hook_lines("") == []
+    long = hook_lines("A very long hook title that goes on and on well past three lines of text")
+    assert len(long) == 3 and long[-1].endswith("...")
+
+
+def test_hook_filter_only_for_portrait(tmp_path):
+    from pipeline.render import _hook_filter, HOOK_SECONDS
+    assert _hook_filter("Swift fell 114 km", tmp_path, "landscape") is None
+    f = _hook_filter("Swift fell 114 km", tmp_path, "portrait")
+    assert f.startswith("drawtext=") and f"enable='lt(t,{HOOK_SECONDS})'" in f
+    assert f.count("drawtext=") == 1 and (tmp_path / "hook_0.txt").read_text() == "Swift fell 114 km"
+    two = _hook_filter("Only 5 Starship Launches This Year?", tmp_path, "portrait")
+    assert two.count("drawtext=") == 3  # one per wrapped line (ffmpeg 8 draws newlines as missing glyphs)
+    assert (tmp_path / "hook_2.txt").read_text() == "Year?"

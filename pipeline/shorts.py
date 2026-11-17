@@ -20,6 +20,6 @@ def make_short(short: dict, out_dir: Path, voice, footage: Footage, name: str, s
     shots = [{"paragraph_index": i, "query": short["query"], "mood": "bright"} for i in range(len(paragraphs))]
     segs = segments_from_timings(tts["timings"], shots, min_shot=3.0, max_shot=5.0)
     out = out_dir / f"{name}.mp4"
-    render(segs, tts["audio"], tts["srt"], out, orientation="portrait", footage=footage, music_db=-20.0, style=style)
+    render(segs, tts["audio"], tts["srt"], out, orientation="portrait", footage=footage, music_db=-20.0, style=style, hook_text=short.get("hook_title"))
     log.info("short: %s (%.1fs)", out, tts["duration"])
     return {"file": out, "duration": tts["duration"], "title": short["hook_title"], "script": short["script"]}

@@ -82,7 +82,7 @@ def rerender_short(short: dict, out_dir: Path, voice, footage: Footage, name: st
              for t in tts["timings"]]
     segs = segments_from_timings(tts["timings"], shots, min_shot=3.0, max_shot=5.0)
     video = out_dir / f"{name}.mp4"
-    render(segs, tts["audio"], tts["srt"], video, "portrait", footage, music_db=-20.0, style=style)
+    render(segs, tts["audio"], tts["srt"], video, "portrait", footage, music_db=-20.0, style=style, hook_text=short.get("hook_title"))
     return {"file": video, "duration": tts["duration"], "title": short["hook_title"], "script": short["script"]}
 
 

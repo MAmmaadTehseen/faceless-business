@@ -173,3 +173,40 @@ Nothing material moved in one day, as expected. Hub uniques and US visits roughl
 
 - Sign in to Google in the browser pane again (it came back signed out) so I can request indexing for the remaining 16 articles, 8 a day.
 - Decide whether to release banked bundles before 2026-11-24 (`banked_release_per_day` = 1 per channel) now that the calendar can absorb 2-3 uploads a day.
+
+
+## Round 2b: hooks and SEO research, 2026-11-17 (owner: "are you even trying")
+
+### What our own 72 public Shorts say
+
+| retention bucket | n | median views |
+|---|---|---|
+| under 35% | 26 | 16.5 |
+| 35-50% | 16 | 16.5 |
+| 50-70% | 17 | 52 |
+| over 70% | 13 | 69 |
+
+Retention is the only trait that correlates with views (r = 0.18; words, title length, numbers and questions in titles are all near zero). Every top-ten Short names a concrete thing in its first sentence (Swift, Starship, Artemis, a $20 billion bill, a 342 percent freight rise). Every bottom-ten Short opens on an abstraction (a Dutch budget, "here's an unpopular take", "your old job might come back", a door latch). Long videos: titles are clever, not searchable ("The Catch Isn't the Real Test"), so they get 2-8 views with no search entry.
+
+### What the research says (vendor blogs, no official YouTube numbers; treat thresholds as rough)
+
+- Shorts: distribution is a staged test; the first filter is swipe-away in the first 2-3 seconds, the second is completion (65% for under-30 s, 50% for 30-60 s). Faceless Shorts autoplay muted, so the first frame must state the topic in text. Loops add replays. Sources: [ContentMatch](https://contentmatch.io/youtube-shorts-algorithm-viewed-vs-swiped-ratio-2026/), [virvid](https://virvid.ai/blog/first-3-seconds-hook-faceless-shorts-2026), [1of10](https://1of10.com/blog/youtube-shorts-analytics/), [socialync](https://www.socialync.io/blog/youtube-shorts-algorithm-2026), [vidIQ hooks](https://vidiq.com/blog/post/viral-video-hooks-youtube-shorts/).
+- Long-form SEO: keyword in the first 40 characters of the title, keyword in the first sentence of the description, chapter labels as search phrases, tags nearly irrelevant. Sources: [vidIQ](https://vidiq.com/blog/post/youtube-seo/), [outlierkit](https://outlierkit.com/resources/youtube-seo/).
+- Instagram: Trial Reels are the non-follower lever (needs a professional account with enough followers; not exposed in the Instagram Login API), keyword in the first 125 caption characters, said aloud and shown on screen; cover frame matters. Sources: [Hootsuite](https://blog.hootsuite.com/instagram-reels/), [brandID](https://brandid.app/blog/instagram-trial-reels/), [Toptal](https://www.toptal.com/creator/post/instagram-seo).
+- Facebook: single-digit Reel views on a Page usually means a "not recommended" flag (check Meta Business Suite > Account status), links in captions, or a cold-start Page with no engagement history. Sources: [lilachbullock](https://www.lilachbullock.com/facebook-reels-not-getting-views/), [advertiserreview](https://advertiserreview.com/social-media/facebook/reels-not-showing/).
+
+### Shipped
+
+- Hook card: every explainer Short now opens with its hook title burned in as a bold boxed headline in the upper third for the first 2.5 s (`pipeline/render.py`, `hook_text`), clear of the action rail and the centred captions; one drawtext per line because ffmpeg 8 draws newlines as missing glyphs. The same frame is the Instagram cover (thumb offset 2 s) and the Facebook Reel cover. Verified on real frames.
+- Prompts: `hook_title` under 45 characters naming the subject (proper noun or number) in its first three words; long-video title starts with the searchable subject inside 40 characters, then the angle; description's first sentence states the subject plainly; chapter labels are search phrases. Ideation now prefers topics with a nameable actor plus a hard number, because that is what the top ten have and the bottom ten lack.
+- Reels captions already lead with the spoken hook line, carry no links and use niche hashtags (round 1); Facebook Reels get the same caption.
+
+### Not possible from here (owner)
+
+- Instagram Trial Reels: toggle "Trial" when posting from the app; the API we use has no such flag. Run two or three a week per account.
+- Facebook: open Meta Business Suite > Account status for each Page and tell me if any says "not recommended"; and invite friends to the Pages. Zero followers plus no engagement history is a cold start nothing automated can fix.
+- YouTube Studio: for the next Shorts, read "Viewed vs swiped away" and "Stayed to watch"; I cannot read those through the API.
+
+### Expect
+
+Hook card plus named-subject rules target the 2-second swipe and the 50% retention line. If the next 20 Shorts median above 50% retention, median views should move from the teens to 50+ per the table above, before any algorithmic expansion. 10k a day per video needs the expansion stage; that is a retention problem first, and this is the first round that attacks the muted first frame directly.

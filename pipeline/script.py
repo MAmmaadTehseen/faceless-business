@@ -16,16 +16,16 @@ SCRIPT_SCHEMA = {
     "additionalProperties": False,
     "required": ["title", "title_variants", "thumbnail_text", "description", "tags", "chapters", "script", "shot_list", "facts_check", "shorts"],
     "properties": {
-        "title": {"type": "string", "description": "Best title, under 65 chars"},
+        "title": {"type": "string", "description": "Best title, under 65 chars; starts with the searchable subject (the named thing or topic phrase people type) within the first 40 characters, then a colon and the angle"},
         "title_variants": {"type": "array", "items": {"type": "string"}, "description": "Exactly 4 to 6 other strong titles using different formulas"},
         "thumbnail_text": {"type": "string", "description": "Max 3 words, uppercase"},
-        "description": {"type": "string", "description": "YouTube description: 2-3 sentence summary, then chapters with timestamps as 'mm:ss Title' lines, then 'Sources:' with the urls used"},
+        "description": {"type": "string", "description": "YouTube description: first sentence names the subject and the searchable topic phrase in plain words, 2-3 sentence summary, then chapters with timestamps as 'mm:ss Title' lines whose labels are phrases people would search, then 'Sources:' with the urls used"},
         "tags": {"type": "array", "items": {"type": "string"}},
         "chapters": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["title", "paragraph_index"], "properties": {"title": {"type": "string"}, "paragraph_index": {"type": "integer"}}}},
         "script": {"type": "array", "items": {"type": "string"}, "description": "Narration paragraphs in order, spoken English only, no headings, no stage directions, 1300-1900 words total"},
         "shot_list": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["paragraph_index", "query", "mood"], "properties": {"paragraph_index": {"type": "integer"}, "query": {"type": "string", "description": "2-4 word stock VIDEO search that a free stock library will certainly have: generic, physical, filmable things (e.g. 'office worker typing', 'server room aisle', 'city street timelapse', 'handshake meeting', 'parliament building exterior'). Never company names, countries, people, abstract nouns, or events."}, "mood": {"type": "string", "enum": ["calm", "tense", "bright", "dark"]}}}, "description": "One entry per paragraph"},
         "facts_check": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["claim", "source", "confidence"], "properties": {"claim": {"type": "string"}, "source": {"type": "string"}, "confidence": {"type": "string", "enum": ["verified", "likely", "unverified"]}}}},
-        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 50 chars, no hashtags"}, "script": {"type": "string", "description": "75-110 words, self-contained; first sentence under 12 words with a named actor or a number; payoff by sentence three; last line a question or a loop back to the first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
+        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; it is shown on screen for the first two seconds"}, "script": {"type": "string", "description": "75-110 words, self-contained; first sentence under 12 words with a named actor or a number; payoff by sentence three; last line a question or a loop back to the first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
     },
 }
 
@@ -123,11 +123,13 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "Each paragraph is 2-5 sentences and is one visual beat. Put a clear framework in the middle. "
         "Attribute facts in-line in spoken form. End with one question for the comments and a one-sentence CTA to subscribe.\n"
         "Step 3: produce 5 titles across different formulas, thumbnail text, description with chapters, tags, "
+        "Title rules: the main title begins with the searchable subject (the named organisation, object, event or topic phrase a person would type) inside the first 40 characters, then the angle; clever lines go in title_variants, never first. "
+        "Description rule: its first sentence states the subject and the topic phrase plainly; chapter labels are search phrases, not jokes. "
         "one shot-list query per paragraph (generic stock-video phrases that always exist: people at desks, buildings, screens, streets, hands, machines; vary them so no two consecutive paragraphs share a query; never names of companies, countries, or people), "
         f"a facts_check table, and exactly {shorts_per_long} Shorts scripts. Each must cover a DIFFERENT angle "
         "(the number, the human consequence, the contrarian take, the what-to-do-now), be self-contained, "
         "75-110 words (about 35-45 seconds spoken), with its own hook in the first line. No two Shorts may share a hook or statistic. "
-        "Shorts hook rules: the first sentence is under twelve words and names a specific actor, object or number; "
+        "Shorts hook rules: hook_title is under 45 characters and names the specific subject (a proper noun or a number) in its first three words, because it is shown on screen for the first two seconds; the first sentence is under twelve words and names a specific actor, object or number; "
         "no setup, no 'in this video', no question-only opener; the payoff lands by the third sentence; "
         "the last line is either a question the viewer can answer in one comment or a line that loops back to the first sentence.\n"
         "Hard rules: no income promises, no medical/legal/financial advice, no fabricated quotes, no 'experts say' without naming who. "

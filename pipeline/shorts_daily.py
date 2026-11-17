@@ -22,7 +22,7 @@ DAILY_SCHEMA = {
     "type": "object", "additionalProperties": False,
     "required": ["hook_title", "script", "query", "description", "tags", "facts_check"],
     "properties": {
-        "hook_title": {"type": "string"},
+        "hook_title": {"type": "string", "description": "Under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; shown on screen for the first two seconds"},
         "script": {"type": "string", "description": "80-115 spoken words; self-contained; first sentence under 12 words naming an actor or a number; payoff by sentence three; last line a question or a loop back to the first line"},
         "query": {"type": "string", "description": "Generic physical stock video search"},
         "description": {"type": "string"},
