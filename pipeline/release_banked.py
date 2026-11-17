@@ -41,7 +41,7 @@ def release_one(db, channel, row, drive):
     manifest_path = drive.download(checkpoint['manifest_id'], out / 'manifest.json', checkpoint['manifest_sha256'])
     manifest = json.loads(manifest_path.read_text())
     if (manifest.get('version') != 1 or manifest.get('content_id') != row['id'] or manifest.get('channel') != channel.key
-            or manifest.get('containsSyntheticMedia') is not True):
+            or not isinstance(manifest.get('containsSyntheticMedia'), bool)):
         raise RuntimeError('Invalid stockpile manifest')
     rows = manifest['content']
     if not capacity(db, rows):

@@ -137,7 +137,7 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
         entries[name] = {'id': drive.upload(path, folder), 'size': path.stat().st_size,
                          'sha256': digest(path)}
     manifest = {'version': 1, 'content_id': content_id, 'channel': channel.key, 'created_at': now_iso(),
-        'category_id': str(channel.cfg.get('category_id', '28')), 'containsSyntheticMedia': True,
+        'category_id': str(channel.cfg.get('category_id', '28')), 'containsSyntheticMedia': bool(channel.cfg.get('synthetic_media', False)),
         'privacy': 'private', 'content': rows, 'article': article, 'article_failed': article_failed, 'files': entries}
     manifest_path = out / 'manifest.json'
     write_json(manifest_path, manifest)

@@ -33,6 +33,12 @@ def _token() -> str | None:
     return _current.env("YT_REFRESH_TOKEN")
 
 
+def synthetic_media() -> bool:
+    """YouTube's altered/synthetic disclosure. Off by default: a generic TTS narrator over real stock
+    footage is not a realistic fake. Channels using a cloned real voice or face set `synthetic_media: true`."""
+    return bool((getattr(_current, "cfg", None) or {}).get("synthetic_media", False))
+
+
 def _creds() -> Credentials:
     return Credentials(None, refresh_token=_token(), token_uri="https://oauth2.googleapis.com/token",
                        client_id=os.environ["YT_CLIENT_ID"], client_secret=os.environ["YT_CLIENT_SECRET"], scopes=SCOPES)
@@ -136,7 +142,7 @@ def upload(video: Path, title: str, description: str, tags: list[str], privacy: 
     body = {
         "snippet": {"title": title[:100], "description": description[:4900], "tags": tags[:15], "categoryId": category_id,
                     "defaultLanguage": "en", "defaultAudioLanguage": "en"},
-        "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False, "containsSyntheticMedia": True},
+        "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False, "containsSyntheticMedia": synthetic_media()},
     }
     if publish_at and privacy == "private":
         body["status"]["publishAt"] = publish_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

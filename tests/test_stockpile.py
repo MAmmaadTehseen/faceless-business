@@ -60,7 +60,7 @@ def test_bank_complete_bundle_no_publications_or_article(tmp_path, monkeypatch):
     assert len(db.select('content', {'status': 'banked'})) == 5
     assert not db.select('publications') and not db.select('articles')
     manifest = json.loads(drive.data[metadata['manifest_id']])
-    assert manifest['containsSyntheticMedia'] is True
+    assert manifest['containsSyntheticMedia'] is False
     assert manifest['article']['published_at'] is None
     assert len(manifest['content']) == 5 and 'voice.srt' in manifest['files']
     assert all(Path(r['file_path']).exists() for r in db.select('content'))

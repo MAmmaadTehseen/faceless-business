@@ -150,10 +150,9 @@ def inspect(content, pubs, articles, costs, truth, checked, *, now=None, heads=N
             add('high', cid, 'Short over 3 minutes or not vertical', f'{seconds}s; streams={details}')
         if not snippet.get('thumbnails'):
             add('medium', cid, 'Missing YouTube thumbnail', yt.get('platform_id'))
-        if status.get('containsSyntheticMedia') is False:
-            add('high', cid, 'Synthetic disclosure false', yt.get('platform_id'), 'Owner review explicit false before status update')
-        elif status.get('containsSyntheticMedia') is not True:
-            add('medium', cid, 'Synthetic disclosure unverified', yt.get('platform_id')+'; field absent from response', 'Absent is not false; verify in Studio before any metadata write')
+        # Disclosure is per channel (channel.json `synthetic_media`, default off since 2026-11-17).
+        if status.get('containsSyntheticMedia') is True and not Channel(c.get('channel') or 'futurework').cfg.get('synthetic_media'):
+            add('low', cid, 'Synthetic disclosure still set', yt.get('platform_id'), 'scripts/remove_ai_label.py clears it')
         if not snippet.get('title','').strip() or not snippet.get('description','').strip() or BANNED_TITLE.search(snippet.get('title','')):
             add('high', cid, 'Empty metadata or banned title', snippet.get('title',''))
         if c['kind']=='short' and status.get('privacyStatus')=='public':

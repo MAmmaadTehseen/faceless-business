@@ -54,9 +54,15 @@ CHANNELS = [("futurework", 30, 6, 13, 3), ("tradewinds", 31, 11, 15, 3),
             ("escapevelocity", 1, 16, 18, 1)]
 
 
+def legacy(channel):
+    """The original one-Short-per-day calendar (channel.json now enables same-day Shorts)."""
+    channel.cfg = {**channel.cfg, 'shorts_same_day': False}
+    return channel
+
+
 @pytest.mark.parametrize('key,day,hour,short_hour,gap', CHANNELS)
 def test_channel_calendar(key, day, hour, short_hour, gap):
-    db, channel = MemoryDB(), Channel(key)
+    db, channel = MemoryDB(), legacy(Channel(key))
     expected = datetime(2026, 11 if day == 1 else 10, day, hour, tzinfo=timezone.utc)
     long = _next_slot(db, 'long', channel, now=NOW)
     assert long == expected
@@ -100,9 +106,31 @@ def test_long_lead_time_preserves_cron(key, day, hour, short_hour, gap, minutes)
 
 @pytest.mark.parametrize('key,day,hour,short_hour,gap', CHANNELS)
 def test_daily_lead_time_and_config_override(key, day, hour, short_hour, gap):
-    channel, db = Channel(key), MemoryDB()
+    channel, db = legacy(Channel(key)), MemoryDB()
     now = NOW.replace(hour=19, minute=30)
     assert _next_slot(db, 'short', channel, now=now) == NOW.replace(hour=20) + timedelta(days=1)
     channel.cfg = {**channel.cfg, 'shorts_hour_utc': 12, 'daily_short_hour_utc': 22}
     assert _next_slot(db, 'short', channel, now=NOW) == NOW.replace(hour=22)
     assert _next_slot(db, 'short', channel, now=NOW, parent_slot=NOW) == (NOW + timedelta(days=1)).replace(hour=12)
+
+
+@pytest.mark.parametrize('key,day,hour,short_hour,gap', CHANNELS)
+def test_same_day_shorts_fill_the_day_then_roll_over(key, day, hour, short_hour, gap):
+    """channel.json: shorts_same_day, 4 h spacing, three uploads per day. Children fill the parent's day."""
+    db, channel = MemoryDB(), Channel(key)
+    assert channel.cfg.get('shorts_same_day') and channel.cfg.get('max_youtube_per_day') == 3
+    long = _next_slot(db, 'long', channel, now=NOW)
+    db.occupy(channel, long, 'long')
+    slots, previous = [], None
+    for _ in range(4):
+        slot = _next_slot(db, 'short', channel, now=NOW, parent_slot=long, after=previous)
+        db.occupy(channel, slot)
+        slots.append(slot)
+        previous = slot
+    assert slots[0] == long.replace(hour=short_hour)  # the long itself imposes no spacing
+    assert slots[1] == slots[0] + timedelta(hours=4)
+    assert slots[1].date() == long.date()
+    # day full (long + 2 Shorts): the rest roll to the next day at the Shorts hour
+    assert slots[2] == (long + timedelta(days=1)).replace(hour=short_hour)
+    assert slots[3] == slots[2] + timedelta(hours=4)
+    assert all(s >= NOW + timedelta(hours=1) for s in slots)

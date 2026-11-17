@@ -60,7 +60,10 @@ def _next_slot(db, kind: str, channel: Channel | None = None, *, now=None,
         taken = any(t == slot or (kind == "long" and k == "long" and t.date() == slot.date()) for t, k in occupied)
         if slot >= earliest and (kind != "long" or candidate.weekday() in weekdays) and not taken and day_count < per_day:
             return slot
-        candidate += spacing if (kind == "short" and same_day) else timedelta(days=1)
+        if kind == "short" and same_day and day_count >= per_day:
+            candidate = (candidate + timedelta(days=1)).replace(hour=int(hour), minute=0, second=0, microsecond=0)
+        else:
+            candidate += spacing if (kind == "short" and same_day) else timedelta(days=1)
 
 
 BIG_FILE = 45 * 1024 * 1024   # Supabase free tier caps objects at 50 MB; larger queued files go to a GitHub release

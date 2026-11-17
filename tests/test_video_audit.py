@@ -97,13 +97,13 @@ def test_disclosure_absence_is_not_false():
     v={'id':'known','status':{},'snippet':{}}
     def disclosure():
         return [f for f in inspect([c],[p],[],[],{'known':v},{'known'}) if f['problem'].startswith('Synthetic disclosure')]
-    assert disclosure()[0]['problem']=='Synthetic disclosure unverified'
-    assert disclosure()[0]['severity']=='medium'
-    v['status']['containsSyntheticMedia']=False
-    assert disclosure()[0]['problem']=='Synthetic disclosure false'
-    assert disclosure()[0]['severity']=='high'
-    v['status']['containsSyntheticMedia']=True
+    # Label is off by default since 2026-11-17: absent or False is fine, True is a low finding.
     assert disclosure()==[]
+    v['status']['containsSyntheticMedia']=False
+    assert disclosure()==[]
+    v['status']['containsSyntheticMedia']=True
+    assert disclosure()[0]['problem']=='Synthetic disclosure still set'
+    assert disclosure()[0]['severity']=='low'
 
 
 def test_report_does_not_propose_retries_for_live_ids_or_missing_media(tmp_path):
