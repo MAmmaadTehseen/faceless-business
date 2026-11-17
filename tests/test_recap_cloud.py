@@ -289,3 +289,20 @@ def test_upload_file_replaces_same_name(tmp_path):
     local = tmp_path / "state.json"
     local.write_text("{}")
     assert account.upload_file(local, "folder") == "s1" and service.updated == ["s1"]
+
+
+def test_quota_exhaustion_defers_instead_of_failing(tmp_path, monkeypatch, db):
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    account = FakeAccount(1, {})
+    folder = "appr-3"
+    account.files[folder] = {"id": folder, "name": "Q (2024)", "md5Checksum": "", "size": "0", "mimeType": "application/vnd.google-apps.folder", "parent": "f-approve", "bytes": b""}
+    state = {"id": "d" * 32, "title": "Q", "year": 2024, "items": {"long": {"title": "t", "description": "d", "segments": [], "qa": {"pass": True}, "duration": 300}}}
+    account.upload_file_bytes("state.json", json.dumps(state).encode(), folder)
+    account.upload_file_bytes("rights.json", b'{"basis": "own work"}', folder)
+    account.upload_file_bytes("long.mp4", b"x", folder)
+
+    def quota(work, st):
+        raise ValueError("YouTube quota exhausted; retained locally. Retry Upload when quota resets.")
+    result = cloud.upload_approved(db, [account], uploader=quota, log=lambda *_: None)
+    assert result == [{"project_id": "d" * 32, "status": "upload deferred (quota)"}]
+    assert account.files[folder]["parent"] == "f-approve"

@@ -383,8 +383,10 @@ def upload_approved(db, accounts_, uploader=None, log=print):
                 # Partial uploads are recorded in state.json so the next run resumes idempotently.
                 state = json.loads((work / "state.json").read_text())
                 account.upload_file(work / "state.json", entry["id"])
+                deferred = isinstance(exc, ValueError) and "quota" in str(exc).lower()
                 account.write_text("error.txt", f"{type(exc).__name__}: {exc if isinstance(exc, ValueError) else 'see workflow log'}\n", entry["id"])
-                results.append({"project_id": state["id"], "status": "upload failed"})
+                # Daily YouTube quota is shared with the other channels; a queued upload is retried by the next run.
+                results.append({"project_id": state["id"], "status": "upload deferred (quota)" if deferred else "upload failed"})
             finally:
                 shutil.rmtree(work, ignore_errors=True)
     return results
