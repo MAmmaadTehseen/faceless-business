@@ -306,3 +306,93 @@ def test_quota_exhaustion_defers_instead_of_failing(tmp_path, monkeypatch, db):
     result = cloud.upload_approved(db, [account], uploader=quota, log=lambda *_: None)
     assert result == [{"project_id": "d" * 32, "status": "upload deferred (quota)"}]
     assert account.files[folder]["parent"] == "f-approve"
+
+
+def _produced_project(account, folder, destination, project_id, uploaded_long=False, film_id="in0"):
+    account.files[folder] = {"id": folder, "name": "Film (2024)", "md5Checksum": "", "size": "0", "mimeType": "application/vnd.google-apps.folder", "parent": f"f-{destination}", "bytes": b""}
+    state = {"id": project_id, "title": "Film", "year": 2024, "source": "/old/inbox/Film 2024.mp4", "batch_resume": True, "bed": 0,
+             "plan": {"estimate_usd": 1.0}, "cloud_source": {"slot": 1, "film": film_id, "sidecar": "in1", "registry": "r" * 32},
+             "items": {n: {"title": n, "description": "d", "segments": [], "qa": {"pass": n != "short2", "issues": [{"severity": "blocking", "text": "x"}] if n == "short2" else []},
+                           "duration": 30, "uploaded": uploaded_long and n == "long"} for n in core.PIECES}}
+    account.upload_file_bytes("state.json", json.dumps(state).encode(), folder)
+    account.upload_file_bytes("rights.json", b'{"basis": "own work"}', folder)
+    for n in core.PIECES:
+        for suffix in (".mp4", ".jpg", ".srt"):
+            account.upload_file_bytes(n + suffix, b"old", folder)
+    return state
+
+
+def test_regenerate_replaces_one_piece_in_place(tmp_path, monkeypatch, db):
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    monkeypatch.setattr(cloud, "INBOX_DIR", tmp_path / "inbox")
+    project = "e" * 32
+    src = FakeAccount(1, {"Film 2024.mp4": b"movie", "Film 2024.rights.json": b"{}"})
+    src.files["in0"]["parent"] = "f-done"; src.files["in1"]["parent"] = "f-done"
+    cp = src.folder("r" * 32, "f-checkpoints")
+    src.upload_file_bytes("transcript.json", b'{"language": "en", "segments": []}', cp)
+    src.upload_file_bytes("scenes.json", b"[]", cp)
+    db.upsert("recap_films", {"id": "r" * 32, "filename": "Film 2024.mp4", "source": "drive:1:in0", "normalized_title": "film", "year": 2024,
+                              "file_size": 1, "duration": 1, "content_hash": "h", "status": "already processed", "project_id": project,
+                              "content_ids": "[]", "rights": "{}", "duplicate_confirmed": False}, on="id")
+    account = FakeAccount(2, {})
+    _produced_project(account, "appr-9", "approve", project, uploaded_long=True)
+    seen = {}
+
+    def runner(work, state, only=None, **kw):
+        seen.update(only=only, source=Path(state["source"]).read_bytes(), batch_resume=state.get("batch_resume"),
+                    transcript=(work / "transcript.json").exists(), scenes=(work / "scenes.json").exists(),
+                    rights=(work / "rights.json").exists())
+        piece = work / only
+        piece.mkdir()
+        (piece / "video.mp4").write_bytes(b"new")
+        (piece / "thumbnail.jpg").write_bytes(b"newt")
+        (piece / "captions.srt").write_text("1\n")
+        state["items"][only].update(title="fresh", qa={"pass": True, "issues": []}, duration=31)
+        core.dump(work / "state.json", state)
+    result = cloud.regenerate(db, [src, account], project, "short2", runner=runner, log=lambda *_: None)
+    assert result == {"project_id": project, "piece": "short2", "status": "regenerated", "folder": "approve", "queued_for_upload": True}
+    assert seen == {"only": "short2", "source": b"movie", "batch_resume": None, "transcript": True, "scenes": True, "rights": True}
+    folder_files = [f for f in account.files.values() if f["parent"] == "appr-9"]
+    latest = {}
+    for f in folder_files:
+        latest[f["name"]] = f["bytes"]
+    assert latest["short2.mp4"] == b"new" and latest["short2.jpg"] == b"newt" and latest["short1.mp4"] == b"old"
+    state = json.loads(latest["state.json"])
+    assert state["items"]["short2"]["qa"]["pass"] and state["items"]["short2"]["title"] == "fresh"
+    assert state["batch_resume"] is True and state["source"] == "/old/inbox/Film 2024.mp4" and state["items"]["long"]["uploaded"]
+    assert json.loads(account.texts[("appr-9", "qa.json")])["short2"]["pass"] is True
+    assert account.files["appr-9"]["parent"] == "f-approve"
+    assert src.files["in0"]["parent"] == "f-done" and not getattr(src, "deleted", [])
+    assert not (tmp_path / "inbox" / "Film 2024.mp4").exists() and not (tmp_path / "recap" / project).exists()
+
+
+def test_regenerate_finds_source_by_filename_and_fails_when_deleted(tmp_path, monkeypatch, db):
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    monkeypatch.setattr(cloud, "INBOX_DIR", tmp_path / "inbox")
+    project = "f" * 32
+    db.upsert("recap_films", {"id": "r" * 32, "filename": "Film 2024.mp4", "source": "drive:1:zzz", "normalized_title": "film", "year": 2024,
+                              "file_size": 1, "duration": 1, "content_hash": "h", "status": "already processed", "project_id": project,
+                              "content_ids": "[]", "rights": "{}", "duplicate_confirmed": False}, on="id")
+    account = FakeAccount(1, {"Film 2024.mp4": b"movie"})
+    account.files["in0"]["parent"] = "f-done"
+    account.files["other"] = dict(account.files["in0"], id="other")  # the id in cloud_source no longer exists
+    _produced_project(account, "rev-1", "review", project, film_id="gone")
+    seen = {}
+
+    def runner(work, state, only=None, **kw):
+        seen["source"] = Path(state["source"]).read_bytes()
+        (work / only).mkdir()
+        (work / only / "video.mp4").write_bytes(b"n")
+        state["items"][only]["qa"] = {"pass": False, "issues": []}
+        core.dump(work / "state.json", state)
+    result = cloud.regenerate(db, [account], project, "short2", runner=runner, log=lambda *_: None)
+    assert seen["source"] == b"movie" and result["status"] == "qa failed" and result["queued_for_upload"] is False
+    account.files["in0"]["parent"] = "f-failed"; account.files["other"]["parent"] = "f-failed"
+    with pytest.raises(ValueError, match="no longer in done/"):
+        cloud.regenerate(db, [account], project, "short2", runner=runner, log=lambda *_: None)
+    with pytest.raises(ValueError, match="not found"):
+        cloud.regenerate(db, [account], "0" * 32, "short2", runner=runner, log=lambda *_: None)
+    with pytest.raises(ValueError, match="already uploaded"):
+        up = FakeAccount(3, {})
+        _produced_project(up, "appr-u", "approve", "1" * 32, uploaded_long=True)
+        cloud.regenerate(db, [up], "1" * 32, "long", runner=runner, log=lambda *_: None)

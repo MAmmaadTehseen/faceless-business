@@ -7,14 +7,23 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "produce (inbox films), upload (approved folders), both, scan"
+        description: "produce (inbox films), upload (approved folders), both, scan, regenerate (one piece)"
         type: choice
-        options: [both, produce, upload, scan]
+        options: [both, produce, upload, scan, regenerate]
         default: both
       limit:
         description: "Films to produce in this run (each takes roughly 4-6 hours)"
         type: number
         default: 1
+      project:
+        description: "regenerate: project id (the id in the folder's state.json)"
+        type: string
+        default: ""
+      piece:
+        description: "regenerate: piece to re-make"
+        type: choice
+        options: [short1, short2, short3, short4, long]
+        default: short1
 # contents: write lets large queued media (>45 MB) be checkpointed as release assets before upload, like shorts.yml.
 permissions:
   contents: write
@@ -70,3 +79,6 @@ jobs:
       - name: Produce inbox films
         if: inputs.action == 'both' || inputs.action == 'produce' || github.event_name == 'schedule'
         run: python -m pipeline.recap.cloud produce --limit "${{ inputs.limit || 1 }}" $GATED
+      - name: Regenerate one piece
+        if: inputs.action == 'regenerate'
+        run: python -m pipeline.recap.cloud regenerate --project "${{ inputs.project }}" --piece "${{ inputs.piece }}"

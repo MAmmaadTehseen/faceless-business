@@ -178,7 +178,32 @@ show project ids and stage names, never titles, tokens or file names.
 gh workflow run recap.yml -f action=scan            # list inbox films and their status
 gh workflow run recap.yml -f action=produce -f limit=1
 gh workflow run recap.yml -f action=upload
+gh workflow run recap.yml -f action=regenerate -f project=<state.json id> -f piece=short2
 ```
+
+### Regenerating one piece in the cloud
+
+When one Short (or the long recap) is QA-blocked, for example by a vision false positive,
+`regenerate` re-makes only that piece without re-producing the film:
+
+```bash
+python -m pipeline.recap.cloud regenerate --project <id> --piece short2
+```
+
+The project id is the `id` in the folder's `state.json` (also shown as `project_id` in
+`recap_films` and in the workflow log). The command finds the folder in `approve/` or
+`review/` across every connected account, downloads `state.json`, `rights.json` and the
+transcript/scene checkpoints, downloads the source film from `done/` (matched by the Drive id
+recorded in `state.json`, falling back to the registered filename), then runs the worker for
+that one piece: a new script (one small LunaRoute call), narration, render and QA. The new
+`<piece>.mp4/.jpg/.srt`, `state.json` and `qa.json` replace the old files in the same folder;
+the folder is not moved. A piece that now passes and sits in `approve/` is uploaded by the
+next `upload` run (scheduled every six hours) alongside or after the long recap, which is
+never re-uploaded. A piece already on YouTube cannot be regenerated. The source film is
+deleted from `done/` only after a confirmed upload, so regenerate works while the folder is
+still in `approve/` or `review/`; if the source is gone the command fails with a clear message
+and the film must be re-uploaded to the inbox. Exit status is 1 when the new piece fails QA
+again; its findings are in `qa.json`.
 
 ## Dedicated channel token (owner action)
 

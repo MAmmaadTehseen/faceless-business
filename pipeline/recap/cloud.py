@@ -411,10 +411,121 @@ def free_space(account, accounts_, folder_id, files, state, log):
                 log(f"recap cloud: could not delete {name}: {type(exc).__name__}")
 
 
+def find_project(accounts_, project_id, log=print):
+    """Locate a produced project's folder in approve/ or review/ across accounts by its state.json id."""
+    for account in accounts_:
+        folders = account.folders()
+        for destination in ("approve", "review"):
+            for entry in account.list(folders[destination]):
+                if entry.get("mimeType") != "application/vnd.google-apps.folder":
+                    continue
+                files = {f["name"]: f for f in account.list(entry["id"])}
+                if "state.json" not in files:
+                    continue
+                try:
+                    state = json.loads(account.read_small(files["state.json"]["id"]).decode())
+                except (ValueError, UnicodeDecodeError):
+                    log(f"recap cloud: unreadable state.json skipped ({entry['id']})")
+                    continue
+                if state.get("id") == project_id:
+                    return account, destination, entry, files, state
+    raise ValueError("Project not found in approve/ or review/ of any connected account")
+
+
+def fetch_source(db, accounts_, state, log=print):
+    """Download the original film from done/ for a re-render; clear error when it was deleted after upload."""
+    source = state.get("cloud_source") or {}
+    owner = next((a for a in accounts_ if a.slot == source.get("slot")), None)
+    candidates = [a for a in ([owner] if owner else []) + accounts_ if a]
+    row = db.one("recap_films", {"id": source["registry"]}) if source.get("registry") else None
+    filename = row["filename"] if row else None
+    seen = set()
+    for account in candidates:
+        if account.slot in seen:
+            continue
+        seen.add(account.slot)
+        rows = [f for f in account.list(account.folders()["done"]) if f.get("md5Checksum")]
+        match = next((f for f in rows if f["id"] == source.get("film")), None)
+        if match is None and filename:
+            match = next((f for f in rows if f["name"] == filename), None)
+        if match is None:
+            continue
+        local = INBOX_DIR / match["name"]
+        log(f"recap cloud: downloading source for {state['id']} from account {account.slot}")
+        account.download(match["id"], local, match["md5Checksum"])
+        return local
+    raise ValueError("Source film is no longer in done/ (it is deleted after a confirmed upload); "
+                     "re-upload the film and its rights sidecar to the inbox to produce it again")
+
+
+def regenerate(db, accounts_, project_id, piece, runner=None, log=print):
+    """Re-make one piece of a produced recap (new script, narration, render, QA) and replace it in its Drive folder.
+    The folder stays where it is: a passing piece in approve/ is picked up by the next upload run."""
+    from .worker import generate
+    runner = runner or generate
+    if piece not in core.PIECES:
+        raise ValueError("Invalid piece")
+    account, destination, entry, files, state = find_project(accounts_, project_id, log)
+    item = state.get("items", {}).get(piece, {})
+    if item.get("uploaded"):
+        raise ValueError("Piece already uploaded; it cannot be regenerated")
+    if "rights.json" not in files:
+        raise ValueError("Project folder has no rights.json")
+    work = core.OUTPUT / state["id"]
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True, exist_ok=True)
+    core.dump(work / "state.json", state)
+    core.dump(work / "rights.json", json.loads(account.read_small(files["rights.json"]["id"]).decode()))
+    registry = (state.get("cloud_source") or {}).get("registry")
+    # Checkpoints live in the account that produced the film, which may differ from the folder's account.
+    keeper = next((a for a in accounts_ if a.slot == (state.get("cloud_source") or {}).get("slot")), account)
+    if registry:
+        restore_checkpoints(keeper, registry, work)
+    else:
+        log(f"recap cloud: {project_id} has no registry id; transcript may be rebuilt")
+    local = fetch_source(db, accounts_, state, log)
+    original_source = state.get("source")
+    state["source"] = str(local)
+    # Without batch_resume the worker buys a fresh script for this one piece instead of re-narrating the old one.
+    state.pop("batch_resume", None)
+    core.dump(work / "state.json", state)
+    try:
+        try:
+            runner(work, state, only=piece, db=db)
+        finally:
+            if registry:
+                save_checkpoints(keeper, registry, work)
+        state = json.loads((work / "state.json").read_text())
+        state["batch_resume"] = True
+        if original_source:
+            state["source"] = original_source
+        core.dump(work / "state.json", state)
+        folder = entry["id"]
+        produced = work / piece
+        account.upload_file(produced / "video.mp4", folder, f"{piece}.mp4")
+        for local_name, suffix in (("thumbnail.jpg", ".jpg"), ("captions.srt", ".srt")):
+            if (produced / local_name).exists():
+                account.upload_file(produced / local_name, folder, piece + suffix)
+        account.upload_file(work / "state.json", folder)
+        qa = {name: {"pass": i.get("qa", {}).get("pass"), "duration": i.get("duration"), "title": i.get("title"),
+                     "issues": i.get("qa", {}).get("issues", [])} for name, i in state.get("items", {}).items()}
+        account.write_text("qa.json", json.dumps(qa, indent=2, ensure_ascii=False), folder)
+        passed = bool(state["items"].get(piece, {}).get("qa", {}).get("pass"))
+        long_up = bool(state["items"].get("long", {}).get("uploaded"))
+        log(f"recap cloud: {project_id} {piece} regenerated; qa {'passed' if passed else 'failed'}; folder in {destination}")
+        return {"project_id": project_id, "piece": piece, "status": "regenerated" if passed else "qa failed",
+                "folder": destination, "queued_for_upload": passed and destination == "approve" and (long_up or bool(state["items"].get("long", {}).get("qa", {}).get("pass")))}
+    finally:
+        local.unlink(missing_ok=True)
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["scan", "produce", "upload"])
+    parser.add_argument("action", choices=["scan", "produce", "upload", "regenerate"])
     parser.add_argument("--limit", type=int, default=1)
+    parser.add_argument("--project", help="regenerate: project id (state.json id) in approve/ or review/")
+    parser.add_argument("--piece", choices=list(core.PIECES), help="regenerate: which piece to re-make")
     parser.add_argument("--gated", action="store_true", help="Exit quietly unless setting recap_cloud_enabled is true")
     args = parser.parse_args()
     os.environ.setdefault("LUNAROUTE_THINKING_BUDGET", "3000")
@@ -428,14 +539,18 @@ def main():
     if args.action == "scan":
         print(json.dumps(scan(db, found)))
         return
-    if args.action == "upload":
+    if args.action == "regenerate":
+        if not args.project or not args.piece:
+            parser.error("regenerate needs --project and --piece")
+        result = [regenerate(db, found, args.project, args.piece)]
+    elif args.action == "upload":
         result = upload_approved(db, found)
     else:
         result = produce(db, found, limit=args.limit, auto_upload=_strict_enabled(db.setting("recap_auto_upload", True)))
         if any(r.get("queued_for_upload") for r in result):
             result += upload_approved(db, found)
     print(json.dumps(result))
-    if any(r["status"] in ("failed", "upload failed") for r in result):
+    if any(r["status"] in ("failed", "upload failed", "qa failed") for r in result):
         sys.exit(1)
 
 
