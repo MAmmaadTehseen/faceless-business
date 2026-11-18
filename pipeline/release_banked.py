@@ -65,6 +65,14 @@ def release_one(db, channel, row, drive):
                 if name not in manifest['files']:
                     raise RuntimeError('Manifest is missing publish media')
                 changes[field] = str(out / name)
+        if saved.get('kind') == 'short' and changes.get('file_path') and channel.cfg.get('format') != 'words':
+            # Bundles banked before 2026-11-17 were rendered without the opening hook card.
+            from .render import add_hook_card
+            try:
+                src = Path(changes['file_path'])
+                changes['file_path'] = str(add_hook_card(src, src.with_name(src.stem + '.hook.mp4'), current.get('title') or saved.get('title') or ''))
+            except Exception as exc:  # the Short still publishes without the card
+                log.warning('hook card skipped for %s (%s)', saved['id'], type(exc).__name__)
         db.update('content', {'id': saved['id']}, changes)
     channel.cfg = {**channel.cfg, 'category_id': manifest['category_id']}
     # Private scheduling is retained until the audit passes by the shared publisher.

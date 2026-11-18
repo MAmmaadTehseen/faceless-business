@@ -67,6 +67,24 @@ def _hook_filter(text: str, work: Path, orientation: str) -> str | None:
     return ",".join(parts)
 
 
+def add_hook_card(src: Path, dst: Path, title: str) -> Path:
+    """Burn the hook card onto an already rendered portrait Short (banked or queued media).
+
+    Video is re-encoded once; audio is copied. Returns dst (or src when nothing to draw).
+    """
+    work = dst.parent / f"{dst.stem}_hookwork"
+    work.mkdir(parents=True, exist_ok=True)
+    try:
+        vf = _hook_filter(title, work, "portrait")
+        if not vf:
+            return src
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(src), "-vf", vf, "-c:v", "libx264", "-preset", "medium",
+                        "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", str(dst)], check=True)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    return dst
+
+
 def _music() -> Path | None:
     tracks = sorted((ASSETS_DIR / "music").glob("*.mp3"))
     return tracks[0] if tracks else None

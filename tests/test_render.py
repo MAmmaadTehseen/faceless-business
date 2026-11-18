@@ -312,3 +312,15 @@ def test_hook_filter_only_for_portrait(tmp_path):
     two = _hook_filter("Only 5 Starship Launches This Year?", tmp_path, "portrait")
     assert two.count("drawtext=") == 3  # one per wrapped line (ffmpeg 8 draws newlines as missing glyphs)
     assert (tmp_path / "hook_2.txt").read_text() == "Year?"
+
+
+def test_add_hook_card_reencodes_portrait_clip(tmp_path):
+    from pipeline.render import add_hook_card
+    from pipeline.qa import probe
+    src = tmp_path / "s.mp4"
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=540x960:rate=24:duration=2',
+                    '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-shortest', '-c:v', 'libx264', '-c:a', 'aac', str(src)], check=True)
+    dst = add_hook_card(src, tmp_path / "s.hook.mp4", "Swift fell 114 km in 69 days")
+    assert dst.is_file() and dst != src
+    assert abs(probe(dst)["duration"] - 2.0) < 0.3
+    assert not (tmp_path / "s.hook_hookwork").exists()
