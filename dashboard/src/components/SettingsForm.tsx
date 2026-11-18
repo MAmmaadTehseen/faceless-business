@@ -58,6 +58,9 @@ export function SettingsForm({
       niche_keywords_tentongues: splitKeywords(
         channelKeywords.tentongues ?? "",
       ),
+      niche_keywords_filmreview: splitKeywords(
+        channelKeywords.filmreview ?? "",
+      ),
     };
     const res = await fetch("/api/settings", {
       method: "PUT",

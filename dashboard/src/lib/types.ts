@@ -107,6 +107,7 @@ export type Settings = {
   niche_keywords_tradewinds: string[];
   niche_keywords_escapevelocity: string[];
   niche_keywords_tentongues: string[];
+  niche_keywords_filmreview: string[];
 };
 
 export const CHANNEL_KEYWORD_KEYS = [
@@ -114,6 +115,7 @@ export const CHANNEL_KEYWORD_KEYS = [
   "niche_keywords_tradewinds",
   "niche_keywords_escapevelocity",
   "niche_keywords_tentongues",
+  "niche_keywords_filmreview",
 ] as const satisfies readonly (keyof Settings)[];
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -133,4 +135,5 @@ export const DEFAULT_SETTINGS: Settings = {
   niche_keywords_tradewinds: [],
   niche_keywords_escapevelocity: [],
   niche_keywords_tentongues: [],
+  niche_keywords_filmreview: [],
 };

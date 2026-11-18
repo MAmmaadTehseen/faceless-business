@@ -23,14 +23,22 @@ def main():
     import argparse
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--drain-only", action="store_true")
-    ap.add_argument("--channel", choices=Channel.keys())
+    ap.add_argument("--channel", choices=Channel.keys() + ["filmreview"])
     args = ap.parse_args()
     db = DB()
-    for key in ([args.channel] if args.channel else Channel.keys()):
+    for key in ([args.channel] if args.channel else Channel.keys() + ["filmreview"]):
         try:
-            (drain_youtube_queue if args.drain_only else sync_channel)(db, Channel(key))
+            # The film recap channel keeps local.json (no crons), but its YouTube metrics and comments
+            # still belong in the dashboard.
+            channel = _film_channel() if key == "filmreview" else Channel(key)
+            (drain_youtube_queue if args.drain_only else sync_channel)(db, channel)
         except Exception as e:
             log.error("sync %s failed: %s", key, e)
+
+
+def _film_channel():
+    from .recap.channel import FilmReviewChannel
+    return FilmReviewChannel()
 
 
 def sync_channel(db, channel):

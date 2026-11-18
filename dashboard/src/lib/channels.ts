@@ -1,7 +1,7 @@
 // Channel metadata, copied from channels/<key>/channel.json so the dashboard
 // needs no filesystem access at runtime. Keep in sync when a channel.json changes.
 
-export type ChannelKey = "futurework" | "tradewinds" | "escapevelocity" | "tentongues";
+export type ChannelKey = "futurework" | "tradewinds" | "escapevelocity" | "tentongues" | "filmreview";
 export type ChannelFilter = "all" | ChannelKey;
 
 export type ChannelMeta = {
@@ -33,6 +33,10 @@ export const CHANNELS: ChannelMeta[] = [
   {
     key: "tentongues", name: "Ten Tongues", short: "Ten Tongues", handle: "tentongues",
     accent: [167, 139, 250], brand: { bg: "#140e24", fg: "#a78bfa" }, schedule: "Daily 07:00 UTC + 10 Shorts",
+  },
+  {
+    key: "filmreview", name: "Frame and Argument", short: "Frame & Argument", handle: "frameandargument",
+    accent: [196, 181, 253], brand: { bg: "#0f172a", fg: "#c4b5fd" }, schedule: "Film recaps, as approved",
   },
 ];
 
