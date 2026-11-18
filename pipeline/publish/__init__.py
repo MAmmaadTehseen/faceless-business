@@ -250,6 +250,8 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             privacy=privacy, publish_at=slot if privacy == "private" else None, thumbnail=thumbnail,
             is_short=row["kind"] == "short", category_id=channel.cfg.get("category_id", "28"))
         remote = r
+        if r.get("thumbnail_failed") and thumbnail and thumbnail.exists():
+            remember_pending_thumbnail(db, channel, r["id"], thumbnail)
         record(db, {"content_id": row["id"], "platform": "youtube", "platform_id": r["id"],
             "url": r["url"], "privacy": privacy, "publish_at": slot.isoformat(), "status": "live",
             "published_at": now_iso(), "error": None}, on="content_id,platform")
@@ -381,6 +383,63 @@ def follow_youtube_to_reels(db, channel) -> int:
             log.error("reels follow-up failed for %s (%s)", s["id"], type(e).__name__)
     if done:
         log.info("reels[%s]: published %d following YouTube going public", channel.key, done)
+    return done
+
+
+PENDING_THUMB = "yt_thumbnail_pending_"
+
+
+def remember_pending_thumbnail(db, channel, video_id: str, thumbnail: Path) -> None:
+    """Keep a rejected custom thumbnail (unverified channel, quota) so sync can retry thumbnails.set."""
+    try:
+        key = f"thumbs/{video_id}.jpg"
+        if db.sb:
+            db.sb.storage.from_("youtube-queue").upload(key, thumbnail.read_bytes(), {"upsert": "true", "content-type": "image/jpeg"})
+        else:
+            key = str(thumbnail)
+        db.set_setting(PENDING_THUMB + video_id, {"channel": channel.key, "key": key, "at": now_iso()})
+    except Exception as e:
+        log.warning("could not retain thumbnail for retry on %s (%s)", video_id, type(e).__name__)
+
+
+def retry_pending_thumbnails(db, channel, limit: int = 10) -> int:
+    """Sync step: re-send custom thumbnails that failed at upload (50 units each, reserved)."""
+    rows = db.sb.table("settings").select("key,value").like("key", PENDING_THUMB + "%").execute().data if db.sb else \
+        [r for r in db.select("settings") if str(r["key"]).startswith(PENDING_THUMB)]
+    done = 0
+    for r in rows or []:
+        v = r["value"]
+        if isinstance(v, str):
+            try:
+                v = json.loads(v)
+            except ValueError:
+                v = {}
+        if not isinstance(v, dict) or v.get("channel") != channel.key:
+            continue
+        if done >= limit or not reserve(db, THUMB_COST):
+            break
+        video_id = r["key"][len(PENDING_THUMB):]
+        try:
+            from ..common import OUT_DIR
+            if db.sb:
+                local = OUT_DIR / "thumbs" / f"{video_id}.jpg"
+                local.parent.mkdir(parents=True, exist_ok=True)
+                local.write_bytes(db.sb.storage.from_("youtube-queue").download(v["key"]))
+            else:
+                local = Path(v["key"])
+            youtube.use_channel(channel)
+            youtube.set_thumbnail(video_id, local)
+            if db.sb:
+                db.sb.storage.from_("youtube-queue").remove([v["key"]])
+                db.sb.table("settings").delete().eq("key", r["key"]).execute()
+            else:
+                db.conn.execute("delete from settings where key=?", (r["key"],))
+                db.conn.commit()
+            done += 1
+            log.info("thumbnail retry succeeded for %s", video_id)
+        except Exception as e:
+            log.warning("thumbnail retry still failing for %s (%s); channel phone verification needed?", video_id, type(e).__name__)
+            break  # same cause for the whole channel; do not burn quota
     return done
 
 

@@ -157,13 +157,16 @@ def upload(video: Path, title: str, description: str, tags: list[str], privacy: 
                 log.error("youtube upload API error: %s", json.dumps(error_details(exc)))
             raise
     vid = resp["id"]
+    thumbnail_failed = False
     if thumbnail and thumbnail.exists():
         try:
-            yt().thumbnails().set(videoId=vid, media_body=MediaFileUpload(str(thumbnail), mimetype="image/jpeg")).execute()
+            set_thumbnail(vid, thumbnail)
         except Exception as e:  # thumbnails need a verified phone on the channel
-            log.warning("thumbnail set failed (verify the channel's phone number in Studio): %s", e)
+            thumbnail_failed = True
+            log.error("thumbnail set failed for %s; auto frame is live until sync retries it. Verify the channel's phone in Studio: %s",
+                      vid, json.dumps(error_details(e)))
     log.info("youtube: uploaded %s as %s (%s)", vid, privacy, "short" if is_short else "long")
-    return {"id": vid, "url": f"https://youtu.be/{vid}" if not is_short else f"https://youtube.com/shorts/{vid}"}
+    return {"id": vid, "url": f"https://youtu.be/{vid}" if not is_short else f"https://youtube.com/shorts/{vid}", "thumbnail_failed": thumbnail_failed}
 
 
 

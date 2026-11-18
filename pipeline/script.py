@@ -18,7 +18,7 @@ SCRIPT_SCHEMA = {
     "properties": {
         "title": {"type": "string", "description": "Best title, under 65 chars; starts with the searchable subject (the named thing or topic phrase people type) within the first 40 characters, then a colon and the angle"},
         "title_variants": {"type": "array", "items": {"type": "string"}, "description": "Exactly 4 to 6 other strong titles using different formulas"},
-        "thumbnail_text": {"type": "string", "description": "Max 3 words, uppercase"},
+        "thumbnail_text": {"type": "string", "description": "2-4 words, uppercase, that say what the video is about: the named subject and/or the key number from the title (e.g. GOLDMAN: AI LAYOFFS, DIESEL £2, VOYAGER 1 CALL); never a vague teaser like NOT SO SAFE"},
         "description": {"type": "string", "description": "YouTube description: first sentence names the subject and the searchable topic phrase in plain words, 2-3 sentence summary, then chapters with timestamps as 'mm:ss Title' lines whose labels are phrases people would search, then 'Sources:' with the urls used"},
         "tags": {"type": "array", "items": {"type": "string"}},
         "chapters": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["title", "paragraph_index"], "properties": {"title": {"type": "string"}, "paragraph_index": {"type": "integer"}}}},
@@ -193,7 +193,7 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         raise RuntimeError("All titles failed the policy guardrail")
     data["title"] = safe[0]
     data["title_variants"] = safe[1:]
-    data["thumbnail_text"] = " ".join(data["thumbnail_text"].upper().split()[:3])
+    data["thumbnail_text"] = " ".join(data["thumbnail_text"].upper().split()[:5])
     seen = set()
     unique = []
     for short in data.get("shorts", []):

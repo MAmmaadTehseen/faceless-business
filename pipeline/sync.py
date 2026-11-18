@@ -49,6 +49,12 @@ def sync_channel(db, channel):
     except Exception as e:
         log.warning("ig token refresh skipped for %s: %s", channel.key, e)
     try:
+        from .publish import retry_pending_thumbnails
+        if youtube.configured() and not youtube.auth_failed(channel):
+            retry_pending_thumbnails(db, channel)
+    except Exception as e:
+        log.warning("thumbnail retry skipped for %s: %s", channel.key, e)
+    try:
         from .publish.hub_share import backfill_articles
         backfill_articles(db, channel)
     except Exception as e:

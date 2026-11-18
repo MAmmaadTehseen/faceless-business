@@ -40,32 +40,84 @@ def candidate_frames(video: Path) -> list[Path]:
     return found
 
 
+def frame_score(path: Path) -> float:
+    """Prefer sharp, contrasty, well-lit frames: variance of a downscaled grey copy minus a dark/flat penalty."""
+    from PIL import ImageStat
+    g = Image.open(path).convert("L").resize((160, 90))
+    st = ImageStat.Stat(g)
+    mean, std = st.mean[0], st.stddev[0]
+    edges = ImageStat.Stat(g.filter(ImageFilter.FIND_EDGES)).mean[0]
+    penalty = max(0.0, 70 - mean) + max(0.0, mean - 200)
+    # Flat single-hue frames (branded fallback cards, colour washes) are not footage: one hue
+    # covering most of the image costs more than any contrast it offers.
+    hsv = Image.open(path).convert("RGB").resize((80, 45)).convert("HSV")
+    h = hsv.split()[0].histogram()
+    sat = ImageStat.Stat(hsv.split()[1]).mean[0]
+    dominant = max(sum(h[(i + k) % 256] for k in range(-8, 9)) for i in range(0, 256, 4)) / (80 * 45)
+    if dominant > 0.6 and sat > 90:
+        penalty += 150
+    return std + edges * 2 - penalty
+
+
+def best_frame(video: Path) -> Path | None:
+    frames = candidate_frames(video)
+    return max(frames, key=frame_score) if frames else None
+
+
+def thumbnail_lines(text: str) -> list[str]:
+    """Up to 3 lines, at most 5 words, subject first; lines wrap at 12 characters."""
+    words = [w for w in text.upper().split() if w][:5]
+    lines, cur = [], ""
+    for w in words:
+        if cur and (len(cur) + 1 + len(w) > 12):
+            lines.append(cur)
+            cur = w
+        else:
+            cur = f"{cur} {w}".strip()
+    if cur:
+        lines.append(cur)
+    return lines[:3]
+
+
 def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, frame: Path | None = None, accent: tuple | None = None) -> Path:
-    clean = frame or video.with_suffix(".clean.jpg")
+    """Growth log 2026-11-19: subject-first text, big and high-contrast, on the sharpest clean frame.
+
+    Research consensus (vidIQ 2026 study and others): 1-5 words that say what the video is about,
+    one dominant element, strong contrast; vague three-word teasers do not earn clicks.
+    """
+    clean = frame or best_frame(video) or video.with_suffix(".clean.jpg")
     if clean.exists():
         frame = clean
     else:
         frame = out.with_suffix(".frame.jpg")
         grab_frame(video, at_sec, frame)
     img = Image.open(frame).convert("RGB").resize((1280, 720))
-    # darken left/bottom for contrast
+    # slight blur + darken the left 60% so the text block owns the frame; the subject stays visible on the right
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(overlay)
+    for x in range(1280):
+        a = int(235 * max(0.0, 1 - x / 860) ** 0.7)
+        d.line([(x, 0), (x, 720)], fill=(0, 0, 0, a))
     for y in range(720):
-        a = int(170 * (y / 720) ** 1.6)
+        a = int(90 * (y / 720) ** 2)
         d.line([(0, y), (1280, y)], fill=(0, 0, 0, a))
     img = Image.alpha_composite(img.convert("RGBA"), overlay)
     draw = ImageDraw.Draw(img)
-    words = text.upper().split()[:3]
-    size = 150 if len(" ".join(words)) <= 10 else 120
+    lines = thumbnail_lines(text)
+    longest = max((len(l) for l in lines), default=1)
+    size = 190 if longest <= 7 else 160 if longest <= 9 else 130
     font = _font(size)
-    y = 720 - 60 - size * len(words) * 0.95
-    for i, w in enumerate(words):
-        color = tuple(accent or (255, 214, 0)) if i == len(words) - 1 else (255, 255, 255)
-        yy = y + i * size * 0.95
-        for dx, dy in ((-4, -4), (4, -4), (-4, 4), (4, 4), (0, 6)):
-            draw.text((60 + dx, yy + dy), w, font=font, fill=(0, 0, 0))
-        draw.text((60, yy), w, font=font, fill=color)
+    lh = int(size * 1.0)
+    block = lh * len(lines)
+    y = (720 - block) // 2 + 10
+    accent = tuple(accent or (255, 214, 0))
+    draw.rectangle([(0, 0), (18, 720)], fill=accent + (255,))  # channel accent bar
+    for i, line in enumerate(lines):
+        color = accent if i == len(lines) - 1 and len(lines) > 1 else (255, 255, 255)
+        yy = y + i * lh
+        for dx, dy in ((-5, -5), (5, -5), (-5, 5), (5, 5), (0, 8), (-7, 0), (7, 0)):
+            draw.text((64 + dx, yy + dy), line, font=font, fill=(0, 0, 0))
+        draw.text((64, yy), line, font=font, fill=color)
     img = img.convert("RGB")
     q = 90
     while True:

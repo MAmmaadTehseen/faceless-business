@@ -220,3 +220,24 @@ Owner: no difference in analytics. Correct, and expected: nothing shipped on 202
 - Banked bundles were rendered before the hook card existed. Commit 21bcc05: release now burns the card onto each banked Short (one ffmpeg re-encode, audio copied) before upload, so bundles released from the next sync carry it.
 - Dispatched one public produce run per explainer channel (new scripts, subject-first titles, hook card, same-day Shorts) so the first fully new-format bundles go public at the next cron slots (2026-11-19/20) rather than after the bank.
 - First readable signal: 2026-11-21 (48 h of public life on card-bearing Shorts). Compare "Viewed vs swiped away" in Studio and retention via `scripts/growth_snapshot.py` for Shorts published on/after 2026-11-19 against the round-2b table.
+
+
+## Thumbnail audit, 2026-11-19 (owner: "why are thumbnails not working, where is CTR")
+
+### Findings
+
+- Escape Velocity's channel returns `longUploadsStatus: eligible` (Future Work, Trade Winds, Ten Tongues: `allowed`). "eligible" means the channel has not completed phone verification, and YouTube rejects `thumbnails.set` on unverified channels. Every Escape Velocity long video has therefore carried an auto-picked frame, including one with a burned caption, and the code only logged a warning. This should have been caught at channel setup; it was not.
+- Future Work and Trade Winds do get our custom thumbnails, and they are weak: a random stock frame plus three vague words ("NOT SO SAFE", "WHO KEEPS IT") that name nothing. Research consensus (vidIQ's 2026 study of 500 breakout videos, several design guides): 1-5 words that say what the video is about, one dominant element, high contrast. Sources: [vidIQ thumbnail tips](https://vidiq.com/blog/post/youtube-thumbnail-tips/), [vidIQ CTR designs](https://vidiq.com/blog/post/youtube-custom-thumbnails-ctr/), [awisee stats](https://awisee.com/blog/youtube-thumbnail-best-practices).
+- Ten Tongues uses a typographic card: fine as is.
+- Click-through rate: not available in the YouTube Data or Analytics API (only averageViewPercentage is; that is what the `ctr` column holds). Impressions and CTR exist only in YouTube Studio's Reach report. Reading them per channel is a browser job and needs the owner signed in to Google in the browser pane.
+
+### Shipped
+
+- Thumbnail failures are now errors with the API reason, and the rejected image is kept in Storage (`thumbs/<video id>.jpg`) with a `yt_thumbnail_pending_<video id>` setting. Sync retries `thumbnails.set` for each channel (50 units each, reserved) and clears the row on success, so the moment Escape Velocity is verified its scheduled uploads get their thumbnails without re-rendering. Already-public Escape Velocity longs keep their auto frames (their thumbnails were not retained).
+- New thumbnail design (`pipeline/thumbnail.py`): text is 2-5 words that name the subject and/or the number (prompt rule; "never a vague teaser"), set large in up to three lines with the last line in the channel accent, over the sharpest clean frame (edge/contrast score with a penalty for single-hue placeholder cards), with the left 60% darkened and an accent bar. Verified on real frames.
+- Tests: `tests/test_thumbnail_design.py` (3). Suite: 423 passed.
+
+### Owner
+
+- Verify Escape Velocity's phone in YouTube Studio (same steps as Ten Tongues on 2026-11-16). Until then no custom thumbnail can be set on that channel.
+- Sign in to Google in the browser pane so I can read Reach (impressions, CTR) per channel and log it in round 3.
