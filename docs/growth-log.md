@@ -243,16 +243,18 @@ Owner: no difference in analytics. Correct, and expected: nothing shipped on 202
 - Sign in to Google in the browser pane so I can read Reach (impressions, CTR) per channel and log it in round 3.
 
 
-### Studio Reach, read 2026-11-19 (Escape Velocity; others pending account switch)
+### Studio Reach, read 2026-11-19, all five channels (last 28 days unless noted)
 
-| metric (last 28 days) | Escape Velocity |
-|---|---|
-| long videos: thumbnail impressions | 1.4K |
-| long videos: thumbnail CTR | 1.3% |
-| long videos: views / avg view duration | 74 / 2:01 |
-| long traffic: search / suggested / browse | 66% / 20% / 10% |
-| Shorts: stayed to watch vs swiped away | 40.4% / 59.6% |
-| Shorts: views / engaged views | 2.8K / 1.1K |
-| Shorts traffic: Shorts feed / search | 85% / 11% |
+| channel | long impressions | long CTR | long views / AVD | long traffic | Shorts stayed / swiped | Shorts views (engaged) |
+|---|---|---|---|---|---|---|
+| Future Work Explained | 600 | 4.7% | 105 / 1:51 | search 35%, direct 18%, browse 18% | 47.7% / 52.3% | 464 (214) |
+| Trade Winds Report | 680 | 2.1% | 74 / 2:21 | browse 58%, search 34% | 58.4% / 41.6% | 1.6K (903) |
+| Escape Velocity | 1.4K | 1.3% | 74 / 2:01 | search 66%, suggested 20% | 40.4% / 59.6% | 2.8K (1.1K) |
+| Ten Tongues | 357 | 0.8% | 4 / 1:39 | suggested 75% | 35.1% / 64.9% | 917 (340) |
+| Frame and Argument | first video, 1 day | 0.6% | 19 / 0:42 | | | |
 
-Reading: 1.3% CTR is bottom-of-range (YouTube says half of channels sit between 2% and 10%), on a channel whose thumbnails were never custom. Two thirds of long-video traffic is search, which is why keyword-first titles matter more than cleverness here. The Shorts swipe-away rate of 60% is the number the hook card targets; the research threshold for expansion is roughly 70% stayed.
+Reading:
+- Click-through: Future Work's 4.7% is the only normal number; Trade Winds 2.1%, Escape Velocity 1.3% (never had a custom thumbnail: verified today 2026-11-19, `longUploadsStatus` now `allowed`, sync retrying pending thumbnails), Ten Tongues 0.8% and Frame and Argument 0.6% are failing. Ten Tongues' typographic card gets impressions from Suggested but nobody clicks a word on a dark gradient; it needs the same subject-first treatment with the word's translations visible, which is a separate change.
+- Impressions are tiny everywhere (357 to 1.4K a month). Titles and thumbnails only matter once a video is shown; the long videos are barely shown at all, and what shows comes mostly from search and browse, so keyword-first titles are the right fix.
+- Shorts: only Trade Winds clears 50% stayed-to-watch; Ten Tongues (35%) and Escape Velocity (40%) lose most viewers in the first seconds. Escape Velocity still has the most Shorts views because space topics are named things. The hook card and subject-first hook titles target exactly this column; judge again on 2026-11-21.
+- Ten Tongues Shorts: four of the top five are Japanese, Russian, Italian and Urdu. Language-specific Shorts find a language-specific audience; the English long episode (4 views) does not.
