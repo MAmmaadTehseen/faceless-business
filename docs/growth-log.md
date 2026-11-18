@@ -241,3 +241,18 @@ Owner: no difference in analytics. Correct, and expected: nothing shipped on 202
 
 - Verify Escape Velocity's phone in YouTube Studio (same steps as Ten Tongues on 2026-11-16). Until then no custom thumbnail can be set on that channel.
 - Sign in to Google in the browser pane so I can read Reach (impressions, CTR) per channel and log it in round 3.
+
+
+### Studio Reach, read 2026-11-19 (Escape Velocity; others pending account switch)
+
+| metric (last 28 days) | Escape Velocity |
+|---|---|
+| long videos: thumbnail impressions | 1.4K |
+| long videos: thumbnail CTR | 1.3% |
+| long videos: views / avg view duration | 74 / 2:01 |
+| long traffic: search / suggested / browse | 66% / 20% / 10% |
+| Shorts: stayed to watch vs swiped away | 40.4% / 59.6% |
+| Shorts: views / engaged views | 2.8K / 1.1K |
+| Shorts traffic: Shorts feed / search | 85% / 11% |
+
+Reading: 1.3% CTR is bottom-of-range (YouTube says half of channels sit between 2% and 10%), on a channel whose thumbnails were never custom. Two thirds of long-video traffic is search, which is why keyword-first titles matter more than cleverness here. The Shorts swipe-away rate of 60% is the number the hook card targets; the research threshold for expansion is roughly 70% stayed.
