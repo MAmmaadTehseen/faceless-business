@@ -210,3 +210,13 @@ Retention is the only trait that correlates with views (r = 0.18; words, title l
 ### Expect
 
 Hook card plus named-subject rules target the 2-second swipe and the 50% retention line. If the next 20 Shorts median above 50% retention, median views should move from the teens to 50+ per the table above, before any algorithmic expansion. 10k a day per video needs the expansion stage; that is a retention problem first, and this is the first round that attacks the muted first frame directly.
+
+
+## Round 3 check-in: 2026-11-18
+
+Owner: no difference in analytics. Correct, and expected: nothing shipped on 2026-11-16/17 had reached a public video yet. Nine videos went public since 2026-11-17, all rendered and uploaded before round 1 (views 0-95; the 95 is Escape Velocity's "Starlink Dies in Five Years, On Purpose", the one title with a hard named subject). Already-uploaded videos cannot have their file replaced, so the backlog going public this week performs like the old format regardless.
+
+- Schedule compression ran from sync: Future Work's last slot moved 2026-12-02 -> 2026-11-25, Escape Velocity 2026-12-09 -> 2026-11-28, Trade Winds mostly moved (one straggler on 2026-12-03 waits for the per-run cap). All three channels now have 2-3 uploads a day through 2026-11-24.
+- Banked bundles were rendered before the hook card existed. Commit 21bcc05: release now burns the card onto each banked Short (one ffmpeg re-encode, audio copied) before upload, so bundles released from the next sync carry it.
+- Dispatched one public produce run per explainer channel (new scripts, subject-first titles, hook card, same-day Shorts) so the first fully new-format bundles go public at the next cron slots (2026-11-19/20) rather than after the bank.
+- First readable signal: 2026-11-21 (48 h of public life on card-bearing Shorts). Compare "Viewed vs swiped away" in Studio and retention via `scripts/growth_snapshot.py` for Shorts published on/after 2026-11-19 against the round-2b table.
