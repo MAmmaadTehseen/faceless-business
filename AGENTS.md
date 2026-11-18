@@ -366,4 +366,8 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
 - Cloud mode: `.github/workflows/recap.yml` + `pipeline/recap/cloud.py`: Drive `Faceless Recap/{inbox,review,
   approve,uploaded,done,failed}` in up to five accounts (`GDRIVE_RECAP_REFRESH_TOKEN_1..5`, full Drive scope via
   `scripts/youtube_auth.py url recapN`). Uploads only from `approve`. Rights sidecar required. Docs: `docs/recap.md`.
+- Meta (2026-11-19): a Facebook account lock ("may have been hacked") deactivates every Page the profile manages and
+  invalidates all Page tokens. Recovery: reactivate the Pages, regenerate one Explorer user token with all Pages opted in,
+  run `scripts/meta_page_env.py --all` (hidden prompt, writes all `META_*_<KEY>` to .env), then owner re-sets the secrets.
+  Page picture/cover/about need `pages_manage_metadata`, which the app token lacks; set them in the Page UI.
 
