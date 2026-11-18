@@ -9,7 +9,7 @@ from pipeline.thumbnail import frame_score, thumbnail_lines
 def test_thumbnail_lines_subject_first_and_capped():
     assert thumbnail_lines("DUTCH GOVT: 25,000 AI CUTS") == ["DUTCH GOVT:", "25,000 AI", "CUTS"]
     assert thumbnail_lines("GOLDMAN: AI LAYOFFS DELAYED") == ["GOLDMAN: AI", "LAYOFFS", "DELAYED"]
-    assert thumbnail_lines("one two three four five six") == ["ONE TWO", "THREE FOUR", "FIVE"]
+    assert thumbnail_lines("one two three four five six") == ["ONE TWO THREE", "FOUR FIVE"]
 
 
 def test_flat_colour_card_scores_below_textured_frame(tmp_path):
