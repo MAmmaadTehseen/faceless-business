@@ -205,6 +205,16 @@ still in `approve/` or `review/`; if the source is gone the command fails with a
 and the film must be re-uploaded to the inbox. Exit status is 1 when the new piece fails QA
 again; its findings are in `qa.json`.
 
+## Instagram Reels and Facebook Page (cloud mode)
+
+With `META_ACCESS_TOKEN_FILMREVIEW` + `META_PAGE_ID_FILMREVIEW` (Page) and `IG_ACCESS_TOKEN_FILMREVIEW` +
+`META_IG_USER_ID_FILMREVIEW` (Instagram Login API) set as Actions secrets, each scheduled run's
+`social` step posts a Short as an Instagram and Facebook Reel on the day its YouTube copy goes
+public (the shared `follow_youtube_to_reels`, one per day, last 7 days only) and one Page link post
+per public long recap. Uploaded Shorts keep a public media copy for this (`content.media_url`),
+since the Drive MP4s are deleted after upload. Captions use `hashtags` and `caption_question`
+from `channels/filmreview/local.json`. Without the secrets the step is skipped.
+
 ## Dedicated channel token (owner action)
 
 Create a dedicated YouTube channel for Frame and Argument (or edit its local

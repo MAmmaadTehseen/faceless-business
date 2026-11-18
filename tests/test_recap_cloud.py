@@ -396,3 +396,21 @@ def test_regenerate_finds_source_by_filename_and_fails_when_deleted(tmp_path, mo
         up = FakeAccount(3, {})
         _produced_project(up, "appr-u", "approve", "1" * 32, uploaded_long=True)
         cloud.regenerate(db, [up], "1" * 32, "long", runner=runner, log=lambda *_: None)
+
+
+def test_social_skips_without_meta_and_posts_long_once(db, monkeypatch):
+    from pipeline.publish import meta
+    monkeypatch.setattr(meta, "configured", lambda: False)
+    assert "skipped" in cloud.social(db, log=lambda *_: None)
+    monkeypatch.setattr(meta, "configured", lambda: True)
+    monkeypatch.setattr(meta, "fb_configured", lambda: True)
+    monkeypatch.setattr("pipeline.publish.follow_youtube_to_reels", lambda db, ch: 2)
+    from datetime import datetime, timezone
+    db.conn.execute("insert into content (id, channel, kind, topic, title, status) values (?, ?, ?, ?, ?, ?)", ("filmreview-x-long", "filmreview", "long", "T", "Film recap", "published"))
+    db.upsert("publications", {"id": 777, "content_id": "filmreview-x-long", "platform": "youtube", "status": "live", "privacy": "public",
+                               "platform_id": "yt1", "publish_at": datetime.now(timezone.utc).isoformat()}, on="id")
+    posted = []
+    monkeypatch.setattr(meta, "publish_facebook_link_post", lambda m, l: posted.append((m, l)) or {"id": "p1", "url": "https://www.facebook.com/p1"})
+    assert cloud.social(db, log=lambda *_: None) == {"reels": 2, "facebook_posts": 1}
+    assert posted[0][1] == "https://youtu.be/yt1" and "Film recap" in posted[0][0]
+    assert cloud.social(db, log=lambda *_: None) == {"reels": 2, "facebook_posts": 0}

@@ -365,6 +365,7 @@ def upload_approved(db, accounts_, uploader=None, log=print):
             try:
                 uploader(work, state)
                 state = json.loads((work / "state.json").read_text())
+                persist_short_media(db, state, work, log)
                 account.write_text("uploads.json", json.dumps({n: i.get("youtube") for n, i in state["items"].items() if i.get("uploaded")}, indent=2), entry["id"])
                 account.upload_file(work / "state.json", entry["id"])
                 pending = [n for n, i in state["items"].items() if i.get("uploaded") and not i.get("captions_uploaded")]
@@ -520,9 +521,56 @@ def regenerate(db, accounts_, project_id, piece, runner=None, log=print):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def persist_short_media(db, state, work, log=print):
+    """Keep a public copy of each uploaded Short so Reels can follow YouTube after the Drive MP4s are gone."""
+    from pipeline.publish import _media_url
+    for name, item in state.get("items", {}).items():
+        video = work / name / "video.mp4"
+        if name == "long" or not item.get("uploaded") or not video.exists():
+            continue
+        cid = "filmreview-" + state["id"] + "-" + name
+        row = db.one("content", {"id": cid})
+        if not row or row.get("media_url"):
+            continue
+        try:
+            _media_url(db, {**row, "file_path": str(video)})
+        except Exception as exc:
+            log(f"recap cloud: media copy for {name} deferred: {type(exc).__name__}")
+
+
+def social(db, log=print):
+    """Reels for Shorts whose YouTube copy went public, and one Page link post per public long recap."""
+    from datetime import datetime, timedelta, timezone
+    from pipeline.publish import meta, follow_youtube_to_reels
+    from .channel import FilmReviewChannel
+    channel = FilmReviewChannel()
+    meta.use_channel(channel)
+    if not meta.configured():
+        return {"skipped": "no Meta configuration for filmreview"}
+    reels = follow_youtube_to_reels(db, channel)
+    posts = 0
+    if meta.fb_configured():
+        recent = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        longs = {c["id"]: c for c in db.select("content", {"channel": channel.key, "kind": "long"})}
+        for p in db.select("publications", {"platform": "youtube", "status": "live"}):
+            row = longs.get(p["content_id"])
+            if not row or p.get("privacy") != "public" or (p.get("publish_at") or "") < recent:
+                continue
+            if db.setting(f"fb_recap_post_{row['id']}"):
+                continue
+            url = p.get("url") or f"https://youtu.be/{p.get('platform_id')}"
+            try:
+                post = meta.publish_facebook_link_post(f"{row['title']}\n\nFull recap on YouTube.", url)
+                db.set_setting(f"fb_recap_post_{row['id']}", {"post_id": post["id"], "url": post.get("url")})
+                posts += 1
+            except Exception as exc:
+                log(f"recap cloud: facebook post for {row['id']} failed: {type(exc).__name__}")
+    return {"reels": reels, "facebook_posts": posts}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["scan", "produce", "upload", "regenerate"])
+    parser.add_argument("action", choices=["scan", "produce", "upload", "regenerate", "social"])
     parser.add_argument("--limit", type=int, default=1)
     parser.add_argument("--project", help="regenerate: project id (state.json id) in approve/ or review/")
     parser.add_argument("--piece", choices=list(core.PIECES), help="regenerate: which piece to re-make")
@@ -534,6 +582,9 @@ def main():
     db = DB()
     if args.gated and not _strict_enabled(db.setting("recap_cloud_enabled", True)):
         print(json.dumps({"skipped": "recap_cloud_enabled is false"}))
+        return
+    if args.action == "social":
+        print(json.dumps(social(db)))
         return
     found = accounts()
     if args.action == "scan":
