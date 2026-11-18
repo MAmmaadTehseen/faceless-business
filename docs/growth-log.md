@@ -258,3 +258,10 @@ Reading:
 - Impressions are tiny everywhere (357 to 1.4K a month). Titles and thumbnails only matter once a video is shown; the long videos are barely shown at all, and what shows comes mostly from search and browse, so keyword-first titles are the right fix.
 - Shorts: only Trade Winds clears 50% stayed-to-watch; Ten Tongues (35%) and Escape Velocity (40%) lose most viewers in the first seconds. Escape Velocity still has the most Shorts views because space topics are named things. The hook card and subject-first hook titles target exactly this column; judge again on 2026-11-21.
 - Ten Tongues Shorts: four of the top five are Japanese, Russian, Italian and Urdu. Language-specific Shorts find a language-specific audience; the English long episode (4 views) does not.
+
+
+### Thumbnail backfill, 2026-11-19
+
+- Escape Velocity verified by the owner (API now reports `longUploadsStatus: allowed`).
+- `scripts/backfill_thumbnails.py --channel <key> [--apply]`: for every scheduled private long video, one small model call writes 2-5 subject/number words plus a stock-image query, a frame is fetched through the normal footage providers (the rendered video is not on this machine), the new design is rendered and `thumbnails.set` is called (50 units each). Applied to Escape Velocity, Future Work and Trade Winds; Ten Tongues' three scheduled episodes got the new card (word large on the brand colour, three translations large in their own scripts on the dark panel; the old dark gradient with six tiny chips had 0.8% CTR).
+- Judge: Studio CTR per channel on 2026-11-26 against today's table (FW 4.7%, TW 2.1%, EV 1.3%, TT 0.8%).

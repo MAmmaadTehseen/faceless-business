@@ -321,15 +321,40 @@ def render_cards_video(timings: list[dict], audio: Path, srt: Path, out: Path, o
 
 
 def make_thumbnail(channel: Channel, data: dict, out: Path) -> Path:
+    """Thumbnail audit 2026-11-19: the word must be readable at phone size and the translations are
+    the promise, so three of them are drawn large in their own scripts on a bright saturated panel
+    (Studio CTR was 0.8% on the old dark gradient with six tiny chips)."""
+    from PIL import Image, ImageDraw
+    from .cards import font, _text, _direction
     langs = languages(channel)
-    picks = [(lang["native"], cfg["script"]) for cfg, lang in zip(langs, data["languages"])][:6]
-    render_card(out.with_suffix(".png"), size=(1280, 720), bg=tuple(channel.style.get("bg", (20, 14, 36))),
-                accent=tuple(channel.style.get("accent", (167, 139, 250))), colour=tuple(channel.style.get("accent", (167, 139, 250))),
-                kicker="word of the day", headline=data["word"].upper(), sub="in 10 languages",
-                chips=picks, footer=channel.name)
-    from PIL import Image
-    Image.open(out.with_suffix(".png")).convert("RGB").save(out, "JPEG", quality=90)
-    out.with_suffix(".png").unlink(missing_ok=True)
+    picks = [(lang["native"], cfg["script"]) for cfg, lang in zip(langs, data["languages"])]
+    # Prefer visually distinct scripts first so the card reads as "many languages" at a glance.
+    order = sorted(range(len(picks)), key=lambda i: (picks[i][1] == "latin", i))
+    picks = [picks[i] for i in order][:3]
+    accent = tuple(channel.style.get("accent", (167, 139, 250)))
+    w, h = 1280, 720
+    img = Image.new("RGB", (w, h), accent)
+    d = ImageDraw.Draw(img)
+    # Right panel: deep brand colour, strong edge against the saturated left.
+    bg = tuple(channel.style.get("bg", (20, 14, 36)))
+    d.rectangle((640, 0, w, h), fill=bg)
+    d.rectangle((0, 0, w, 16), fill=(255, 255, 255))
+    word = data["word"].upper()
+    hf = font("latin", 150 if len(word) <= 6 else 118 if len(word) <= 9 else 92)
+    for dx, dy in ((-5, -5), (5, -5), (-5, 5), (5, 5), (0, 7)):
+        _text(d, (56 + dx, 150 + dy), word, hf, (0, 0, 0))
+    _text(d, (56, 150), word, hf, (255, 255, 255))
+    kf = font("latin", 44)
+    _text(d, (60, 330), "IN 10 LANGUAGES", kf, (20, 14, 36))
+    # Three translations, big, on the dark panel.
+    y = 90
+    for text, script in picks:
+        f = font(script, 96 if len(text) <= 6 else 72)
+        _text(d, (700, y), text, f, (255, 255, 255), script)
+        y += 190
+    ff = font("latin", 34)
+    _text(d, (60, h - 80), channel.name, ff, (20, 14, 36))
+    img.save(out, "JPEG", quality=90)
     return out
 
 

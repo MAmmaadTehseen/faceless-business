@@ -65,11 +65,11 @@ def best_frame(video: Path) -> Path | None:
 
 
 def thumbnail_lines(text: str) -> list[str]:
-    """Up to 3 lines, at most 5 words, subject first; lines wrap at 12 characters."""
+    """Up to 3 lines, at most 5 words, subject first; lines wrap at 13 characters."""
     words = [w for w in text.upper().split() if w][:5]
     lines, cur = [], ""
     for w in words:
-        if cur and (len(cur) + 1 + len(w) > 12):
+        if cur and (len(cur) + 1 + len(w) > 13):
             lines.append(cur)
             cur = w
         else:
