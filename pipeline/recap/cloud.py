@@ -584,7 +584,11 @@ def main():
         print(json.dumps({"skipped": "recap_cloud_enabled is false"}))
         return
     if args.action == "social":
-        print(json.dumps(social(db)))
+        try:
+            print(json.dumps(social(db)))
+        except Exception as exc:
+            # Reels and Page posts are best effort; the next scheduled run retries them.
+            print(json.dumps({"social_failed": type(exc).__name__}))
         return
     found = accounts()
     if args.action == "scan":
