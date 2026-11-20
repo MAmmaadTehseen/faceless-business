@@ -167,6 +167,15 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
         if getattr(claude, "provider", "anthropic") == "lunaroute":
             prompt += "\nSupplied ideation news: " + json.dumps(topic.get("news", []))
         data, _ = daily_script(claude, prompt, content_id, db=db, supplied_sources=supplied_sources)
+        unverified = [f["claim"] for f in data["facts_check"] if f["confidence"] == "unverified"]
+        if unverified:
+            # Without web search the model often flags its own claims; one rewrite that drops them is cheaper
+            # than losing the day's Short.
+            log.info("daily short: %d unverified claims; rewriting once without them", len(unverified))
+            data, _ = daily_script(claude, prompt + "\nYour previous draft relied on these unverified claims: "
+                                   + json.dumps(unverified) + ". Rewrite the Short without them. Keep only claims you can "
+                                   "mark verified or likely from the supplied sources or durable common knowledge.",
+                                   content_id, db=db, supplied_sources=supplied_sources)
         saved = OUT_DIR / content_id
         saved.mkdir(parents=True, exist_ok=True)
         write_json(saved / "script.json", data)

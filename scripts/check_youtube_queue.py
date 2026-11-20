@@ -47,7 +47,8 @@ def main():
             sync_channel(db, channel)
             assert len(calls) == 98  # upload reserve prevents draining on the same UTC day
             # Simulate the next UTC accounting day, retaining old publication history.
-            yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).date().isoformat()
+            from pipeline.publish.quota import quota_day
+            yesterday = (datetime.fromisoformat(quota_day()) - timedelta(days=1)).date().isoformat()
             db.conn.execute("update quota_log set day=?", (yesterday,))
             db.conn.execute("update publications set published_at=? where status='live'", (yesterday + "T12:00:00+00:00",))
             db.conn.commit()
@@ -56,7 +57,7 @@ def main():
             assert titles[-2:] == ["99", "100"]
             assert not db.select("publications", {"status": "queued"})
             assert db.one("publications", {"content_id": "test-100"})["status"] == "live"
-            assert db.one("quota_log", {"day": datetime.now(timezone.utc).date().isoformat()})["uploads"] == 2
+            assert db.one("quota_log", {"day": quota_day()})["uploads"] == 2
             # Thumbnail charges general units, independently of upload count.
             thumbnail = Path(tmp) / "thumb.jpg"
             thumbnail.write_bytes(b"mock thumbnail")
@@ -64,7 +65,7 @@ def main():
                          "title": "thumb", "file_path": str(video), "thumbnail_path": str(thumbnail), "qa_status": "passed"}
             db.insert("content", thumb_row)
             _youtube_publish(db, thumb_row, channel, "private", slot)
-            today = datetime.now(timezone.utc).date().isoformat()
+            today = quota_day()
             assert db.one("quota_log", {"day": today})["units"] == 50
             # Failed attempts retain quota, preventing retries from overspending.
             row = {"id": "failed-test", "channel": channel.key, "kind": "long", "topic": "failure", "title": "failure",
@@ -72,7 +73,7 @@ def main():
             db.insert("content", row)
             with patch("pipeline.publish.youtube.upload", side_effect=RuntimeError("mock")):
                 _youtube_publish(db, row, channel, "private", slot)
-            assert db.one("quota_log", {"day": datetime.now(timezone.utc).date().isoformat()})["uploads"] == 4
+            assert db.one("quota_log", {"day": quota_day()})["uploads"] == 4
             # The 1000-unit reserve is available to sync/engage, but stops at the full budget.
             assert reserve(db, 8950)
             assert not reserve(db, 1)
