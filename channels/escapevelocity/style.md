@@ -44,3 +44,16 @@
 - Every zero-view item is from the last three days (Nov 8 and Nov 12 uploads), so the data says nothing about those scripts yet. Re-judge the astronaut-hiring and Mars-sample shorts next week before dropping the topics.
 - Starship and Artemis each landed two shorts in the top five. Treat each big story as a two or three short cluster with genuinely different angles: cadence, the hidden test, the budget, the crew.
 - Named sources (NASASpaceflight, Katalyst Space, Isaacman, the October 23 briefing) appear in the first half of every top script. Keep in-line attribution there, it matches the persona and it is working.
+
+### Review 2026-11-22
+- Keep the hard figure or myth-bust as the line-one default. All five top shorts open with one, and the pattern has now held for two straight weeks.
+- Title hierarchy this week: number-as-question first ("Only 5 Starship Launches This Year?", 63.9 percent CTR), named human stakes second ("The Artemis Crew That Won't Leave Earth Orbit", 49.5 percent), contrast third at about 36 percent. Spend the number-question and stakes framings on the lead short of each cluster.
+- Resolve the hook by line three, then go deeper. The Starship cadence short answered its own question early and held 30 of 48 seconds, the best retention in the batch.
+- Front-load the payoff and cut setup lines. The Swift short drew the most views, 620, but sagged to 15 of 54 seconds because the explanation arrived late.
+- Judge scripts on retention, not raw views. Swift pairs the biggest view count with the lowest CTR, 28.8 percent, so the Shorts feed carried it, not the title.
+- Like rate follows retention, not views: 2.9 percent on the best-held short versus 0.8 percent on the worst. Write for watch-through and likes follow.
+- Keep shorts inside the 35 to 45 second spec. The two scripts that ran past 52 seconds retained only 28 and 36 percent of runtime.
+- Keep clustering big stories. Starship and the Moon base strategy each landed two in the top five with genuinely different angles: cadence plus hidden test, budget plus crew.
+- Named sources in the first half appeared in every top script again (NASASpaceflight, Katalyst Space, CNN, the October 23 briefing). Keep in-line attribution there.
+- Zero comments on all nine uploads. Close on an either-or question a viewer can answer in three words, then pin the question as a channel comment to start the thread.
+- Do not rewrite the bottom five yet. All are November 19 uploads with no impressions data, four of them one Orion cluster plus the long video. Same pattern as last week: new items sit at zero for their first days, so re-judge next week before changing anything.

@@ -34,3 +34,13 @@
 - Comment replies: friendly, factual, two sentences; corrections from native speakers are thanked and pinned in spirit, never argued with.
 
 ## Learned adjustments (appended by weekly review; newest last)
+
+### Review 2026-11-22
+- Open with recognition, not a puzzle. The three most-viewed Shorts lead with something the viewer already owns: coffee-shop chai, 'yes, you heard it already' for pan, chá in the cha club. Save the pronunciation trap for beat two.
+- Lead with a cognate or loanword story whenever the word has one. Tea and bread both traveled across languages this week and took four of the top five slots.
+- Keep Shorts at 30 to 32 seconds. The 30.2 second milk Short holds viewers to 18 seconds (about 60 percent); the 34.8 second bread Short drops to 43 percent. If a draft runs past 32 seconds, cut one beat.
+- Give a free second word. The Taiwan tip, 'cartons say xiānrǔ, so you already know two words', sits on the week's best CTR (61.6 percent) and best retention. One honest regional variant per Short.
+- Cultural notes earn likes when they are visible customs: bread and salt pulled 6 likes on 365 views, the best like rate this week. Generic food facts do less.
+- Comment hooks work when line one touches the viewer's own routine: the coffee-shop chai line drew the only two comments of the week. Name a place the viewer has actually stood.
+- The five zero-view Shorts are all from the 11-21 egg batch with no CTR data yet. That looks like distribution timing, not a content verdict. Stagger the daily batch and re-check next week before rewriting any egg script.
+- Titles should use plain, searchable romanisation. 'œuf' may not match viewers typing 'oeuf'. Keep native script on the card, not in the title.

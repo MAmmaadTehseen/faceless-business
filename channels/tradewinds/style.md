@@ -42,3 +42,15 @@
 - No politician's name in a title, ever. 'Trump Threatens to Double Mexico Tariffs' invites partisan framing the channel stands against. Lead with the money: 'Double Mexico Tariffs: The 800 Billion Dollar Border'.
 - Fact-plus-consequence titles beat method titles. 'Freight up 342 percent. Demand isn't.' states the event. 'Three signals that beat any Red Sea headline' promises a lecture. Keep number-consequence and contrast formulas for shorts.
 - Long-form has no usable signal this week; both longs sit at zero impressions. Keep making longs, but write the three short hooks before the long script so discovery never waits on nine-minute videos.
+
+### Review 2026-11-22
+- Distribution is still the blocker, not content: the three Nov 21 uploads join everything since Nov 3 at zero impressions, so the settings problem flagged on Nov 15 remains unfixed. Audit Shorts feed eligibility and upload settings before the next video goes out, and treat every zero-view title as untested, not failed.
+- Numbers or stated irony in sentence one decide the short: those openings held 58 to 75 percent retention; the one abstract-advice opener held 33 percent and pulled roughly a third of the magnet short's CTR.
+- Second-person trace shorts loop: the magnet short averaged 74 seconds of watch on a 61-second script, the only upload whose AVD exceeded its own duration. Book one "trace something in your own home" short every week.
+- Put the contrast numbers in the first sentence: "one hundred and ten dollars for something the market was selling for ninety-five" held 71 percent retention and delivered the cleanest who-pays trace of the batch.
+- Irony earns the click but not always the watch: the Qatar short took second place on views, yet retention sat near 58 percent. On the next irony hook, land the payoff before the thirty-second mark.
+- The exemption topic has demand: 131 views despite the weakest opening in the top five. Recut it to open on the twelve million dollar seizure or the customs form itself.
+- One rare-earth long yielded two of the top five shorts. Write all three short hooks before drafting any long, each from a different entry point.
+- Retitle the Mexico long before any re-push: no politician's name in a title, ever. Lead with the money, "Double Mexico Tariffs: The 800 Billion Dollar Border", and cut its four-in-the-morning Laredo truck opening as a short.
+- The untested Nov 21 openings are on formula: 463 million dollars refunded to one retailer, and a factory traded for tariff relief. Once distribution is fixed, slice the TJX long into three number-first shorts; do not retire the topic.
+- Comments remain zero on all ten uploads. End every short on a task answerable in one comment, then pin the first good reply.

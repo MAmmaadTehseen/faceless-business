@@ -46,3 +46,15 @@
 - Declarative beats question titles. 'Laid off from an AI-exposed job? Expect a wait' went nowhere. Write statements, not questions.
 - Judge zero-view shorts by CTR, not age. No CTR yet usually means no impressions, not failure. The Oct 29 short shows CTR 0 after two weeks, so that title is the real flop and the anti-reference.
 - High CTR on low views means the click worked and distribution did not. The ServiceNow short pulled 0.51 CTR on tiny impressions. Reclip proven high-CTR topics with fresh titles before commissioning new ones.
+
+### Review 2026-11-22
+- Fact titles with a named actor keep winning on CTR: FTC 0.65, Teams 0.55, versus 0.25 for the framework title 'Routers Out, Architects In'. Write every title as a checkable claim, not a framework.
+- Both winners name the actor in line one and land the payoff by sentence three. Keep that pace, because watch time still cliffs near 32 seconds.
+- Sixty-seven seconds killed retention: the manager short held only 17 seconds. Write shorts to about 50 seconds and treat 60 as the cap.
+- Reclip the Dorsey middle-manager story with a fact title naming Block, cut to 50 seconds, before commissioning new topics.
+- Big numbers still earn comments: the Dutch long pulled 4 comments on 25 views, our best rate on the channel. Put a number in every long title.
+- The long-form leak persists at 74 seconds even though the Dutch opening front-loads the number, so viewers are quitting around the authority and framework beat. Compress authority to one sentence and preview the framework by 0:40.
+- Test the next long at five to six minutes, roughly 900 to 1,000 words, to see whether the 474-second runtime is the real leak.
+- The zero-view requisition shorts have no impressions yet, so judge them by CTR later, not age; but all four open with a concept and no named actor, which is the known anti-pattern if CTR arrives low.
+- The AT&T short already follows the winning formula: actor, number, twist. Leave it alone and wait for impressions.
+- Every winner is anchored to a dated report from a named institution, while evergreen advice with no news anchor is the shared trait of the bottom four. Anchor every short to a filing, memo or report before writing.
