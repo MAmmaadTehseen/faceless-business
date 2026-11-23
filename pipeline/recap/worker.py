@@ -320,7 +320,7 @@ def caption_filter(work, timings, short):
     font = _font()
     fontname = Path(font).stem if font else "DejaVu Sans"
     style = (f"FontName={fontname},FontSize={30 if short else 22},Bold=1,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
-             f"BackColour=&H60000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV={88 if short else 42},Spacing=1")
+             f"BackColour=&H60000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV={88 if short else 64},Spacing=1")
     path = str(on_screen.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     return f"subtitles='{path}':force_style='{style}'" + (f":fontsdir={FONT_DIR}" if font else "")
 
@@ -334,7 +334,7 @@ class StrictVision:
         try:
             args = list(args)
             if len(args) > 1:
-                args[1] += f" Report any text still visible on the picture, including subtitles, as a blocking issue. No text removal is requested. For each video finding include its frame time in seconds in the text. The three video samples are at {[round(self.duration*f, 3) for f in (0.1, 0.5, 0.85)]} seconds, after the thumbnail."
+                args[1] += f" Report any text still visible on the picture, including subtitles, as a blocking issue. No text removal is requested. Landscape frames are letterboxed by design: the black bars are part of the frame, so our caption text bordering a bar is inside the picture and is not cropped or cut off; only letters missing at the true image edge count. For each video finding include its frame time in seconds in the text. The three video samples are at {[round(self.duration*f, 3) for f in (0.1, 0.5, 0.85)]} seconds, after the thumbnail."
             return self.claude.vision(*args, **kwargs)
         except Exception:
             self.failed = True
