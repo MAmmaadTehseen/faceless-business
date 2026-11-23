@@ -214,7 +214,7 @@ def test_upload_frees_space_and_records(tmp_path, monkeypatch, db):
     assert result[0]["status"] == "uploaded"
     assert sorted(src.deleted) == ["Film 2024.mp4", "Film 2024.rights.json"]
     remaining = {f["name"] for f in account.files.values() if f["parent"] == folder}
-    assert not any(n.endswith(".mp4") for n in remaining) and {"long.jpg", "state.json", "uploads.json"} <= remaining
+    assert "long.mp4" not in remaining and {"short1.mp4", "long.jpg", "state.json", "uploads.json"} <= remaining
     assert db.one("recap_films", {"id": "r" * 32})["status"] == "uploaded"
 
 
@@ -411,6 +411,30 @@ def test_social_skips_without_meta_and_posts_long_once(db, monkeypatch):
                                "platform_id": "yt1", "publish_at": datetime.now(timezone.utc).isoformat()}, on="id")
     posted = []
     monkeypatch.setattr(meta, "publish_facebook_link_post", lambda m, l: posted.append((m, l)) or {"id": "p1", "url": "https://www.facebook.com/p1"})
-    assert cloud.social(db, log=lambda *_: None) == {"reels": 2, "facebook_posts": 1}
+    assert cloud.social(db, log=lambda *_: None) == {"reels": 2, "facebook_posts": 1, "retired_short_files": 0}
     assert posted[0][1] == "https://youtu.be/yt1" and "Film recap" in posted[0][0]
-    assert cloud.social(db, log=lambda *_: None) == {"reels": 2, "facebook_posts": 0}
+    assert cloud.social(db, log=lambda *_: None) == {"reels": 2, "facebook_posts": 0, "retired_short_files": 0}
+
+
+def test_short_media_retired_after_reels_or_grace(tmp_path, monkeypatch, db):
+    from datetime import datetime, timedelta, timezone
+    from pipeline.publish import meta
+    monkeypatch.setattr(meta, "ig_configured", lambda: True)
+    monkeypatch.setattr(meta, "fb_configured", lambda: False)
+    account = FakeAccount(1, {})
+    folder = "up-1"
+    account.files[folder] = {"id": folder, "name": "F (2024)", "md5Checksum": "", "size": "0", "mimeType": "application/vnd.google-apps.folder", "parent": "f-uploaded", "bytes": b""}
+    state = {"id": "e" * 32, "items": {}}
+    account.upload_file_bytes("state.json", json.dumps(state).encode(), folder)
+    for n in ("short1", "short2", "short3"):
+        account.upload_file_bytes(n + ".mp4", b"x", folder)
+        db.conn.execute("insert into content (id, channel, kind, topic, title, status) values (?, ?, ?, ?, ?, ?)", (f"filmreview-{'e'*32}-{n}", "filmreview", "short", "T", "T", "published"))
+    old = (datetime.now(timezone.utc) - timedelta(days=12)).isoformat()
+    new = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    db.upsert("publications", {"id": 1, "content_id": f"filmreview-{'e'*32}-short1", "platform": "youtube", "status": "live", "publish_at": new}, on="id")
+    db.upsert("publications", {"id": 2, "content_id": f"filmreview-{'e'*32}-short1", "platform": "instagram", "status": "live"}, on="id")
+    db.upsert("publications", {"id": 3, "content_id": f"filmreview-{'e'*32}-short2", "platform": "youtube", "status": "live", "publish_at": old}, on="id")
+    db.upsert("publications", {"id": 4, "content_id": f"filmreview-{'e'*32}-short3", "platform": "youtube", "status": "live", "publish_at": new}, on="id")
+    assert cloud.retire_reel_media(db, [account], log=lambda *_: None) == 2
+    remaining = {f["name"] for f in account.files.values() if f["parent"] == folder}
+    assert remaining == {"state.json", "short3.mp4"}

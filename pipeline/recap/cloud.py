@@ -405,11 +405,44 @@ def free_space(account, accounts_, folder_id, files, state, log):
             except Exception as exc:
                 log(f"recap cloud: could not delete source {key}: {type(exc).__name__}")
     for name, f in files.items():
-        if name.endswith(".mp4"):
+        # The long MP4 goes now; Short MP4s stay until their Reels have followed (see retire_reel_media).
+        if name == "long.mp4":
             try:
                 account.delete(f["id"])
             except Exception as exc:
                 log(f"recap cloud: could not delete {name}: {type(exc).__name__}")
+
+
+def retire_reel_media(db, accounts_, log=print, grace_days=9):
+    """Delete Short MP4s from uploaded/ folders once Reels are posted on every configured Meta platform,
+    or once the last Short has been public for more than grace_days (the Reels window is 7 days)."""
+    from datetime import datetime, timedelta, timezone
+    from pipeline.publish import meta
+    want = ({"instagram"} if meta.ig_configured() else set()) | ({"facebook"} if meta.fb_configured() else set())
+    now = datetime.now(timezone.utc)
+    removed = 0
+    for account in accounts_:
+        for entry in account.list(account.folders()["uploaded"]):
+            if entry.get("mimeType") != "application/vnd.google-apps.folder":
+                continue
+            files = {f["name"]: f for f in account.list(entry["id"])}
+            shorts = [n for n in files if n.startswith("short") and n.endswith(".mp4")]
+            if not shorts or "state.json" not in files:
+                continue
+            state = json.loads(account.read_small(files["state.json"]["id"]).decode())
+            for name in shorts:
+                cid = "filmreview-" + state["id"] + "-" + name[:-4]
+                pubs = db.select("publications", {"content_id": cid})
+                have = {p["platform"] for p in pubs if p.get("status") == "live" and p["platform"] != "youtube"}
+                yt = next((p for p in pubs if p["platform"] == "youtube"), None)
+                public_at = datetime.fromisoformat(str(yt["publish_at"]).replace("Z", "+00:00")) if yt and yt.get("publish_at") else None
+                expired = public_at is not None and now - public_at > timedelta(days=grace_days)
+                if want and want <= have or expired:
+                    try:
+                        account.delete(files[name]["id"]); removed += 1
+                    except Exception as exc:
+                        log(f"recap cloud: could not delete {name}: {type(exc).__name__}")
+    return removed
 
 
 def find_project(accounts_, project_id, log=print):
@@ -538,6 +571,35 @@ def persist_short_media(db, state, work, log=print):
             log(f"recap cloud: media copy for {name} deferred: {type(exc).__name__}")
 
 
+def stage_short_media_from_drive(db, log=print):
+    """Download retained Short MP4s so the shared Reels follow-up finds a local file even without a storage copy."""
+    try:
+        found = accounts()
+    except RuntimeError:
+        return
+    for account in found:
+        for entry in account.list(account.folders()["uploaded"]):
+            if entry.get("mimeType") != "application/vnd.google-apps.folder":
+                continue
+            files = {f["name"]: f for f in account.list(entry["id"])}
+            if "state.json" not in files:
+                continue
+            state = json.loads(account.read_small(files["state.json"]["id"]).decode())
+            for name, f in files.items():
+                if not (name.startswith("short") and name.endswith(".mp4")):
+                    continue
+                cid = "filmreview-" + state["id"] + "-" + name[:-4]
+                row = db.one("content", {"id": cid})
+                if not row:
+                    continue
+                target = core.OUTPUT / state["id"] / name[:-4] / "video.mp4"
+                try:
+                    account.download(f["id"], target, f["md5Checksum"])
+                    db.update("content", {"id": cid}, {"file_path": str(target)})
+                except Exception as exc:
+                    log(f"recap cloud: could not stage {name}: {type(exc).__name__}")
+
+
 def social(db, log=print):
     """Reels for Shorts whose YouTube copy went public, and one Page link post per public long recap."""
     from datetime import datetime, timedelta, timezone
@@ -547,6 +609,7 @@ def social(db, log=print):
     meta.use_channel(channel)
     if not meta.configured():
         return {"skipped": "no Meta configuration for filmreview"}
+    stage_short_media_from_drive(db, log)
     reels = follow_youtube_to_reels(db, channel)
     posts = 0
     if meta.fb_configured():
@@ -565,7 +628,11 @@ def social(db, log=print):
                 posts += 1
             except Exception as exc:
                 log(f"recap cloud: facebook post for {row['id']} failed: {type(exc).__name__}")
-    return {"reels": reels, "facebook_posts": posts}
+    try:
+        retired = retire_reel_media(db, accounts(), log)
+    except RuntimeError:
+        retired = 0
+    return {"reels": reels, "facebook_posts": posts, "retired_short_files": retired}
 
 
 def main():
