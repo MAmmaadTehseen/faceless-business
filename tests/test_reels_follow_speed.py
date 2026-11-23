@@ -54,3 +54,15 @@ def test_old_project_media_url_is_stale(monkeypatch):
     assert publish._stale_media_url("https://oldref.supabase.co/storage/v1/object/public/media/a.mp4")
     assert not publish._stale_media_url("https://newref.supabase.co/storage/v1/object/public/media/a.mp4")
     assert not publish._stale_media_url("https://github.com/x/releases/download/a.mp4")
+
+
+def test_instagram_error_is_not_zero_views(monkeypatch):
+    import pytest
+    from pipeline.publish import meta
+    class R:
+        def __init__(self, d): self.d = d
+        def json(self): return self.d
+    monkeypatch.setattr(meta, "_ig_tok", lambda: "t")
+    monkeypatch.setattr(meta.requests, "get", lambda *a, **k: R({"error": {"message": "checkpoint"}}))
+    with pytest.raises(RuntimeError):
+        meta.ig_insights("123")

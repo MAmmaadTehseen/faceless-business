@@ -182,13 +182,20 @@ def publish_facebook_link_post(message: str, link: str) -> dict:
 
 def ig_insights(media_id: str) -> dict:
     r = requests.get(f"{IG}/{media_id}", params={"fields": "like_count,comments_count", "access_token": _ig_tok()}, timeout=30).json()
-    views = 0
+    if "error" in r:
+        # A locked or expired account must not be recorded as zero views (it erased real totals).
+        raise RuntimeError("instagram insights unavailable: " + str(r["error"].get("message", ""))[:120])
+    views = None
     try:
         ins = requests.get(f"{IG}/{media_id}/insights", params={"metric": "views", "access_token": _ig_tok()}, timeout=30).json()
+        if "error" in ins:
+            raise RuntimeError("instagram insights unavailable: " + str(ins["error"].get("message", ""))[:120])
         for m in ins.get("data", []):
             views = m.get("values", [{}])[0].get("value", 0)
-    except Exception:
+    except requests.RequestException:
         pass
+    if views is None:
+        raise RuntimeError("instagram insights returned no views")
     return {"views": views, "likes": r.get("like_count", 0), "comments": r.get("comments_count", 0)}
 
 
