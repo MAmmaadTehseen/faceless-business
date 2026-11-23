@@ -1349,7 +1349,7 @@ body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-
 
 /* bottom nav (phone) / left rail (desktop) */
 .cr-nav { position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--card); border-top:1px solid var(--border); display:grid; grid-template-columns:repeat(5, 1fr); padding-bottom:env(safe-area-inset-bottom, 0px); padding-left:env(safe-area-inset-left, 0px); padding-right:env(safe-area-inset-right, 0px); }
-.cr-nav > a, .cr-nav > button { height:64px; display:grid; place-items:center; align-content:center; gap:3px; font-size:11px; font-weight:600; color:var(--muted); position:relative; }
+.cr-nav a, .cr-nav button { height:64px; display:grid; place-items:center; align-content:center; gap:3px; font-size:11px; font-weight:600; color:var(--muted); position:relative; }
 .cr-nav [aria-current="page"] { color:var(--fg); }
 .cr-nav [aria-current="page"]::before { content:""; position:absolute; top:0; left:28%; right:28%; height:3px; background:var(--accent); border-radius:0 0 3px 3px; }
 .cr-nav svg { width:22px; height:22px; }
@@ -1357,7 +1357,7 @@ body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-
 .cr-rail-extra { display:none; }
 @media (min-width: 1024px) {
   .cr-nav { top:0; right:auto; width:212px; grid-template-columns:1fr; align-content:start; padding-top:76px; border-top:0; border-right:1px solid var(--border); }
-  .cr-nav > a, .cr-nav > button { height:48px; grid-auto-flow:column; justify-content:start; gap:12px; padding-left:24px; font-size:14px; }
+  .cr-nav a, .cr-nav button { height:48px; grid-auto-flow:column; justify-content:start; gap:12px; padding-left:24px; font-size:14px; }
   .cr-nav [aria-current="page"]::before { top:10px; bottom:10px; left:0; right:auto; width:3px; height:auto; border-radius:0 3px 3px 0; }
   .cr-nav .cr-badge { position:static; }
   .cr-nav .cr-more { display:none; }
@@ -1413,3 +1413,13 @@ body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-
 .cr-top .sync-pill { flex:none; }
 @media (max-width: 400px) { .cr-mark { font-size:18px; } .cr-top { gap:6px; } }
 @media (max-width: 460px) { .cr-strip { grid-template-columns:1fr; justify-items:start; } .cr-strip > .donut { justify-self:center; } }
+/* QA floor: 44px touch targets and 12px minimum text (scripts/mobile/check.mjs). */
+.sync-pill, .cr-chip, .cr-chips.plat .cr-chip { min-height:44px; }
+.cr-icon { width:44px; height:44px; }
+.hero-label, .eyebrow, .section-title, .cr-pill, .cr-custom label, .cr-kv span, .cr-badge { font-size:12px; }
+.donut small { font-size:12px; }
+.cr-badge { height:18px; line-height:18px; min-width:18px; }
+.cr-nav a, .cr-nav button { font-size:12px; }
+.cr-mark { min-height:44px; }
+.cr-badge { font-size:12px; }
+.supporting-stats p, .text-xs { font-size:12px; }
