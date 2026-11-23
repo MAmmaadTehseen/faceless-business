@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -349,6 +350,14 @@ def _local_file(db, s) -> Path:
 REELS_FOLLOW_DAYS = 7
 
 
+def _stale_media_url(url: str) -> bool:
+    """A Supabase Storage URL on a different project than the current SUPABASE_URL is dead."""
+    from urllib.parse import urlparse
+    here = urlparse(os.getenv("SUPABASE_URL") or "").hostname
+    there = urlparse(url).hostname or ""
+    return bool(here) and there.endswith(".supabase.co") and there != here
+
+
 def follow_youtube_to_reels(db, channel) -> int:
     """Shorts whose YouTube copy has gone public (scheduled publish) get their Instagram/Facebook Reels now."""
     meta.use_channel(channel)
@@ -371,6 +380,8 @@ def follow_youtube_to_reels(db, channel) -> int:
         want = ({"instagram"} if meta.ig_configured() else set()) | ({"facebook"} if meta.fb_configured() else set())
         if want <= have:
             continue
+        if s.get("media_url") and _stale_media_url(s["media_url"]):
+            s = {**s, "media_url": None}  # points at storage we no longer own (old Supabase project)
         if not s.get("media_url") and not Path(s.get("file_path") or "").is_file():
             try:
                 from ..retry import restore

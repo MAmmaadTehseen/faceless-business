@@ -47,3 +47,10 @@ def test_quick_restore_skips_artifact_scan(tmp_path, monkeypatch):
             retry.restore(db, row, {"platform": "youtube", "artifact_run_id": "123"}, deep=False)
         except FileNotFoundError as e:
             assert "skipped (quick restore)" in str(e)
+
+
+def test_old_project_media_url_is_stale(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "https://newref.supabase.co")
+    assert publish._stale_media_url("https://oldref.supabase.co/storage/v1/object/public/media/a.mp4")
+    assert not publish._stale_media_url("https://newref.supabase.co/storage/v1/object/public/media/a.mp4")
+    assert not publish._stale_media_url("https://github.com/x/releases/download/a.mp4")
