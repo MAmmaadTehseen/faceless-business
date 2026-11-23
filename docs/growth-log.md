@@ -300,3 +300,7 @@ Honest distance: the best video on the network is at 2% of its target; no video 
 ### Loop
 
 From today the growth loop runs every 6 hours as a scheduled task: scoreboard, compare with the previous snapshot, change one thing with evidence, test, commit, log here. Owner actions live in the growth to-do artifact.
+
+- Owner to-do list: https://claude.ai/artifact/MYKD1Jzf9dJqPdSsHcEnbZ (source `docs/growth-todo.html`; tasks in its `todos` collection, scoreboard in `meta/scoreboard`). The owner ticks items; the loop reads them and adds new ones only for genuinely owner-only work.
+- Scheduled task `growth-loop-6h` (Claude app, every 6 hours at :15 local) runs the loop. It runs while the app is open and catches up on next launch.
+- Browser pane lost its Google sign-in again (2026-11-23), so today's indexing batch and Studio reads wait for the owner to sign in (to-do item 'Sign in to Google in Claude's browser pane').

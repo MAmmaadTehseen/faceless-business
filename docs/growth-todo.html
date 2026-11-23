@@ -1,0 +1,215 @@
+<title>Growth To-Do</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column, scoreboard strip on top (distance to 10k / 40k), then open tasks grouped by platform, then done. */
+:root {
+  --bg: #f3f5f6; --surface: #ffffff; --ink: #13181d; --muted: #5d6973; --line: #d9dfe3;
+  --accent: #e0531f; --accent-soft: #fbe3d8; --ok: #1f8a5b; --ok-soft: #dcf1e7;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1316; --surface: #171c21; --ink: #e8edf0; --muted: #94a1ab; --line: #2a323a;
+  --accent: #ff7a45; --accent-soft: #3a2117; --ok: #4cc490; --ok-soft: #15301f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1316; --surface: #171c21; --ink: #e8edf0; --muted: #94a1ab; --line: #2a323a;
+  --accent: #ff7a45; --accent-soft: #3a2117; --ok: #4cc490; --ok-soft: #15301f; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+h1 { font: 800 clamp(28px, 6vw, 40px)/1.05 var(--display); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0; max-width: 62ch; }
+h2 { font: 600 13px/1 var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0; }
+
+.board { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; }
+.board-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.stamp { font: 12px var(--mono); color: var(--muted); }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: minmax(120px, 170px) 1fr auto; gap: 12px; align-items: center; }
+.row .name { font-weight: 500; min-width: 0; }
+.row .name small { display: block; color: var(--muted); font: 12px var(--mono); }
+.track { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; position: relative; }
+.fill { height: 100%; background: var(--accent); border-radius: 4px; min-width: 2px; }
+.num { font: 13px var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.num b { font-weight: 500; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font: 500 13px var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip:focus-visible, .check:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.group { display: grid; gap: 10px; }
+.task { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: 28px 1fr; gap: 12px; }
+.task.done { background: transparent; }
+.task.done .t-title { text-decoration: line-through; color: var(--muted); }
+.check { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--muted); background: transparent; cursor: pointer; display: grid; place-items: center; padding: 0; margin-top: 1px; }
+.check[aria-checked="true"] { background: var(--ok); border-color: var(--ok); }
+.check svg { width: 14px; height: 14px; stroke: var(--surface); }
+.t-body { min-width: 0; display: grid; gap: 6px; }
+.t-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.t-title { font-weight: 600; }
+.tag { font: 500 11px var(--mono); padding: 2px 7px; border-radius: 4px; background: var(--bg); color: var(--muted); }
+.tag.p1 { background: var(--accent-soft); color: var(--accent); }
+.tag.time { background: transparent; border: 1px solid var(--line); }
+.t-why { color: var(--muted); font-size: 14px; margin: 0; }
+.t-steps { margin: 0; padding-left: 18px; font-size: 14px; display: grid; gap: 2px; }
+.t-link { font: 13px var(--mono); color: var(--accent); word-break: break-all; }
+.t-done-at { font: 12px var(--mono); color: var(--ok); }
+.empty { border: 1px dashed var(--line); border-radius: 10px; padding: 20px; color: var(--muted); text-align: center; }
+.status { font-size: 13px; color: var(--muted); }
+@media (max-width: 520px) { .row { grid-template-columns: 1fr auto; } .row .track { grid-column: 1 / -1; order: 3; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Growth To-Do</h1>
+    <p class="lede">The jobs only you can do for the channels. Tick each one when it is done; Claude reads this list every six hours, adds new items, and checks what you finished.</p>
+  </header>
+
+  <section class="board" aria-labelledby="sb-h">
+    <div class="board-head">
+      <h2 id="sb-h">Distance to target</h2>
+      <span class="stamp" id="sb-stamp">Waiting for the first scoreboard</span>
+    </div>
+    <div class="rows" id="sb-rows"></div>
+    <p class="note">Bars show each channel's best public video against the target: 10,000 views per long video, 40,000 per Short.</p>
+  </section>
+
+  <section class="group" aria-labelledby="todo-h">
+    <div class="board-head">
+      <h2 id="todo-h">To do</h2>
+      <div class="filters" role="group" aria-label="Filter by platform" id="filters"></div>
+    </div>
+    <div class="group" id="open"></div>
+  </section>
+
+  <section class="group" aria-labelledby="done-h">
+    <h2 id="done-h">Done</h2>
+    <div class="group" id="done"></div>
+  </section>
+  <p class="status" id="status" role="status"></p>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let todos = [], filter = "All", db = null, canWrite = true;
+const tick = '<svg viewBox="0 0 16 16" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function fmt(n) { return Number(n || 0).toLocaleString("en-US"); }
+
+function renderBoard(doc) {
+  const rows = $("sb-rows"); rows.textContent = "";
+  if (!doc || !Array.isArray(doc.rows) || !doc.rows.length) {
+    rows.append(el("p", "note", "The loop writes the scoreboard here after its next run."));
+    return;
+  }
+  $("sb-stamp").textContent = "Updated " + (doc.updated || "").replace("T", " ").slice(0, 16) + " UTC";
+  for (const r of doc.rows) {
+    const row = el("div", "row");
+    const name = el("div", "name", r.label || r.channel);
+    name.append(el("small", null, r.kind === "long" ? "long videos" : "Shorts"));
+    const track = el("div", "track");
+    const fill = el("div", "fill");
+    const pct = Math.min(100, (r.best / r.target) * 100);
+    fill.style.width = Math.max(pct, 0.4) + "%";
+    track.append(fill);
+    const num = el("div", "num");
+    num.innerHTML = "<b></b> / " + fmt(r.target);
+    num.querySelector("b").textContent = fmt(r.best);
+    row.append(name, track, num);
+    rows.append(row);
+  }
+}
+
+function renderFilters() {
+  const areas = ["All", ...new Set(todos.filter(t => !t.done).map(t => t.area || "Other"))];
+  if (!areas.includes(filter)) filter = "All";
+  const box = $("filters"); box.textContent = "";
+  for (const a of areas) {
+    const b = el("button", "chip", a);
+    b.type = "button"; b.id = "filter-" + a.replace(/\W+/g, "-");
+    b.setAttribute("aria-pressed", String(a === filter));
+    b.addEventListener("click", () => { filter = a; render(); });
+    box.append(b);
+  }
+}
+
+function card(t) {
+  const c = el("article", "task" + (t.done ? " done" : ""));
+  const box = el("button", "check");
+  box.type = "button"; box.id = "check-" + t.id;
+  box.setAttribute("role", "checkbox");
+  box.setAttribute("aria-checked", String(!!t.done));
+  box.setAttribute("aria-label", (t.done ? "Mark not done: " : "Mark done: ") + t.title);
+  box.innerHTML = t.done ? tick : "";
+  box.disabled = !canWrite;
+  box.addEventListener("click", () => toggle(t));
+  const body = el("div", "t-body");
+  const top = el("div", "t-top");
+  top.append(el("span", "t-title", t.title));
+  if (t.priority === 1 && !t.done) top.append(el("span", "tag p1", "first"));
+  if (t.area) top.append(el("span", "tag", t.area));
+  if (t.effort) top.append(el("span", "tag time", t.effort));
+  body.append(top);
+  if (t.why) body.append(el("p", "t-why", t.why));
+  if (Array.isArray(t.steps) && t.steps.length && !t.done) {
+    const ol = el("ol", "t-steps");
+    for (const s of t.steps) ol.append(el("li", null, s));
+    body.append(ol);
+  }
+  if (t.link && !t.done) {
+    const a = el("a", "t-link", t.link); a.href = t.link; a.target = "_blank"; a.rel = "noopener";
+    body.append(a);
+  }
+  if (t.done && t.doneAt) body.append(el("span", "t-done-at", "Done " + t.doneAt.slice(0, 10)));
+  c.append(box, body);
+  return c;
+}
+
+function render() {
+  renderFilters();
+  const open = todos.filter(t => !t.done && (filter === "All" || (t.area || "Other") === filter))
+    .sort((a, b) => (a.priority || 9) - (b.priority || 9) || (a.order || 0) - (b.order || 0));
+  const done = todos.filter(t => t.done).sort((a, b) => String(b.doneAt || "").localeCompare(String(a.doneAt || "")));
+  const o = $("open"), d = $("done");
+  o.textContent = ""; d.textContent = "";
+  if (!open.length) o.append(el("div", "empty", todos.length ? "Nothing open here. Claude adds new items after each run." : "Loading your list…"));
+  open.forEach(t => o.append(card(t)));
+  if (!done.length) d.append(el("div", "empty", "Ticked items move here."));
+  done.forEach(t => d.append(card(t)));
+}
+
+async function toggle(t) {
+  if (!db) return;
+  const done = !t.done;
+  try {
+    await db.doc("todos/" + t.id).update({ done, doneAt: done ? new Date().toISOString() : null });
+    $("status").textContent = done ? "Marked done: " + t.title : "Reopened: " + t.title;
+  } catch (e) {
+    if (e && e.code === "invalid_argument") { canWrite = false; render(); }
+    $("status").textContent = "Could not save that tick (" + (e && e.code || "error") + "). Try again in a moment.";
+  }
+}
+
+render(); renderBoard(null);
+(async () => {
+  const timer = setTimeout(() => { if (!todos.length) $("status").textContent = "Still connecting to the list…"; }, 10000);
+  db = await window.claude?.use?.("db");
+  if (!db) { clearTimeout(timer); $("status").textContent = "Open this page in Claude to see and tick the list."; return; }
+  const user = await window.claude.use("user");
+  if (user) { const w = await user.can("data.write"); if (w === false) canWrite = false; }
+  db.collection("todos").onSnapshot((snap) => {
+    clearTimeout(timer);
+    todos = snap.docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }));
+    $("status").textContent = "";
+    render();
+  }, (e) => { clearTimeout(timer); $("status").textContent = "The list stopped updating (" + e.code + "). Reload the page."; });
+  db.doc("meta/scoreboard").onSnapshot((s) => renderBoard(s.exists ? s.data() : null), () => {});
+})();
+</script>
