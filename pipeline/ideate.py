@@ -64,13 +64,22 @@ def choose_topic(db, claude: Claude, channel=None) -> dict | None:
     if not news:
         return None
 
-    listing = "\n".join(f"[{i}] {n['headline']} ({n['source']}, {n['published'] or 'n/a'})" for i, n in enumerate(news))
+    try:
+        from .search_demand import demand
+        for n in news[:20]:
+            n["demand"] = demand(n["headline"])["score"]
+    except Exception:
+        pass
+    listing = "\n".join(f"[{i}] {n['headline']} ({n['source']}, {n['published'] or 'n/a'}; search demand {n.get('demand', 'n/a')})"
+                         for i, n in enumerate(news))
     prompt = (
         "Pick the single best candidate for today's long YouTube video for this channel.\n"
         "Criteria, in order: mass appeal beyond insiders; a strong, honest angle the persona can own; "
         "freshness; enough substance for 8-12 minutes; not a duplicate of recent videos; "
         "a nameable actor or object (a company, agency, mission, product, country) plus at least one hard number, "
         "because Shorts cut from it must open with a named thing or a figure, and abstract policy stories die in the first two seconds.\n"
+        "Search demand is how many YouTube autocomplete phrases exist for the candidate's subject; when two candidates are "
+        "otherwise close, pick the one people already search for.\n"
         "Skip anything that only works as clickbait, anything medical/legal/financial-advice shaped, "
         "and anything the persona's red lines forbid.\n\n"
         f"Recent video topics (avoid repeats):\n- " + "\n- ".join(recent_titles[:40]) + "\n\n"

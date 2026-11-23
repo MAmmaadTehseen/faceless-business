@@ -25,7 +25,7 @@ SCRIPT_SCHEMA = {
         "script": {"type": "array", "items": {"type": "string"}, "description": "Narration paragraphs in order, spoken English only, no headings, no stage directions, 1300-1900 words total"},
         "shot_list": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["paragraph_index", "query", "mood"], "properties": {"paragraph_index": {"type": "integer"}, "query": {"type": "string", "description": "2-4 word stock VIDEO search that a free stock library will certainly have: generic, physical, filmable things (e.g. 'office worker typing', 'server room aisle', 'city street timelapse', 'handshake meeting', 'parliament building exterior'). Never company names, countries, people, abstract nouns, or events."}, "mood": {"type": "string", "enum": ["calm", "tense", "bright", "dark"]}}}, "description": "One entry per paragraph"},
         "facts_check": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["claim", "source", "confidence"], "properties": {"claim": {"type": "string"}, "source": {"type": "string"}, "confidence": {"type": "string", "enum": ["verified", "likely", "unverified"]}}}},
-        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; it is shown on screen for the first two seconds"}, "script": {"type": "string", "description": "75-110 words, self-contained; first sentence under 12 words with a named actor or a number; payoff by sentence three; last line a question or a loop back to the first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
+        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; it is shown on screen for the first two seconds"}, "script": {"type": "string", "description": "Self-contained; QUICK Shorts (1 and 3) 50-70 words, STANDARD Shorts (2 and 4) 75-110 words; first sentence under 12 words with a named actor or a number; payoff by sentence three; last line a question or a loop back to the first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
     },
 }
 
@@ -38,6 +38,14 @@ HOOK_SCHEMA = {
 # scripts aim for 75-110 words. The prompt asks for it; tighten_shorts enforces it.
 SHORT_WORDS = (75, 110)
 SHORT_WORDS_ACCEPT = (60, 115)
+# Length experiment (2026-11-23): Ten Tongues' 27-35 s Shorts out-view the 48-54 s explainer Shorts.
+# Shorts 1 and 3 of each video are QUICK, 2 and 4 STANDARD; the scoreboard compares them by duration.
+QUICK_WORDS = (50, 70)
+QUICK_WORDS_ACCEPT = (40, 78)
+
+
+def budget(short: dict) -> tuple[tuple[int, int], tuple[int, int]]:
+    return (QUICK_WORDS, QUICK_WORDS_ACCEPT) if short.get("length") == "quick" else (SHORT_WORDS, SHORT_WORDS_ACCEPT)
 TIGHTEN_SCHEMA = {
     "type": "object", "additionalProperties": False, "required": ["script"],
     "properties": {"script": {"type": "string", "description": "The tightened Short script, 75-110 words"}},
@@ -57,12 +65,13 @@ def tighten_shorts(claude, shorts: list[dict], content_id: str | None = None) ->
     out = []
     for short in shorts:
         words = word_count(short.get("script"))
-        log.info("short %r: %d words", short.get("hook_title"), words)
-        if words <= SHORT_WORDS[1]:
+        (lo, hi), (acc_lo, acc_hi) = budget(short)
+        log.info("short %r (%s): %d words", short.get("hook_title"), short.get("length", "standard"), words)
+        if words <= hi:
             out.append(short)
             continue
         prompt = (
-            f"This Short script is {words} words; it must be {SHORT_WORDS[0]}-{SHORT_WORDS[1]} words (about 35-45 seconds spoken). "
+            f"This Short script is {words} words; it must be {lo}-{hi} words (about {round(lo / 2.5)}-{round(hi / 2.5)} seconds spoken). "
             "Cut it to length. Keep the first sentence as the hook (under twelve words, naming a specific actor, object or number), "
             "keep every fact, number and attribution you retain accurate, reach the payoff by sentence three, and keep the last line "
             "as a question or a loop back to the first line. Remove examples, repetition and transitions before anything else. "
@@ -73,7 +82,7 @@ def tighten_shorts(claude, shorts: list[dict], content_id: str | None = None) ->
             data, _ = claude.run("short_tighten", prompt, schema=TIGHTEN_SCHEMA, effort="low", max_tokens=1500, content_id=content_id, retries=1)
             new = str(data.get("script") or "").strip()
             n = word_count(new)
-            if SHORT_WORDS_ACCEPT[0] <= n <= SHORT_WORDS_ACCEPT[1]:
+            if acc_lo <= n <= acc_hi:
                 log.info("short %r tightened: %d -> %d words", short.get("hook_title"), words, n)
                 short = {**short, "script": new}
             else:
@@ -109,11 +118,21 @@ def strip_script_dashes(value):
     return result
 
 
+def search_block(topic: dict) -> str:
+    """Real YouTube autocomplete phrasing for the topic (growth loop 2026-11-23); "" when unavailable."""
+    try:
+        from .search_demand import prompt_block
+        return prompt_block(f"{topic.get('topic', '')} {topic.get('source_headline') or ''}")
+    except Exception:
+        return ""
+
+
 def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: int = 4) -> dict:
     user = (
         f"Today's video topic: {topic['topic']}\n"
         f"Angle: {topic.get('angle') or 'choose the persona\'s strongest honest angle'}\n"
-        f"Seed headline: {topic.get('source_headline') or ''}\nSeed url: {topic.get('source_url') or ''}\n\n"
+        f"Seed headline: {topic.get('source_headline') or ''}\nSeed url: {topic.get('source_url') or ''}\n"
+        f"{search_block(topic)}\n"
         "Step 1: research. Use web search to confirm the core facts, find 4-8 concrete, recent, attributable facts "
         "(numbers, names, dates, quotes) and at least one contrasting view. Prefer primary sources and major outlets.\n"
         "Step 2: write the long video following the script sequence and style exactly. 1300-1900 words of narration. "
@@ -128,7 +147,7 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "one shot-list query per paragraph (generic stock-video phrases that always exist: people at desks, buildings, screens, streets, hands, machines; vary them so no two consecutive paragraphs share a query; never names of companies, countries, or people), "
         f"a facts_check table, and exactly {shorts_per_long} Shorts scripts. Each must cover a DIFFERENT angle "
         "(the number, the human consequence, the contrarian take, the what-to-do-now), be self-contained, "
-        "75-110 words (about 35-45 seconds spoken), with its own hook in the first line. No two Shorts may share a hook or statistic. "
+        "with its own hook in the first line. Length experiment: Shorts 1 and 3 are QUICK, 50-70 words (about 20-28 seconds): one fact, one turn, and a last line that loops into the first; Shorts 2 and 4 are STANDARD, 75-110 words (about 35-45 seconds). No two Shorts may share a hook or statistic. "
         "Shorts hook rules: hook_title is under 45 characters and names the specific subject (a proper noun or a number) in its first three words, because it is shown on screen for the first two seconds; the first sentence is under twelve words and names a specific actor, object or number; "
         "no setup, no 'in this video', no question-only opener; the payoff lands by the third sentence; "
         "the last line is either a question the viewer can answer in one comment or a line that loops back to the first sentence.\n"
@@ -204,6 +223,8 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         seen.add(first)
         unique.append(short)
     data["shorts"] = unique[:shorts_per_long]
+    for i, short in enumerate(data["shorts"]):
+        short.setdefault("length", "quick" if i % 2 == 0 else "standard")
     if not reused:
         data["shorts"] = strip_script_dashes({"shorts": tighten_shorts(claude, data["shorts"], content_id)})["shorts"]
     words = sum(len(p.split()) for p in data["script"])

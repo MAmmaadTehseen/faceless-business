@@ -38,3 +38,11 @@ def isolated_database(monkeypatch, tmp_path):
     monkeypatch.setattr(httpx.AsyncClient, 'send', offline)
     monkeypatch.setattr(httpx2.AsyncClient, 'send', offline)
     monkeypatch.setattr(subprocess, 'run', local_process)
+
+
+@pytest.fixture(autouse=True)
+def no_search_demand_network(monkeypatch):
+    """YouTube autocomplete is live HTTP; tests never touch it (test_search_demand stubs requests itself)."""
+    import pipeline.search_demand as sd
+    monkeypatch.setattr(sd, "_cache", {})
+    monkeypatch.setattr(sd.requests, "get", lambda *a, **k: (_ for _ in ()).throw(ConnectionError("network disabled in tests")))

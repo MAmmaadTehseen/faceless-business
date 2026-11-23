@@ -265,3 +265,38 @@ Reading:
 - Escape Velocity verified by the owner (API now reports `longUploadsStatus: allowed`).
 - `scripts/backfill_thumbnails.py --channel <key> [--apply]`: for every scheduled private long video, one small model call writes 2-5 subject/number words plus a stock-image query, a frame is fetched through the normal footage providers (the rendered video is not on this machine), the new design is rendered and `thumbnails.set` is called (50 units each). Applied to Escape Velocity, Future Work and Trade Winds; Ten Tongues' three scheduled episodes got the new card (word large on the brand colour, three translations large in their own scripts on the dark panel; the old dark gradient with six tiny chips had 0.8% CTR).
 - Judge: Studio CTR per channel on 2026-11-26 against today's table (FW 4.7%, TW 2.1%, EV 1.3%, TT 0.8%).
+
+
+## Round 3: 2026-11-23 (owner target: 10,000 views per long video, 40,000 per Short)
+
+### Scoreboard (YouTube API, all public uploads; `scripts/yt_scoreboard.py`)
+
+| channel | kind | n | median views | best | best as % of target | median % viewed |
+|---|---|---|---|---|---|---|
+| futurework | long | 14 | 8 | 25 | 0.25% | 16 |
+| futurework | short | 45 | 10 | 92 | 0.23% | 38 |
+| tradewinds | long | 11 | 1 | 59 | 0.59% | 12.5 |
+| tradewinds | short | 42 | 21 | 265 | 0.66% | 53 |
+| escapevelocity | long | 11 | 4 | 27 | 0.27% | 10 |
+| escapevelocity | short | 45 | 24 | 620 | 1.55% | 37.5 |
+| tentongues | long | 6 | 3 | 30 | 0.3% | 42 |
+| tentongues | short | 59 | 24 | 799 | 2.0% | 40 |
+
+Honest distance: the best video on the network is at 2% of its target; no video is within 50x. Frame and Argument skipped (no channel.json key for the scoreboard yet).
+
+### Diagnosis
+
+- The network's top Shorts are Ten Tongues per-language words (Rice/Tea in Russian 799/576, Bread in Japanese 459, Tea in Portuguese 389): 27-35 s, titles that match what people type. Explainer Shorts run 48-54 s and median 10-24 views.
+- Long videos get almost no impressions; what they get is mostly search. Titles that match real search phrasing are the only free lever there.
+- Newest Trade Winds Shorts (first card-bearing ones) are at 27-40 views inside one day against a channel median of 21: too early to call, but the right direction.
+
+### Shipped
+
+- `pipeline/search_demand.py`: YouTube autocomplete (free, keyless) as a demand signal. Ideation sees a relevance-weighted demand score per headline (completions that extend a specific 2-3 word phrase from it; "starship flight 15" 70, "strait of hormuz" 50, abstract policy headlines 0) and prefers searched subjects when candidates are close. The script prompt gets up to eight real search phrases and must use one near the start of the main title and one Short hook_title where it fits honestly. Fails soft; tests never touch the network.
+- Shorts length experiment: of each video's four Shorts, 1 and 3 are QUICK (50-70 words, about 20-28 s, loop ending) and 2 and 4 STANDARD (75-110 words). `tighten_shorts` enforces each budget. The scoreboard records duration, so the loop compares under-30 s against 35-45 s Shorts directly.
+- `scripts/yt_scoreboard.py`: read-only scoreboard from the YouTube API (no Supabase), saved to `data/scoreboard/<date>.json` for trend lines.
+- Tests: `tests/test_search_demand.py` (5). Suite: 429 passed.
+
+### Loop
+
+From today the growth loop runs every 6 hours as a scheduled task: scoreboard, compare with the previous snapshot, change one thing with evidence, test, commit, log here. Owner actions live in the growth to-do artifact.
