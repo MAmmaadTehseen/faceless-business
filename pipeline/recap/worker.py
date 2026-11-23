@@ -117,6 +117,7 @@ SHORT_BEATS = {"short1": "the setup: who these people are and the moment everyth
 
 def scripts(claude, state, transcript, scenes, names):
     """Bounded model calls: one beat sheet, then the long recap in acts and one call per Short."""
+    from pipeline.common import log
     language = transcript.get('language', 'unknown') if isinstance(transcript, dict) else 'unknown (legacy transcript)'
     duration = int(scenes[-1]["end"]) if scenes else 0
     blocks = compact_evidence(transcript, scenes)["transcript_blocks"]
@@ -155,7 +156,11 @@ def scripts(claude, state, transcript, scenes, names):
                     item = claude.run("recap_script", prompt, schema=schema, content_id="filmreview-" + state["id"] + "-" + name, max_tokens=12000)[0][name]
             except RuntimeError as exc:
                 # Malformed JSON from the model is retried like any other invalid draft.
+                log.warning("recap script %s attempt %d: %s", name, attempt + 1, str(exc)[:200])
                 if "schema" not in str(exc) or attempt == 2:
+                    if name != "long" and attempt == 2:
+                        log.warning("recap script %s skipped after three invalid drafts", name)
+                        break
                     raise
                 feedback = " Return valid JSON exactly matching the schema; at_seconds must be an integer."
                 continue
@@ -165,9 +170,16 @@ def scripts(claude, state, transcript, scenes, names):
             if not problem:
                 value[name] = item
                 break
+            log.warning("recap script %s attempt %d rejected: %s", name, attempt + 1, problem)
             if attempt == 2:
+                if name != "long":
+                    # A Short that will not come right is dropped; the long recap and the other Shorts still ship.
+                    log.warning("recap script %s skipped after three rejected drafts", name)
+                    break
                 raise ValueError(f"{name}: {problem}; regenerate")
             feedback = f" Your previous draft was rejected: {problem}. Fix exactly that and keep everything else."
+    if "long" in names and "long" not in value:
+        raise ValueError("long: no usable script; regenerate")
     return value
 
 
@@ -392,6 +404,7 @@ def generate(work, state, only=None, *, db=None, claude=None, rerender=False):
         pending = [n for n in names if n not in produced] if state.get("batch_resume") else list(names)
         generated = {**state["items"], **scripts(claude, state, transcript, scenes, pending)}
     progress("select")
+    names = [n for n in names if n in generated]  # Shorts dropped after repeated invalid drafts are simply absent
     for name in names:
         item = generated[name]
         if not state.get("batch_resume") or "approved" not in item:

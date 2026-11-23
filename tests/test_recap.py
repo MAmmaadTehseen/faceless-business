@@ -391,3 +391,24 @@ def test_upload_resumes_after_long_already_uploaded(video, monkeypatch):
     assert [c[0].rsplit("-", 1)[1] for c in calls] == ["short1", "short2", "short3", "short4"]
     assert all(c[1] > slot for c in calls)
     assert mocked.captions.return_value.insert.call_count == 5 and state["items"]["long"]["captions_uploaded"]
+
+
+def test_failing_short_is_skipped_but_long_is_required(monkeypatch):
+    from unittest.mock import Mock
+    claude = Mock()
+    good = {"title": "T", "description": "d", "accuracy_check": [], "segments": [{"text": "a " * 120, "at_seconds": 1}]}
+    bad = {"title": "T", "description": "d", "accuracy_check": [], "segments": [{"text": "too short", "at_seconds": 1}]}
+    def run(step, *a, **k):
+        req = k["schema"]["required"]
+        if step == "recap_beats":
+            return {"synopsis": "s", "beats": [{"at_seconds": 1, "event": "e"}]}, 0
+        if req == ["segments"]:
+            return {"segments": [{"text": "a " * 400, "at_seconds": 1}]}, 0
+        if "accuracy_check" in req and "segments" not in req:
+            return {"title": "L", "description": "d", "accuracy_check": []}, 0
+        return {req[0]: bad if req[0] == "short2" else good}, 0
+    claude.run.side_effect = run
+    scenes = [{"start": 0, "end": 10}]
+    state = {"id": "f" * 32, "title": "F", "year": 2024, "items": {}}
+    value = worker.scripts(claude, state, {"language": "en", "segments": []}, scenes, ["long", "short1", "short2"])
+    assert set(value) == {"long", "short1"}
