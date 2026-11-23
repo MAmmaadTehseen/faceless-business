@@ -358,9 +358,12 @@ def follow_youtube_to_reels(db, channel) -> int:
               if c.get("qa_status") == "passed" and not c.get("placeholder")}
     done = 0
     recent = (datetime.now(timezone.utc) - timedelta(days=REELS_FOLLOW_DAYS)).isoformat()
+    # Restoring missing media costs about a minute per Short; remember misses so each is tried once.
+    missing_key = f"reels_follow_missing_{channel.key}"
+    missing = set(db.setting(missing_key, []) or [])
     for p in db.select("publications", {"platform": "youtube", "status": "live"}):
         s = shorts.get(p["content_id"])
-        if not s or p.get("privacy") != "public":
+        if not s or p.get("privacy") != "public" or s["id"] in missing:
             continue
         if (p.get("publish_at") or p.get("published_at") or "") < recent:
             continue  # old backlog: Reels days or weeks late add nothing and would flood the accounts
@@ -374,6 +377,8 @@ def follow_youtube_to_reels(db, channel) -> int:
                 s = restore(db, s, p)
             except Exception as e:
                 log.warning("reels follow-up: no media for %s on this runner (%s); skipped", s["id"], type(e).__name__)
+                missing.add(s["id"])
+                db.set_setting(missing_key, sorted(missing))
                 continue
         parent = db.one("publications", {"content_id": s.get("parent_id") or "", "platform": "youtube"}) if s.get("parent_id") else None
         try:
@@ -381,6 +386,8 @@ def follow_youtube_to_reels(db, channel) -> int:
             done += sum(1 for r in res if r["platform"] in ("instagram", "facebook"))
         except Exception as e:
             log.error("reels follow-up failed for %s (%s)", s["id"], type(e).__name__)
+            missing.add(s["id"])
+            db.set_setting(missing_key, sorted(missing))
     if done:
         log.info("reels[%s]: published %d following YouTube going public", channel.key, done)
     return done
