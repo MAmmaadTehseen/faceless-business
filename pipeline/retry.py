@@ -98,8 +98,8 @@ def restore(db, row, pub, deep=True):
     info = {**_json(row.get("qa_notes")), **_json(pub.get("error"))}
     run_id = pub.get("artifact_run_id") or row.get("artifact_run_id") or info.get("artifact_run_id")
     artifact = pub.get("artifact_name") or row.get("artifact_name") or info.get("artifact_name")
-    tried.append("producing GitHub artifact")
-    if run_id and str(run_id).isdigit():
+    tried.append("producing GitHub artifact" if deep else "producing GitHub artifact: skipped (quick restore)")
+    if deep and run_id and str(run_id).isdigit():
         try:
             path = _artifact_file(row, run_id, artifact)
             if path:

@@ -41,8 +41,9 @@ def test_quick_restore_skips_artifact_scan(tmp_path, monkeypatch):
     db = _db(tmp_path, monkeypatch)
     row = {"id": "futurework-y-short-1", "channel": "futurework", "file_path": str(tmp_path / "no.mp4")}
     with patch.object(retry, "_restore_queue", return_value=row), \
+         patch.object(retry, "_artifact_file", side_effect=AssertionError("artifact download must not run")), \
          patch.object(retry, "_api", side_effect=AssertionError("artifact scan must not run")):
         try:
-            retry.restore(db, row, {"platform": "youtube"}, deep=False)
+            retry.restore(db, row, {"platform": "youtube", "artifact_run_id": "123"}, deep=False)
         except FileNotFoundError as e:
             assert "skipped (quick restore)" in str(e)

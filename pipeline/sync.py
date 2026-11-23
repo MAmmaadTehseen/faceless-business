@@ -1,6 +1,7 @@
 """Pull metrics and comments for every live publication into the DB. Runs every 6h."""
 from __future__ import annotations
 
+import time
 import re
 
 from .common import Channel, log, now_iso
@@ -31,7 +32,9 @@ def main():
             # The film recap channel keeps local.json (no crons), but its YouTube metrics and comments
             # still belong in the dashboard.
             channel = _film_channel() if key == "filmreview" else Channel(key)
+            started = time.monotonic()
             (drain_youtube_queue if args.drain_only else sync_channel)(db, channel)
+            log.info("sync %s took %.0fs", key, time.monotonic() - started)
         except Exception as e:
             log.error("sync %s failed: %s", key, e)
 
