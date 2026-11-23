@@ -380,3 +380,40 @@ Median views per Ten Tongues Short by language (7 words, n=6-8 each): Russian 23
 
 - Rotation: from the next Ten Tongues episode (2026-11-24 onward), compare views at 48 h by posting hour vs by language. Judge on 2026-12-04 (10 rotated episodes). If hour dominates, move `shorts_hour_utc` to the winning window; if language dominates, give Russian/Japanese/Italian the best slots and test a second Short format for them.
 - Quick vs standard Shorts: judge from 2026-11-26.
+
+
+## Loop run: 2026-11-23 19:25 UTC
+
+### Scoreboard (`data/scoreboard/2026-11-23T19.json`, deduplicated)
+
+| channel | long n / median / best | short n / median / best |
+|---|---|---|
+| futurework | 13 / 8 / 25 | 42 / 10 / 92 |
+| tradewinds | 11 / 1 / 59 | 43 / 21 / 265 |
+| escapevelocity | 12 / 3.5 / 28 | 41 / 24 / 620 |
+| tentongues | 6 / 3.5 / 30 | 69 / 27 / 921 |
+| filmreview | 1 / 73 / 73 | 4 / 103 / 416 |
+
+Since 13:23: flat. "Rice in Russian" 921 (2.3% of the Short target) is still the best; best long is Frame and Argument's 73 (0.7%). New today: Escape Velocity "When Will Humans Fly on Starship? 3 Gates Left" (public 16:00, 0 views at 3 h), Future Work "Pilot or funded?" (1 view at 14 h), Trade Winds "Trace Your Avocado Tonight" (11 views in ~5 h, 44/day, twice the channel median).
+
+### Shipped
+
+- Scoreboard fix: the uploads playlist returned 23 Future Work videos twice (265 rows, 242 unique), inflating n and skewing medians (the 13:23 snapshot's FW long n flipped 14 -> 13 for the same reason). `channel_videos()` now dedupes ids before `videos.list`; `tests/test_yt_scoreboard.py`. Suite 445 passed. Earlier snapshots may carry duplicates; compare by unique id.
+
+### Finding: the quick vs standard Shorts experiment cannot be judged on 2026-11-26
+
+The explainer calendars are full of Shorts made before the experiment (released stockpile bundles and older productions). Every explainer Short going public today is 46-52 s. YouTube publications scheduled from now: Future Work runs to 2026-12-31, Trade Winds and Escape Velocity to 2026-12-05/07. The first QUICK Shorts (LinkedIn CEO episode, 56 and 63 words) go public on 2026-12-30. Ten Tongues Shorts are all 27-35 s, so they don't test length either. New judge date: early January, unless the backlog drains faster.
+
+Candidate for the next run (not done unattended, because it moves ~40 scheduled `publishAt`s and costs quota): raise explainer `max_youtube_per_day` from 3 to 4 so the backlog of five-week-old news Shorts drains sooner and the experiment starts earlier. Weigh it against the quota (compress costs 51 units per moved video; the general reserve must hold).
+
+### Not done, and why
+
+- The browser pane is signed out of Google again (YouTube shows "Sign in", Search Console shows the landing page). Blocked: the Escape Velocity Community post, today's indexing requests (starship-flight-15, dutch-government, Ten Tongues rice/tea/bread/egg/salt) and the Studio Reach read. Owner to-do added: "Sign in to Google in Claude's browser pane again". Community post text, ready to paste: "So tell me, which gate do you think breaks first: refuelling, the Moon, or certification? https://youtu.be/xAxaTViQdSs"
+- No owner to-do items were newly ticked since 13:23.
+- Workflows: the only failure in the last 30 runs is the 16:43 `recap` run (another session's dispatch).
+
+### Measuring
+
+- Ten Tongues hour vs language rotation: judge 2026-12-04.
+- Quick vs standard Shorts: first quick explainer Shorts go public 2026-12-30; judge in January (see above).
+- Thumbnail CTR in Studio Reach from 2026-11-30 (needs the Google sign-in).

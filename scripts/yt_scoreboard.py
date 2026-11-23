@@ -55,6 +55,9 @@ def channel_videos(key: str, max_items: int = 200) -> list[dict]:
         token = res.get("nextPageToken")
         if not token:
             break
+    # The uploads playlist can repeat items across pages (seen 2026-11-23: 23 Future Work
+    # videos twice), which inflated n and skewed medians.
+    ids = list(dict.fromkeys(ids))
     rows = []
     for i in range(0, len(ids), 50):
         res = youtube.yt().videos().list(part="snippet,statistics,status,contentDetails", id=",".join(ids[i:i + 50])).execute()
