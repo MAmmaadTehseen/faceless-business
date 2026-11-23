@@ -1,3 +1,5 @@
+import { DonutCard } from "@/components/Donut";
+import { parseRange } from "@/lib/range";
 import { scopedSearch } from "@/lib/server-scope";
 import { AutoFilters } from "@/components/AutoFilters";
 import { SeriesReport, type ReportColumn } from "@/components/SeriesReport";
@@ -6,7 +8,7 @@ import { HubAnalytics, HubChannels } from "@/components/HubAnalytics";
 import { ReplaceLink as Link } from "@/components/ReplaceLink";
 import { getAnalytics, Totals } from "@/lib/analytics";
 import { getChannelFilter } from "@/lib/channel-filter";
-import { channelMeta, parseChannelFilter } from "@/lib/channels";
+import { CHANNELS, accentCss, channelMeta, parseChannelFilter } from "@/lib/channels";
 import { fmtCount } from "@/lib/format";
 import { filterContent } from "@/lib/content-filters";
 import { ContentFilters } from "@/components/ContentFilters";
@@ -112,12 +114,13 @@ export default async function Analytics({
   ];
   const tab = sp.platform === "hub" ? "hub" : tabs.includes(sp.tab) ? sp.tab : "overview";
   // All-time uses the full stored history, rounded up to whole days.
-  const days = [1, 7, 28, 30, 90].includes(Number(sp.days)) ? Number(sp.days) : 28;
+  const range = parseRange(sp);
+  const days = range.days;
   const hub =
     (tab === "hub" || tab === "channels") && (!sp.platform || sp.platform === "hub")
-      ? await getHubAnalytics(channel, days, sp.days === "all")
+      ? await getHubAnalytics(channel, Math.max(1, Math.round(days)), range.allTime)
       : null;
-  const a = await getAnalytics(channel, days, sp.days === "all", sp.platform);
+  const a = await getAnalytics(channel, days, range.allTime, sp.platform, range.end);
   const periodItems = a.videos.map((c) => ({
     ...c,
     publications: c.publications.map((p, i) => ({
@@ -159,12 +162,14 @@ export default async function Analytics({
   };
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Analytics"
-        action={
-          <><nav className="mobile-period-chips" aria-label="Time range">{["1","7","28","90","all"].map(d=>{const q=new URLSearchParams(sp);q.set("days",d);return <Link key={d} href={`?${q}`} aria-current={(sp.days??"28")===d ? "page" : undefined}>{d==="1"?"24h":d==="all"?"All time":`${d} days`}</Link>})}</nav><AutoFilters className="analytics-periods flex justify-end"><select name="days" aria-label="Analytics date range" defaultValue={sp.days ?? "28"}>{["1","7","28","30","90","all"].map(d=><option key={d} value={d}>{d === "1" ? "Last 24 hours" : d === "all" ? "All time" : `${d} days`}</option>)}</select></AutoFilters></>
-        }
-      />
+      <div><h1 className="cr-h1">Analytics</h1><p className="cr-sub">{range.label} · {channel === "all" ? "all channels" : channelMeta(channel)?.short} · {sp.platform ? sp.platform : "all platforms"}</p></div>
+      {tab !== "hub" && <div className="cr-two">
+        <DonutCard label="Views by channel" size={136} center={fmtCount(a.total.views)} sub="views" slices={CHANNELS.filter(c => channel === "all" || c.key === channel).map(c => ({ label: c.short, value: a.channels.find(x => x.name === c.key)?.views ?? 0, color: accentCss(c) }))} />
+        <div className="grid gap-4">
+          <DonutCard label="Views by platform" size={112} slices={a.platforms.map((p, i) => ({ label: p.name === "youtube" ? "YouTube" : p.name === "instagram" ? "Instagram" : p.name === "facebook" ? "Facebook" : p.name, value: p.views, color: ["var(--accent)", "var(--warn)", "var(--muted)"][i] ?? "var(--ok)" }))} />
+          <DonutCard label="Views by format" size={112} slices={a.formats.map((f, i) => ({ label: f.name === "long" ? "Long videos" : f.name === "short" ? "Shorts from videos" : "Daily Shorts", value: f.views, color: ["var(--fg)", "var(--accent)", "var(--muted)"][i] }))} />
+        </div>
+      </div>}
       {tab !== "hub" && (
         <>
           <div className="analytics-stats grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -1,4 +1,3 @@
-import { refreshData } from "@/lib/cache";
 import { db } from "@/lib/supabase";
 import { rebuildArtifact } from "@/lib/rebuild";
 import { recoveryAction } from "@/lib/recovery";
@@ -109,7 +108,6 @@ export async function POST(req: Request) {
       body: JSON.stringify({ ref: "main", inputs }),
     });
     if (res.ok)
-      refreshData();
       return NextResponse.json({ ok: true, requestId, startedAt: new Date().toISOString() });
     const detail = await res
       .json()

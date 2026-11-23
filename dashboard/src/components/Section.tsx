@@ -10,7 +10,7 @@ export function Section({
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{title}</h2>
+        <h2 className="cr-sechead" style={{ margin: 0, font: "800 22px/1 var(--display)", textTransform: "uppercase" }}>{title}</h2>
         {action}
       </div>
       <div className="card space-y-3">{children}</div>

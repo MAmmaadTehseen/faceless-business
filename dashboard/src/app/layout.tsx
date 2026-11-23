@@ -3,12 +3,20 @@ import { recapEnabled } from "@/lib/recap-local";
 import { getScope } from "@/lib/server-scope";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { Big_Shoulders, Schibsted_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Pwa } from "@/components/Pwa";
 import { ToastHost } from "@/components/Toast";
 import { Shell } from "@/components/Nav";
 import { Banners } from "@/components/Banners";
 import { getPendingComments } from "@/lib/data";
 import { getChannelFilter } from "@/lib/channel-filter";
+
+const display = Big_Shoulders({ subsets: ["latin"], weight: ["600", "800"], variable: "--font-display", display: "swap", adjustFontFallback: false });
+const body = Schibsted_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-body", display: "swap" });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-mono", display: "swap" });
+const fonts = `${display.variable} ${body.variable} ${mono.variable}`;
+// Runs before paint so a saved light/dark choice never flashes the other theme.
+const themeInit = `try{var t=localStorage.getItem("dashboard-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}`;
 
 export const metadata: Metadata = {
   title: "Faceless Dashboard",
@@ -28,7 +36,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0f1115",
+  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#eceeea" }, { media: "(prefers-color-scheme: dark)", color: "#14181a" }],
   viewportFit: "cover",
 };
 export const dynamic = "force-dynamic";
@@ -39,13 +47,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   if (recapEnabled() && (await headers()).get("x-local-recap") === "1") {
-    return <html lang="en"><body className="min-h-screen">{children}</body></html>;
+    return <html lang="en" className={fonts}><body className="min-h-screen">{children}</body></html>;
   }
   const scope = await getScope();
   const channel = scope.channel;
   const unread = await getPendingComments(channel, 200, scope.platform === "all" ? "" : scope.platform).then(rows=>rows.length).catch(()=>0);
   return (
-    <html lang="en">
+    <html lang="en" className={fonts} suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: themeInit }} /></head>
       <body className="min-h-screen">
         <ToastHost />
         <Pwa />
