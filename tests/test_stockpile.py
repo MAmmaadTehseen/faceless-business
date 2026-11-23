@@ -513,3 +513,20 @@ def test_article_failure_marker_skips_second_attempt(tmp_path, monkeypatch):
     assert len(calls) == 1 and stockpile.notes(db.one('content', {'id': cid})).get('bank_article_failed') is True
     metadata = stockpile.bank_bundle(db, cid, Channel('futurework'), drive=drive)
     assert len(calls) == 1 and metadata['article_failed'] is True
+
+
+def test_stale_lock_is_taken_over(tmp_path, monkeypatch):
+    import time as _t
+    from pipeline import stockpile
+    monkeypatch.setenv('DB_BACKEND', 'sqlite')
+    monkeypatch.setattr('pipeline.db.DATA_DIR', tmp_path)
+    from pipeline.db import DB
+    db = DB()
+    db.set_setting('stockpile_lock_release_x', f'dead@{int(_t.time()) - 4 * 3600}')
+    with stockpile.lock(db, 'release_x'):
+        assert db.setting('stockpile_lock_release_x') != f'dead@{int(_t.time()) - 4 * 3600}'
+    db.set_setting('stockpile_lock_release_y', f'live@{int(_t.time())}')
+    import pytest
+    with pytest.raises(RuntimeError):
+        with stockpile.lock(db, 'release_y'):
+            pass

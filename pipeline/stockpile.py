@@ -18,20 +18,35 @@ def notes(row):
     return parsed if isinstance(parsed, dict) else {'issues': parsed}
 
 
+LOCK_TTL = 3 * 3600
+
+
+def _lock_age(value):
+    try:
+        return time.time() - int(str(value).rsplit('@', 1)[1])
+    except (IndexError, ValueError):
+        return float('inf')  # legacy lock without a timestamp: written before this change, so stale
+
+
 @contextmanager
 def lock(db, name, wait_seconds=0):
-    """Fail closed across runners. A crashed lock requires owner review/removal."""
+    """Fail closed across runners. Locks older than LOCK_TTL (a cancelled or timed-out runner; no
+    stockpile job runs that long) are taken over instead of blocking every later sync."""
     key = 'stockpile_lock_' + name
-    owner = uuid.uuid4().hex
+    owner = f'{uuid.uuid4().hex}@{int(time.time())}'
     deadline = time.monotonic() + wait_seconds
     while True:
         try:
             db.insert('settings', {'key': key, 'value': owner})
             break
         except Exception:
-            # Check ownership after an uncertain insert; never remove another worker's lock.
+            # Check ownership after an uncertain insert; never remove another live worker's lock.
             current = db.setting(key)
             if current == owner:
+                break
+            if current is not None and _lock_age(current) > LOCK_TTL:
+                log.warning('Stockpile lock %s is stale; taking it over', key)
+                db.set_setting(key, owner)
                 break
             if current is None or time.monotonic() >= deadline:
                 raise RuntimeError('Stockpile operation locked/unavailable; review ' + key) from None
