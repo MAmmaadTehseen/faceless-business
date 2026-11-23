@@ -345,3 +345,38 @@ Frame and Argument is in the scoreboard from today (commit 797b7e3, `channel_for
 
 - Ten Tongues hub articles: impressions and clicks in Search Console from 2026-11-30 for "how to say <word> in <language>" queries.
 - Frame and Argument: whether the Shorts median holds as n grows past 10.
+
+
+## Loop run: 2026-11-23 13:23 UTC
+
+### Scoreboard (`data/scoreboard/2026-11-23T13.json`)
+
+| channel | long n / median / best | short n / median / best |
+|---|---|---|
+| futurework | 13 / 8 / 25 | 46 / 10 / 92 |
+| tradewinds | 11 / 1 / 59 | 42 / 21 / 265 |
+| escapevelocity | 11 / 4 / 27 | 47 / 24 / 620 |
+| tentongues | 6 / 3 / 30 | 64 / 25 / 922 |
+| filmreview | 1 / 73 / 73 | 4 / 97 / 407 |
+
+Since 12:08: "Rice in Russian" 846 -> 922 (2.3% of the Short target, still the best on the network). "Egg in French" reached 61 views in its first ~5 h (244/day), the fastest start of any Ten Tongues Short. Best long is still Frame and Argument's 73 (0.7% of target). One-off items A and B from the owner's 2026-11-23 brief were both already committed (797b7e3, 8b5f404).
+
+### Finding: Ten Tongues language order is confounded with posting hour
+
+Median views per Ten Tongues Short by language (7 words, n=6-8 each): Russian 239, Japanese 127, Italian 118, then Urdu 29, French 28, Spanish 24, Hindi 21, Mandarin 14, Bengali 12, Portuguese 11. Children post hourly in a fixed order from 09:00 UTC (Mandarin 09, Hindi 10, Spanish 11, French 12, Bengali 13, Portuguese 14, Russian 15, Urdu 16, Japanese 17, Italian 18). The three winners are three of the last four slots, so "Russian learners" and "15-18 UTC is a better hour" cannot be told apart from this data.
+
+### Shipped
+
+- c742e04 `rotate_shorts_order` (channel.json, on for Ten Tongues): child Shorts' slot order shifts by one each day (keyed on the parent's publish date), so over ten days every language takes every hour once. Reschedule/compress keeps the order because it sorts by existing `publish_at`. Test in `tests/test_schedule.py`; suite 443 passed.
+- Community posts (browser, owner-approved): Future Work "Pilot or funded?" (closing question + link) and Ten Tongues EGG. Escape Velocity's Starship video goes public at 16:00 UTC; post it next run.
+
+### Not done, and why
+
+- Indexing requests: today's 8 were used this morning. Next UTC day: starship-flight-15, dutch-government, then /c/tentongues and the rice, tea, bread, egg, salt articles.
+- The scheduled task prompt still contains the 2026-11-23 one-off block (A, B); removing it needs an approval the unattended run cannot give. Both items are done, so later runs should skip it.
+- Two `recap` regenerate runs failed at 13:16 ("Project not found in approve/ or review/"): a dispatch for a project that is not in Drive, started by another session; not a code fault.
+
+### Measuring
+
+- Rotation: from the next Ten Tongues episode (2026-11-24 onward), compare views at 48 h by posting hour vs by language. Judge on 2026-12-04 (10 rotated episodes). If hour dominates, move `shorts_hour_utc` to the winning window; if language dominates, give Russian/Japanese/Italian the best slots and test a second Short format for them.
+- Quick vs standard Shorts: judge from 2026-11-26.
