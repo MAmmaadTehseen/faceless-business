@@ -28,9 +28,9 @@
   --neutral: #5e6762;
   --ring: rgba(200, 54, 30, 0.35);
   --ink-on-accent: #ffffff;
-  --display: var(--font-display), "Arial Narrow", sans-serif;
-  --body: var(--font-body), system-ui, sans-serif;
-  --mono: var(--font-mono), ui-monospace, monospace;
+  --display: "Big Shoulders", "Arial Narrow", sans-serif;
+  --body: "Schibsted Grotesk", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
