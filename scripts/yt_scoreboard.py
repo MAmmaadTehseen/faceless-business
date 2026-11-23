@@ -35,8 +35,16 @@ def seconds(iso: str) -> int:
     return d * 86400 + h * 3600 + mi * 60 + s
 
 
+def channel_for(key: str):
+    """Frame and Argument (filmreview) lives outside Channel.keys(); it has its own class and local.json."""
+    if key == "filmreview":
+        from pipeline.recap.channel import FilmReviewChannel
+        return FilmReviewChannel()
+    return Channel(key)
+
+
 def channel_videos(key: str, max_items: int = 200) -> list[dict]:
-    ch = Channel(key)
+    ch = channel_for(key)
     youtube.use_channel(ch)
     me = youtube.yt().channels().list(part="contentDetails,statistics", mine=True).execute()["items"][0]
     uploads = me["contentDetails"]["relatedPlaylists"]["uploads"]
