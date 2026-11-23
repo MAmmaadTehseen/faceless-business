@@ -16,6 +16,7 @@
   "daily_short_hour_utc": 20,
   "shorts_same_day": true,
   "shorts_spacing_hours": 1,
+  "rotate_shorts_order": true,
   "max_youtube_per_day": 12,
   "shorts_per_long": 10,
   "playlists_for_shorts": true,

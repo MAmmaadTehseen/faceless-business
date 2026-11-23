@@ -339,7 +339,7 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   description. Arabic and Indonesian are deferred (unclear voice licences).
 - Scheduler: `channel_calendar()` keeps the fixed calendar for the original three channels; other
   channels use `schedule` in channel.json. `shorts_same_day`, `shorts_spacing_hours` and
-  `max_youtube_per_day` are per-channel; the three-a-day cap still applies to the original channels.
+  `max_youtube_per_day` are per-channel; `rotate_shorts_order: true` (Ten Tongues, 2026-11-23) shifts the child Shorts' slot order by one each day so every language takes every hour in turn; the three-a-day cap still applies to the original channels.
   `playlists_for_shorts: true` lets Shorts join title-matched playlists (otherwise unchanged).
 - Word inventory `channels/tentongues/words.json`; used markers in setting `words_used_tentongues`
   plus existing long-video topics. `--word` forces a word; `--resume <id>` re-renders a saved

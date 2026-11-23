@@ -134,3 +134,30 @@ def test_same_day_shorts_fill_the_day_then_roll_over(key, day, hour, short_hour,
     assert slots[2] == (long + timedelta(days=1)).replace(hour=short_hour)
     assert slots[3] == slots[2] + timedelta(hours=4)
     assert all(s >= NOW + timedelta(hours=1) for s in slots)
+
+
+def test_rotate_shorts_order_shifts_child_slots_daily():
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock, patch
+    import pipeline.publish as pub
+
+    def run(day, rotate):
+        channel = MagicMock(key='tentongues', cfg={'rotate_shorts_order': rotate})
+        shorts = [{'id': f'c-short-{n:02d}', 'qa_status': 'passed', 'tags': []} for n in range(1, 11)]
+        db = MagicMock()
+        db.one.side_effect = lambda table, where: ({'id': 'c', 'tags': []} if table == 'content'
+            else {'publish_at': f'2026-11-{day:02d}T07:00:00+00:00'})
+        db.select.return_value = shorts
+        order = []
+        with patch.object(pub, 'youtube') as yt, patch.object(pub, 'meta'), \
+             patch.object(pub, '_next_slot', return_value=datetime(2026, 11, day, 7, tzinfo=timezone.utc)), \
+             patch.object(pub, 'short_tags', return_value=[]), \
+             patch.object(pub, 'publish_short', side_effect=lambda db, s, *a, **k: order.append(s['id']) or []):
+            yt.configured.return_value = False
+            pub.publish_all(db, 'c', 'private', channel)
+        return order
+
+    assert run(24, False) == [f'c-short-{n:02d}' for n in range(1, 11)]
+    first, second = run(24, True), run(25, True)
+    assert sorted(first) == sorted(second) == [f'c-short-{n:02d}' for n in range(1, 11)]
+    assert second == first[1:] + first[:1]   # every language moves one slot earlier the next day

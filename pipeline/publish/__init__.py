@@ -581,6 +581,11 @@ def publish_all(db, content_id, privacy="private", channel=None):
         slot = datetime.fromisoformat(parent_pub["publish_at"].replace("Z", "+00:00"))
     previous_short = None
     shorts = db.select("content", {"parent_id": content_id, "kind": "short"}, order="id")
+    if channel.cfg.get("rotate_shorts_order") and shorts and slot:
+        # Shift the Shorts' slot order by one each day so every child takes every hour in turn
+        # (Ten Tongues: separates the posting-hour effect from the language effect).
+        k = slot.date().toordinal() % len(shorts)
+        shorts = shorts[k:] + shorts[:k]
     for i, short in enumerate(shorts):
         if short.get("qa_status") != "passed":
             continue
