@@ -374,7 +374,7 @@ def follow_youtube_to_reels(db, channel) -> int:
         if not s.get("media_url") and not Path(s.get("file_path") or "").is_file():
             try:
                 from ..retry import restore
-                s = restore(db, s, p)
+                s = restore(db, s, p, deep=False)
             except Exception as e:
                 log.warning("reels follow-up: no media for %s on this runner (%s); skipped", s["id"], type(e).__name__)
                 missing.add(s["id"])

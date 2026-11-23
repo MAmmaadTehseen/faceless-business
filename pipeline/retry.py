@@ -70,7 +70,8 @@ def _artifact_file(row, run_id, artifact_name=None):
     return None
 
 
-def restore(db, row, pub):
+def restore(db, row, pub, deep=True):
+    """deep=False skips scanning ~60 recent workflow runs' artifacts (slow; for best-effort callers)."""
     row = dict(row)
     if row.get("file_path") and Path(row["file_path"]).is_file():
         return row
@@ -106,8 +107,8 @@ def restore(db, row, pub):
         except Exception as exc:
             tried.append(f"failed: {type(exc).__name__}: {str(exc)[:300]}")
     tried.append("producing GitHub artifact: missing provenance or no matching uploadable file")
-    tried.append("recent produce.yml/shorts.yml artifacts")
-    for workflow in ("produce.yml", "shorts.yml"):
+    tried.append("recent produce.yml/shorts.yml artifacts" if deep else "recent artifacts: skipped (quick restore)")
+    for workflow in (("produce.yml", "shorts.yml") if deep else ()):
         try:
             runs = _api(f"repos/{{owner}}/{{repo}}/actions/workflows/{workflow}/runs?per_page=30")
             for run in runs.get("workflow_runs", []):
