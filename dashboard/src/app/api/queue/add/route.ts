@@ -1,3 +1,4 @@
+import { refreshData } from "@/lib/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { DEFAULT_CHANNEL, isChannelKey } from "@/lib/channels";
@@ -11,5 +12,6 @@ export async function POST(req: Request) {
     .insert({ topic, channel, priority: 10, status: "queued", added_by: "user" })
     .select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  refreshData();
   return NextResponse.json({ ok: true, row: data });
 }

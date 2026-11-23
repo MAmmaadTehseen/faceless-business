@@ -1,3 +1,4 @@
+import { refreshData } from "@/lib/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { replyToComment } from "@/lib/platforms";
@@ -44,5 +45,6 @@ export async function POST(
       { error: "Reply sent, but saving failed. Refresh before retrying." },
       { status: 502 },
     );
+  refreshData();
   return NextResponse.json({ ok: true });
 }

@@ -8,43 +8,92 @@ import { getOverview } from "@/lib/data";
 import { getPlatformContent } from "@/lib/content-data";
 import { getChannelFilter } from "@/lib/channel-filter";
 import { isOwner } from "@/lib/role";
-import { CHANNELS, parseChannelFilter } from "@/lib/channels";
-import { fmtUsd, fmtDate } from "@/lib/format";
+import { CHANNELS, accentCss, parseChannelFilter } from "@/lib/channels";
+import { fmtUsd, fmtDate, fmtCount } from "@/lib/format";
 import { ContentList } from "@/components/ContentList";
-import { ContentFilters } from "@/components/ContentFilters";
-import { filterContent } from "@/lib/content-filters";
-import { PageHeader } from "@/components/PageHeader";
-import { Section } from "@/components/Section";
 import { ActionButton } from "@/components/ActionButton";
 import { HubAnalytics } from "@/components/HubAnalytics";
 import { getHubAnalytics } from "@/lib/hub-analytics";
 import { Countdown } from "@/components/Countdown";
-export default async function Home({ searchParams }: { searchParams: Promise<Record<string,string>> }) {
+import { Donut, Legend } from "@/components/Donut";
+import { parseRange } from "@/lib/range";
+
+export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await scopedSearch(await searchParams);
   const channel = sp.channel ? parseChannelFilter(sp.channel) : await getChannelFilter();
-  const [ov, items, owner, analytics, today] = await Promise.all([getOverview(channel, sp.platform), getPlatformContent(channel,sp.days,sp.platform), isOwner(), getAnalytics(channel,7,false,sp.platform), getAnalytics(channel,1,false,sp.platform)]);
-  if (sp.platform === "hub") return <div className="space-y-6"><PageHeader title="Overview"/><HubAnalytics data={await getHubAnalytics(channel,7)}/></div>;
+  const range = parseRange(sp);
+  const [ov, items, owner, analytics] = await Promise.all([getOverview(channel, sp.platform), getPlatformContent(channel, undefined, sp.platform), isOwner(), getAnalytics(channel, range.days, range.allTime, sp.platform, range.end)]);
+  if (sp.platform === "hub") return <div><h1 className="cr-h1">Hub site</h1><HubAnalytics data={await getHubAnalytics(channel, Math.max(1, Math.round(range.days)))} /></div>;
   const configured = !!process.env.GITHUB_TOKEN;
-  const next = items.flatMap(c => c.publications).filter(p => p.publish_at && Date.parse(p.publish_at) > Date.now() && (!sp.platform || p.platform === sp.platform)).sort((a,b) => Date.parse(a.publish_at!) - Date.parse(b.publish_at!))[0];
-  const attention = [ ...(!sp.platform && ov.paused ? [{text:"Pipeline is paused",href:"/automation"}] : []), ...(!sp.platform && ov.failedRun ? [{text:"Latest run needs review",href:"/costs"}] : []), ...ov.failedPubs.map(p=>({text:`${p.title} · upload failed`,href:"/content?status=failed"})), ...ov.failedContent.map(c=>({text:`${c.title} · production needs review`,href:"/content?status=failed"})), ...(!sp.platform && ov.costs.pct >= 80 ? [{text:`${ov.costs.pct.toFixed(0)}% of monthly budget used`,href:"/costs"}] : []) ];
+  const next = items.flatMap(c => c.publications).filter(p => p.publish_at && Date.parse(p.publish_at) > Date.now()).sort((a, b) => Date.parse(a.publish_at!) - Date.parse(b.publish_at!))[0];
+  type Todo = { sev: "bad" | "warn"; text: string; meta: string; cta: string; href: string };
+  const todo: Todo[] = [
+    ...(!sp.platform && ov.paused ? [{ sev: "bad" as const, text: "Pipeline is paused", meta: "Nothing new is produced or published", cta: "Open", href: "/automation" }] : []),
+    ...(!sp.platform && ov.failedRun ? [{ sev: "bad" as const, text: `${ov.failedRun.workflow ?? "Latest run"} failed`, meta: fmtDate(ov.failedRun.started_at), cta: "Review", href: "/costs" }] : []),
+    ...ov.failedPubs.map(p => ({ sev: "bad" as const, text: p.title, meta: `${p.platform} upload failed${p.error ? ` · ${p.error.slice(0, 70)}` : ""}`, cta: "Retry", href: `/content/${encodeURIComponent(p.content_id)}` })),
+    ...ov.failedContent.map(c => ({ sev: "warn" as const, text: c.title, meta: "Production or QA needs review", cta: "Rebuild", href: `/content/${encodeURIComponent(c.id)}` })),
+    ...(ov.pending.length ? [{ sev: "warn" as const, text: `${ov.pending.length} comments waiting`, meta: "Replies to approve or send", cta: "Open", href: "/inbox" }] : []),
+    ...(!sp.platform && ov.costs.pct >= 80 ? [{ sev: "warn" as const, text: `${ov.costs.pct.toFixed(0)}% of the monthly budget used`, meta: `${fmtUsd(ov.costs.mtd)} of ${fmtUsd(ov.costs.budget)}`, cta: "Costs", href: "/costs" }] : []),
+  ];
+  const bad = todo.filter(t => t.sev === "bad").length;
   const delta = analytics.total.views - analytics.previous.views;
-  const running = ov.health.filter(h => (channel === "all" || h.key === channel) && !sp.platform && h.lastRun && ["running","in_progress","queued"].includes(h.lastRun.status ?? ""));
-  return <div className="space-y-8">
-    <PageHeader title="Overview" action={owner && <details className="run-menu"><summary className="btn">Workspace actions</summary><div><ActionButton action="sync" label="Sync now" configured={configured}/><ActionButton action="engage" label="Reply now" configured={configured}/></div></details>}/>
-    <section>
-      <div className="hero"><p className="hero-label">Views · last 24 hours</p><p className="hero-value">{<Count value={today.total.views}/>}</p><p className="text-xs text-muted mt-2">{delta > 0 ? "+" : ""}{<Count value={delta}/>} views · last 7 days vs previous 7</p></div>
-      <svg viewBox="0 0 300 48" className="hero-sparkline" role="img" aria-label="Views over seven days"><polyline fill="none" stroke="var(--accent-fg)" strokeWidth="2" points={analytics.daily.map((d,i,all)=>`${i*300/Math.max(1,all.length-1)},${44-d.views/Math.max(1,...all.map(d=>d.views))*36}`).join(" ")}/></svg><div className="supporting-stats">
-        <div><p>Subscribers gained</p><details><summary className="subscriber-unavailable">—</summary><p className="text-xs text-muted">Subscriber gains are not stored in the current metrics source.</p></details></div>
-        <div><p>Pending replies</p><Link href="/inbox"><strong>{<Count value={ov.pending.length}/>}</strong></Link></div>
-        {sp.platform ? <div><p>Published · 7d</p><strong>{<Count value={ov.publishedWeek}/>}</strong></div> : <div><p>Month spend / budget · all platforms</p><Link href="/costs"><strong>{fmtUsd(ov.costs.mtd)} <span className="text-muted text-xs">/ {fmtUsd(ov.costs.budget)}</span></strong></Link><div className="budget-track"><span style={{width:`${Math.min(100,ov.costs.pct)}%`}}/></div></div>}
-        <div><p>Next publish</p>{next?.publish_at ? <details><summary><strong><Countdown at={next.publish_at}/></strong></summary><p className="text-xs text-muted">{fmtDate(next.publish_at)} UTC</p></details> : <span className="text-muted">Nothing scheduled</span>}</div>
-      </div>
-    </section>
-    <section><div className="flex justify-between mb-3"><h2 className="text-base font-semibold">Needs attention</h2><Link className="text-xs text-muted" href="/content?status=failed">View all →</Link></div><div className="attention-list">{attention.length ? attention.slice(0,3).map((a,i)=><Link key={i} href={a.href}><span>{a.text}</span><span className="text-muted">→</span></Link>) : <p className="text-muted">Everything looks clear.</p>}</div></section>
-    <section><h2 className="text-base font-semibold mb-3">Runs in flight</h2>{running.length ? <div className="card space-y-3">{running.map(h=><p key={h.key}>{h.lastRun?.workflow ?? "Production"} <span className="text-muted">in progress</span></p>)}</div> : <p className="text-muted">{sp.platform ? "Production runs are shared across platforms." : "No runs in flight."}</p>}{ov.queuedUploads.length > 0 && <details className="mt-3"><summary className="text-xs text-muted">{<Count value={ov.queuedUploads.length}/>} uploads waiting for quota</summary><div className="card mt-3">{ov.queuedUploads.map(p=><details key={p.id}><summary>{p.title} <span className="status-chip ml-2">queued</span></summary><p className="text-xs text-muted">{p.error ?? "Awaiting upload quota"}</p></details>)}</div></details>}</section>
-    <section><h2 className="text-base font-semibold mb-4">Channels</h2><div className="home-channels">{CHANNELS.filter(c=>channel === "all" || c.key === channel).map(c=>{const h=ov.health.find(h=>h.key===c.key); const a=analytics.channels.find(a=>a.name===c.key);return <div className="channel-card" key={c.key}><div className="flex items-center justify-between gap-3"><h3 className="font-semibold flex items-center gap-2"><i className="series-dot" style={{background:c.brand.fg}}/>{c.short}</h3>{owner && <ActionSheet label={`Run · ${c.short}`}><div className="grid gap-2"><ActionButton action="produce" label="Produce now" channel={c.key} configured={configured}/><ActionButton action="shorts" label="Daily Short now" channel={c.key} configured={configured}/></div></ActionSheet>}</div><div className="channel-stats"><div>{<Count value={a?.views??0}/>}<span>Views · 7d</span></div><div>{<Count value={a?.likes??0}/>}<span>Likes</span></div><div>{<Count value={sp.platform ? a?.count ?? 0 : h?.queued??0}/>}<span>{sp.platform ? "Published items" : "Topics queued"}</span></div></div><svg viewBox="0 0 300 48" className="w-full h-12" role="img" aria-label="Views over seven days"><polyline fill="none" stroke="var(--muted)" strokeWidth="2" points={(a?.daily??[0,0]).map((v,i,all)=>`${i*300/Math.max(1,all.length-1)},${44-v/Math.max(1,...all)*36}`).join(" ")}/></svg></div>})}</div></section>
+  const shown = CHANNELS.filter(c => channel === "all" || c.key === channel);
+  const slices = shown.map(c => ({ label: c.short, value: analytics.channels.find(a => a.name === c.key)?.views ?? 0, color: accentCss(c) }));
+  const running = ov.health.filter(h => (channel === "all" || h.key === channel) && !sp.platform && h.lastRun && ["running", "in_progress", "queued"].includes(h.lastRun.status ?? ""));
+  const budgetLeft = Math.max(0, ov.costs.budget - ov.costs.mtd);
+  return <div>
+    <p className="eyebrow">{new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · {range.label}</p>
+    <h1 className="cr-h1">{todo.length === 0 ? "All clear today" : bad ? `${todo.length} ${todo.length === 1 ? "thing needs" : "things need"} you` : `${todo.length} to look at`}</h1>
 
-    {!sp.platform && <Stockpile channel={channel}/>}
-    <Section title="Last published" action={<Link className="btn" href={`/content?channel=${channel}${sp.platform ? `&platform=${sp.platform}` : ""}`}>All content →</Link>}><details><summary className="text-xs text-muted">Filter content</summary><ContentFilters sp={sp} channel={channel} path="/"/></details><ContentList items={filterContent(items.filter(c=>c.publications.some(p=>["published","live"].includes(p.status))),sp)} sort={sp.sort??"newest"} limit={5}/></Section>
+    <section className="cr-sec" style={{ marginTop: 14 }}><div className="cr-strip">
+      <Donut slices={slices} size={124} center={fmtCount(analytics.total.views)} sub="views" label="Views by channel" />
+      <div style={{ minWidth: 0 }}>
+        <span className={`cr-delta ${delta >= 0 ? "cr-up" : "cr-down"}`}>{delta >= 0 ? "▲" : "▼"} {fmtCount(Math.abs(delta))} vs previous {range.label}</span>
+        <div style={{ marginTop: 10 }}><Legend slices={slices} /></div>
+      </div>
+    </div></section>
+
+    <section className="cr-sec"><div className="cr-sechead"><h2>Today</h2>{owner && <ActionButton action="engage" label="Reply now" configured={configured} />}</div>
+      {todo.length ? <ul className="cr-todo">{todo.slice(0, 6).map((t, i) => <li key={i}><Link href={t.href}><span className={`cr-sev ${t.sev}`} /><span style={{ minWidth: 0 }}><b>{t.text}</b><small>{t.meta}</small></span><span className="cr-cta">{t.cta}</span></Link></li>)}</ul> : <p className="cr-sub">Nothing is waiting on you.</p>}
+      {todo.length > 6 && <Link className="cr-link" href="/content?status=failed">All {todo.length} items →</Link>}
+    </section>
+
+    <div className="cr-two">
+      <section className="cr-sec"><div className="cr-sechead"><h2>Channels</h2><Link className="cr-link" href="/analytics">Analytics →</Link></div>
+        <div className="cr-chgrid">{shown.map(c => {
+          const h = ov.health.find(h => h.key === c.key), a = analytics.channels.find(a => a.name === c.key);
+          const views = a?.views ?? 0, prev = a?.previous.views ?? 0, g = prev ? Math.round((views - prev) / prev * 100) : null;
+          return <div className="cr-ch" key={c.key}>
+            <Donut slices={[{ label: c.short, value: views, color: accentCss(c) }, { label: "Other channels", value: Math.max(0, analytics.total.views - views) || (views ? 0 : 1), color: "var(--border)" }]} size={52} label={`${c.short} share of views`} />
+            <span style={{ minWidth: 0 }}>
+              <Link href={`/?channel=${c.key}`} className="name">{c.short}</Link><br />
+              <span className="meta">{h?.queued ?? 0} topics queued</span><br />
+              <span className={`cr-pill ${h?.level === "alert" ? "bad" : h?.level === "warn" ? "warn" : "ok"}`}>{h?.level === "alert" ? "Last run failed" : h?.level === "warn" ? "Check" : "Healthy"}</span>
+              {owner && <span style={{ marginLeft: 8 }}><ActionSheet label="Run"><div className="grid gap-2"><ActionButton action="produce" label="Produce now" channel={c.key} configured={configured} /><ActionButton action="shorts" label="Daily Short now" channel={c.key} configured={configured} /></div></ActionSheet></span>}
+            </span>
+            <span className="v"><b>{fmtCount(views)}</b><span className={`cr-delta ${g === null ? "" : g >= 0 ? "cr-up" : "cr-down"}`}>{g === null ? "new" : `${g >= 0 ? "+" : ""}${g}%`}</span></span>
+          </div>;
+        })}</div>
+      </section>
+      <div>
+        {!sp.platform && <section className="cr-sec"><div className="cr-sechead"><h2>Spend</h2><Link className="cr-link" href="/costs">Costs →</Link></div>
+          <div className="card cr-piebox">
+            <Donut slices={[{ label: "Spent", value: ov.costs.mtd, color: "var(--accent)" }, { label: "Left", value: budgetLeft, color: "var(--border)" }]} size={104} center={`${Math.round(ov.costs.pct)}%`} sub={`of ${fmtUsd(ov.costs.budget)}`} label="Monthly budget used" />
+            <p className="cr-sub" style={{ flex: 1, minWidth: 150 }}>{fmtUsd(ov.costs.mtd)} spent this month, {fmtUsd(budgetLeft)} left. On pace for {fmtUsd(ov.costs.projected)}.</p>
+          </div></section>}
+        <section className="cr-sec"><div className="cr-sechead"><h2>Next up</h2></div>
+          <div className="card">
+            <p>{next?.publish_at ? <>Next publish in <b><Countdown at={next.publish_at} /></b> <span className="cr-sub">({fmtDate(next.publish_at)})</span></> : <span className="cr-sub">Nothing scheduled</span>}</p>
+            <p className="cr-sub" style={{ marginTop: 6 }}>{running.length ? running.map(h => `${h.lastRun?.workflow ?? "Production"} running`).join(" · ") : "No runs in flight."}</p>
+            {ov.queuedUploads.length > 0 && <details style={{ marginTop: 6 }}><summary className="cr-sub"><Count value={ov.queuedUploads.length} /> uploads waiting for quota</summary>{ov.queuedUploads.map(p => <p key={p.id} className="text-sm">{p.title} <span className="cr-pill mute">queued</span></p>)}</details>}
+          </div>
+        </section>
+      </div>
+    </div>
+
+    {!sp.platform && <div className="cr-sec"><Stockpile channel={channel} /></div>}
+    <section className="cr-sec"><div className="cr-sechead"><h2>Latest</h2><Link className="cr-link" href="/content">All content →</Link></div>
+      <ContentList items={items.filter(c => c.publications.some(p => ["published", "live"].includes(p.status))).slice(0, 8)} sort="newest" limit={5} />
+    </section>
   </div>;
 }

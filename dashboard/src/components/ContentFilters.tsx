@@ -58,18 +58,6 @@ export function ContentFilters({
       "Category",
       [["", "All categories"], ...categories.map((v) => [v, v])],
     ],
-    [
-      "days",
-      "Date range",
-      [
-        ["1", "Last 24 hours"],
-        ["7", "7 days"],
-        ["30", "30 days"],
-        ["28", "28 days"],
-        ["90", "90 days"],
-        ["all", "All time"],
-      ],
-    ],
     ["sort", "Sort", Object.entries(sorts).filter(([key]) => key !== "watch" || !sp.platform || sp.platform === "youtube")],
   ] as [string, string, string[][]][];
   const count = [
@@ -79,7 +67,6 @@ export function ContentFilters({
     !!sp.platform,
     !!sp.status && sp.status !== "all",
     !!sp.category,
-    !!sp.days && sp.days !== "all",
   ].filter(Boolean).length;
   return (
     <div className="search-filter-toolbar"><AutoFilters action={path} className="mobile-search"><input aria-label="Search title or topic" name="q" placeholder="Search content…" defaultValue={sp.q ?? ""}/>{Object.entries({...sp,channel}).filter(([k])=>k!=="q").map(([k,v])=><input type="hidden" key={k} name={k} value={v ?? ""}/>)}</AutoFilters><FilterSheet count={count}><AutoFilters

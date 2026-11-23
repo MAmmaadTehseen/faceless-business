@@ -4,13 +4,13 @@ export function PageHeader({ title, count, blurb, action, children }: {
 }) {
   return (
     <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 title={blurb} className="flex items-center gap-2 text-[22px] font-semibold tracking-tight">
+      <div style={{ minWidth: 0 }}>
+        <h1 className="cr-h1 flex items-baseline gap-3">
           {title}
-          {count != null && <span className="text-muted text-sm font-normal">{count}</span>}
+          {count != null && <span className="mono text-muted text-base font-normal normal-case">{count}</span>}
           {children}
         </h1>
-
+        {blurb && <p className="cr-sub">{blurb}</p>}
       </div>
       {action}
     </header>

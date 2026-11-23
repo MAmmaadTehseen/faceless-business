@@ -36,7 +36,7 @@ export const CHANNELS: ChannelMeta[] = [
   },
   {
     key: "filmreview", name: "Frame and Argument", short: "Frame & Argument", handle: "frameandargument",
-    accent: [196, 181, 253], brand: { bg: "#0f172a", fg: "#c4b5fd" }, schedule: "Film recaps, as approved",
+    accent: [232, 93, 117], brand: { bg: "#0f172a", fg: "#e85d75" }, schedule: "Film recaps, as approved",
   },
 ];
 

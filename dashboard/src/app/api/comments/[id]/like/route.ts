@@ -1,3 +1,4 @@
+import { refreshData } from "@/lib/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { likeComment } from "@/lib/platforms";
@@ -13,5 +14,6 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 502 });
   }
   await db().from("comments").update({ liked: true }).eq("id", id);
+  refreshData();
   return NextResponse.json({ ok: true });
 }

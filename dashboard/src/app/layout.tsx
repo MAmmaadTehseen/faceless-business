@@ -10,6 +10,12 @@ import { Banners } from "@/components/Banners";
 import { getPendingComments } from "@/lib/data";
 import { getChannelFilter } from "@/lib/channel-filter";
 
+// Fonts load from Google at runtime: build-time next/font fetching failed on Vercel.
+const FONTS = "https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@600;800&family=JetBrains+Mono:wght@400;600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap";
+const fontLinks = <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" /><link rel="stylesheet" href={FONTS} /></>;
+// Runs before paint so a saved light/dark choice never flashes the other theme.
+const themeInit = `try{var t=localStorage.getItem("dashboard-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}`;
+
 export const metadata: Metadata = {
   title: "Faceless Dashboard",
   icons: {
@@ -28,7 +34,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0f1115",
+  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#eceeea" }, { media: "(prefers-color-scheme: dark)", color: "#14181a" }],
   viewportFit: "cover",
 };
 export const dynamic = "force-dynamic";
@@ -39,13 +45,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   if (recapEnabled() && (await headers()).get("x-local-recap") === "1") {
-    return <html lang="en"><body className="min-h-screen">{children}</body></html>;
+    return <html lang="en"><head>{fontLinks}</head><body className="min-h-screen">{children}</body></html>;
   }
   const scope = await getScope();
   const channel = scope.channel;
   const unread = await getPendingComments(channel, 200, scope.platform === "all" ? "" : scope.platform).then(rows=>rows.length).catch(()=>0);
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: themeInit }} />{fontLinks}</head>
       <body className="min-h-screen">
         <ToastHost />
         <Pwa />

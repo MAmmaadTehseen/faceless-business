@@ -1,12 +1,15 @@
 import "server-only";
 import { db } from "./supabase";
 import { CHANNELS, ChannelFilter } from "./channels";
+import { cached } from "./cache";
 
 type Row = { id: string; channel: string; kind: string; parent_id: string | null; status: string; qa_notes: string | null };
 function metadata(value: string | null): { bytes?: number } | null {
   try { return JSON.parse(value || "{}").stockpile ?? null; } catch { return null; }
 }
-export async function getStockpile(channel: ChannelFilter) {
+// qa_notes is large text; only the small summary below is cached.
+export const getStockpile = cached("stockpile", loadStockpile);
+async function loadStockpile(channel: ChannelFilter) {
   const rows: Row[] = [];
   for (let offset = 0; ; offset += 1000) {
     let query = db().from("content").select("id,channel,kind,parent_id,status,qa_notes").eq("status", "banked").order("id").range(offset, offset + 999);
