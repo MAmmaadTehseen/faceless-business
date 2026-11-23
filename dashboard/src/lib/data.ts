@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "./supabase";
 import { CHANNELS, ChannelFilter, ChannelKey } from "./channels";
+import { cached } from "./cache";
 import {
   Comment,
   Content,
@@ -11,7 +12,8 @@ import {
   TopicQueueRow,
 } from "./types";
 
-export async function getSettings(): Promise<Settings> {
+export const getSettings = cached("settings", loadSettings);
+async function loadSettings(): Promise<Settings> {
   const { data, error } = await db().from("settings").select("key,value");
   if (error) throw error;
   const s: Record<string, unknown> = { ...DEFAULT_SETTINGS };
@@ -22,7 +24,7 @@ export async function getSettings(): Promise<Settings> {
 export async function getLatestRun(): Promise<Run | null> {
   const { data } = await db()
     .from("runs")
-    .select("*")
+    .select("id,started_at,finished_at,workflow,channel,status")
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -62,7 +64,8 @@ export type PendingComment = Comment & {
 };
 
 /** Comments awaiting a reply, resolved to their channel and video title (optionally filtered). */
-export async function getPendingComments(
+export const getPendingComments = cached("pending", loadPendingComments);
+async function loadPendingComments(
   channel: ChannelFilter,
   limit = 200,
   platform = "",
@@ -201,7 +204,7 @@ export async function getChannelHealth(): Promise<ChannelHealth[]> {
   const [runsRes, contentRes, queueRes] = await Promise.all([
     db()
       .from("runs")
-      .select("*")
+      .select("id,started_at,finished_at,workflow,channel,status")
       .order("started_at", { ascending: false })
       .limit(60),
     db()
@@ -304,7 +307,8 @@ export async function getFailedContent(
 }
 
 /** Everything the home page needs, each query isolated so one failure does not blank the page. */
-export async function getOverview(channel: ChannelFilter, platform = "") {
+export const getOverview = cached("overview", loadOverview);
+async function loadOverview(channel: ChannelFilter, platform = "") {
   const [
     publishedWeek,
     queue,

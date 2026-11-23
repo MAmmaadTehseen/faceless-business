@@ -3,17 +3,23 @@ import { filterPublications } from "./scope";
 import { db } from "./supabase";
 import { Content, Publication, Metric } from "./types";
 import { ChannelFilter } from "./channels";
+import { cached } from "./cache";
+
+const CONTENT_COLS = "id,channel,kind,parent_id,thumbnail_path,tags,topic,title,qa_status,status,claude_cost_usd,created_at";
+const PUB_COLS = "id,content_id,platform,platform_id,url,privacy,status,publish_at,published_at,error";
+const METRIC_COLS = "id,publication_id,captured_at,views,likes,comments,shares,ctr,avg_view_duration_sec,impressions";
 export type ContentItem = Content & {
   publications: (Publication & { metric: Metric | null })[];
 };
-export async function getContent(
+export const getContent = cached("content", loadContent);
+async function loadContent(
   channel: ChannelFilter,
   includeMetrics = true,
   days?: string,
 ): Promise<ContentItem[]> {
   let q = db()
     .from("content")
-    .select("*")
+    .select(CONTENT_COLS)
     .order("created_at", { ascending: false });
   if (channel !== "all") q = q.eq("channel", channel);
   if ([1, 7, 28, 30, 90].includes(Number(days)))
@@ -33,7 +39,7 @@ export async function getContent(
   for (let offset = 0; offset < rows.length; offset += 100) {
     const { data: pubs, error: pe } = await db()
       .from("publications")
-      .select("*")
+      .select(PUB_COLS)
       .in(
         "content_id",
         rows.slice(offset, offset + 100).map((c) => c.id),
@@ -43,24 +49,21 @@ export async function getContent(
   }
   const latest = new Map<number, Metric>();
   if (includeMetrics && publications.length) {
-    let offset = 0;
-    for (;;) {
-      const { data: ms, error: me } = await db()
-        .from("metrics")
-        .select("*")
-        .in(
-          "publication_id",
-          publications.map((p) => p.id),
-        )
-        .order("captured_at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(offset, offset + 999);
-      if (me) throw me;
-      for (const m of (ms ?? []) as Metric[])
-        if (!latest.has(m.publication_id)) latest.set(m.publication_id, m);
-      if ((ms ?? []).length < 1000 || latest.size === publications.length)
-        break;
-      offset += 1000;
+    // Sync writes every live publication every 6 h, so the last 3 days cover almost all of them.
+    const since = new Date(Date.now() - 3 * 86400000).toISOString();
+    for (const window of [since, null]) {
+      const ids = publications.map((p) => p.id).filter((id) => !latest.has(id));
+      for (let i = 0; i < ids.length; i += 200) {
+        for (let offset = 0; ; offset += 1000) {
+          let q = db().from("metrics").select(METRIC_COLS).in("publication_id", ids.slice(i, i + 200));
+          if (window) q = q.gte("captured_at", window);
+          const { data: ms, error: me } = await q.order("captured_at", { ascending: false }).order("id", { ascending: false }).range(offset, offset + 999);
+          if (me) throw me;
+          for (const m of (ms ?? []) as Metric[])
+            if (!latest.has(m.publication_id)) latest.set(m.publication_id, m);
+          if ((ms ?? []).length < 1000) break;
+        }
+      }
     }
   }
   return rows.map((c) => ({

@@ -1,3 +1,4 @@
+import { refreshData } from "@/lib/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { Settings } from "@/lib/types";
@@ -40,5 +41,6 @@ export async function PUT(req: Request) {
   const rows = Object.entries(clean).map(([key, value]) => ({ key, value }));
   const { error } = await db().from("settings").upsert(rows, { onConflict: "key" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  refreshData();
   return NextResponse.json({ ok: true, settings: clean });
 }

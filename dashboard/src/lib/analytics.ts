@@ -6,13 +6,15 @@ import { ChannelFilter } from "./channels";
 import { category } from "./categories";
 import { formatKind } from "./content-filters";
 import { Metric } from "./types";
+import { cached } from "./cache";
 export type Totals = {
   views: number;
   likes: number;
   comments: number;
   watch: number | null;
 };
-export async function getAnalytics(
+export const getAnalytics = cached("analytics", loadAnalytics);
+async function loadAnalytics(
   channel: ChannelFilter,
   days: number,
   allTime = false,
@@ -32,12 +34,16 @@ export async function getAnalytics(
   );
   const ids = pubs.map((p) => p.id);
   const snapshots: Metric[] = [];
-  if (ids.length) {
+  // Only the two compared periods matter (plus a day so the snapshot at the window start exists).
+  const since = allTime ? null : new Date(Date.now() - (2 * days + 1) * 86400000).toISOString();
+  for (let i = 0; i < ids.length; i += 200) {
     for (let offset = 0; ; offset += 1000) {
-      const { data, error } = await db()
+      let q = db()
         .from("metrics")
-        .select("*")
-        .in("publication_id", ids)
+        .select("id,publication_id,captured_at,views,likes,comments,ctr")
+        .in("publication_id", ids.slice(i, i + 200));
+      if (since) q = q.gte("captured_at", since);
+      const { data, error } = await q
         .order("captured_at", { ascending: true })
         .order("id", { ascending: true })
         .range(offset, offset + 999);
