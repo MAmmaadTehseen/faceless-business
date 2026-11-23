@@ -479,6 +479,12 @@ def produce_episode(db, channel: Channel, *, dry_run=False, no_publish=False, pr
     if not dry_run and not no_publish:
         from .publish import publish_all
         result["publications"] = publish_all(db, content_id, privacy or db.setting("publish_privacy", "private"), channel)
+        if any(p.get("platform") == "youtube" and p.get("content_id") == content_id for p in result["publications"]):
+            try:
+                from .words_article import write_words_article
+                write_words_article(db, content_id)
+            except Exception as e:
+                log.warning("article skipped for %s (%s)", content_id, type(e).__name__)
     write_json(out / "result.json", result)
     return result
 

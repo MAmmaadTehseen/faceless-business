@@ -52,9 +52,18 @@ def shared_marker(db, article_id: str) -> dict | None:
     return v if isinstance(v, dict) else None
 
 
+def is_live(article: dict) -> bool:
+    """The hub serves an article only once published_at has passed (scheduled episodes are future-dated)."""
+    try:
+        when = datetime.fromisoformat(str(article.get("published_at")).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return when <= datetime.now(timezone.utc)
+
+
 def share_article_to_facebook(db, article: dict, channel: Channel, *, dry_run: bool = False) -> str | None:
     """Post one link post for a published article. Idempotent via settings; never raises."""
-    if not article.get("published_at"):
+    if not article.get("published_at") or not is_live(article):
         return None
     if db.setting("fb_article_posts_enabled", True) is False:
         return None
@@ -90,7 +99,7 @@ def backfill_articles(db, channel: Channel, *, max_per_day: int = 1) -> int:
     done_today = int(state.get("count") or 0) if state.get("day") == today else 0
     if done_today >= max_per_day:
         return 0
-    rows = [r for r in db.select("articles", {"channel": channel.key}, order="published_at", desc=True) if r.get("published_at")]
+    rows = [r for r in db.select("articles", {"channel": channel.key}, order="published_at", desc=True) if r.get("published_at") and is_live(r)]
     posted = 0
     for article in rows:
         if done_today + posted >= max_per_day:

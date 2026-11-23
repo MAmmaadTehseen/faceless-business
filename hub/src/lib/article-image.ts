@@ -16,7 +16,7 @@ export function imageCandidates(a: Article) {
   if (a.youtube_id && /^[\w-]{11}$/.test(a.youtube_id)) {
     candidates.push(`https://i.ytimg.com/vi/${a.youtube_id}/maxresdefault.jpg`, `https://i.ytimg.com/vi/${a.youtube_id}/hqdefault.jpg`);
   }
-  return [...candidates, `/a/${encodeURIComponent(a.slug)}/opengraph-image`, `/artwork/${['futurework','tradewinds','escapevelocity'].includes(a.channel) ? a.channel : 'futurework'}.svg`];
+  return [...candidates, `/a/${encodeURIComponent(a.slug)}/opengraph-image`, `/artwork/${['futurework','tradewinds','escapevelocity','tentongues'].includes(a.channel) ? a.channel : 'futurework'}.svg`];
 }
 const persistedAvailability = unstable_cache(async (url: string) => {
   try {

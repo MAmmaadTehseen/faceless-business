@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 export const runtime = 'nodejs';
 const limits = new Map<string, {minute:number; count:number}>();
-const channels = ['futurework','tradewinds','escapevelocity'];
+const channels = ['futurework','tradewinds','escapevelocity','tentongues'];
 const targets = ['youtube_embed','youtube_channel','instagram','facebook','article','external'];
 const empty = () => new Response(null, {status:204});
 const text = (v:unknown, n=200) => typeof v === 'string' ? v.slice(0,n) : null;
