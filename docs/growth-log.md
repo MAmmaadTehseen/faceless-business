@@ -311,3 +311,37 @@ From today the growth loop runs every 6 hours as a scheduled task: scoreboard, c
 - 2026-11-23: Bing Webmaster Tools set up at the owner's request: signed in with Google, granted view-only Search Console access, imported https://hub.ammaad.online/ with its sitemap (covers Bing, DuckDuckGo, Yahoo). New articles already ping IndexNow (pipeline/article.py), which Bing reads.
 - 2026-11-23: pages_manage_metadata added to the Meta app's Pages use case (Ready for testing). Graph API Explorer prepared with 12 permissions. Owner still has to generate the user token (consent popup), run scripts/meta_page_env.py --all and update the five META_* secrets; then the loop can set each Page's website to https://hub.ammaad.online/c/<channel>.
 - 2026-11-23: owner refreshed the five Page tokens (scripts/meta_page_env.py --all). pages_manage_metadata verified: Page websites set to the hub channel pages for Future Work, Trade Winds and Escape Velocity; Ten Tongues kept https://www.youtube.com/@tentongues (no hub channel page, /c/tentongues is 404).
+
+
+## Loop run: 2026-11-23 12:08 UTC
+
+### Scoreboard (`data/scoreboard/2026-11-23T12.json`)
+
+| channel | long n / median / best | short n / median / best | median % viewed (long / short) |
+|---|---|---|---|
+| futurework | 14 / 8 / 25 | 45 / 11 / 92 | 16 / 38 |
+| tradewinds | 11 / 1 / 59 | 42 / 21 / 265 | 12.5 / 53 |
+| escapevelocity | 11 / 4 / 27 | 45 / 24 / 620 | 10 / 37.5 |
+| tentongues | 6 / 3 / 30 | 63 / 23 / 846 | 42 / 40 |
+| filmreview (Frame and Argument) | 1 / 73 / 73 | 4 / 97 / 407 | 12 / 26.5 |
+
+Since this morning's round 3: "Rice in Russian" 799 -> 846 (best on the network, 2.1% of the Short target); four new Egg Shorts and the Egg long episode are under a day old (0-1 views). Trade Winds' newest Short ("The Queue Costs More Than the Tax") is at 60 views/day in its first 12 h, three times the channel median. Nothing is within 47x of target.
+
+Frame and Argument is in the scoreboard from today (commit 797b7e3, `channel_for()` uses `FilmReviewChannel`). After four days it is, per video, the network's strongest channel: its single long recap (73 views) beats every other channel's best long video, and its Shorts median (97) is four times anyone else's; best "Heartland: The Confession That Broke Nashville" 407 at 31 s. Small samples (n=1 and n=4), but the direction is clear. Rows added to the owner's to-do scoreboard.
+
+### Shipped
+
+- 8b5f404 Ten Tongues on the hub. `pipeline/words_article.py` builds one article per published episode from `content.qa_notes.words_episode` with no model calls: "RICE in 10 languages" with a word table (native script, romanisation, IPA), an example-sentence table, one "How to say rice in <language>" section per language (memory hook, usage note), the YouTube embed and a search-shaped FAQ ("How do you say rice in Russian?", Japanese, Spanish, Hindi, French: the languages whose Shorts draw most). New episodes get theirs after a successful upload (`words.py`). Scheduled episodes are dated at the video's `publishAt`, so the hub shows the article when the video goes public; Facebook article shares now skip not-yet-live articles (the backfill sharer picked newest first and would have posted a 404 link). The hub lists Ten Tongues, the About page names four channels, and Instagram links use each channel's real `instagram_handle` (they used the YouTube handle, which is wrong for all four).
+- Backfilled 8 articles: bread, milk, tea, coffee, rice, salt, egg (live) and fruit (live 2026-11-24 07:00 UTC). https://hub.ammaad.online/c/tentongues now returns 200; Ten Tongues' Facebook Page website set to it via the Graph API (verified).
+- Tests: `tests/test_words_article.py` (7). Suite: 440 passed.
+
+### Not done, and why
+
+- Indexing requests for the Ten Tongues articles: today's 8 were used this morning. Next run (2026-11-24): starship-flight-15, dutch-government, then the rice, tea and bread articles (the words with the strongest Shorts).
+- Quick vs standard Shorts: the experiment started today, so no side has public Shorts older than 48 h. Judge from 2026-11-26.
+- `retry` workflow runs failed today on old Instagram/Facebook publications whose media is gone (`media_not_recoverable`); expected and harmless, dispatched by another session. The 11:34 bank failure is left to the stockpile session.
+
+### Measuring
+
+- Ten Tongues hub articles: impressions and clicks in Search Console from 2026-11-30 for "how to say <word> in <language>" queries.
+- Frame and Argument: whether the Shorts median holds as n grows past 10.
