@@ -26,9 +26,14 @@ class _Overlay:
 
     def __init__(self, db, overrides):
         self.db, self.overrides, self.sb = db, overrides, getattr(db, "sb", None)
+        self._cache = {}
 
     def select(self, table, *a, **kw):
-        rows = self.db.select(table, *a, **kw)
+        # Planning reads the same two tables for every slot; one fetch per run instead of ~70.
+        key = (table, repr(a), repr(sorted(kw.items())))
+        if key not in self._cache:
+            self._cache[key] = self.db.select(table, *a, **kw)
+        rows = [dict(r) for r in self._cache[key]]
         if table != "publications":
             return rows
         out = []

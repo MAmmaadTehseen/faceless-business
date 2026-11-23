@@ -83,6 +83,16 @@ class DB:
         row.setdefault("id", cur.lastrowid)
         return row
 
+    def insert_many(self, table: str, rows: list[dict]) -> None:
+        """One request for many rows (metrics snapshots); falls back to row-by-row on SQLite."""
+        if not rows:
+            return
+        if self.sb:
+            self.sb.table(table).insert([self._encode(table, r) for r in rows]).execute()
+            return
+        for r in rows:
+            self.insert(table, r)
+
     def upsert(self, table: str, row: dict, on: str) -> dict:
         row = self._encode(table, row)
         if self.sb:

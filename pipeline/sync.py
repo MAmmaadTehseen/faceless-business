@@ -66,6 +66,7 @@ def sync_channel(db, channel):
     pubs = [p for p in db.select("publications", {"status": "live"}) if p["content_id"] in ids]
     if not pubs:
         return
+    pending_metrics = []
     yt_pubs = [p for p in pubs if p["platform"] == "youtube" and p.get("platform_id")]
     if yt_pubs and youtube.configured() and not youtube.auth_failed(channel):
         ids = [p["platform_id"] for p in yt_pubs]
@@ -76,7 +77,7 @@ def sync_channel(db, channel):
             if not s:
                 continue
             a = an.get(p["platform_id"], {})
-            db.insert("metrics", {"publication_id": p["id"], "views": s["views"], "likes": s["likes"], "comments": s["comments"],
+            pending_metrics.append({"publication_id": p["id"], "views": s["views"], "likes": s["likes"], "comments": s["comments"],
                                   "ctr": a.get("ctr"), "avg_view_duration_sec": a.get("avg_view_duration_sec"), "impressions": a.get("impressions")})
             if s["privacy"] != p.get("privacy"):
                 db.update("publications", {"id": p["id"]}, {"privacy": s["privacy"]})
@@ -86,23 +87,28 @@ def sync_channel(db, channel):
                         continue
                     _store_comment(db, p, "youtube", c)
     if meta.configured():
-        for p in pubs:
-            if p["platform"] == "instagram" and p.get("platform_id"):
-                try:
-                    m = meta.ig_insights(p["platform_id"])
-                    db.insert("metrics", {"publication_id": p["id"], **m})
-                    for c in meta.ig_comments(p["platform_id"]):
-                        _store_comment(db, p, "instagram", c)
-                except Exception as e:
-                    log.warning("ig sync failed %s: %s", p["platform_id"], e)
-            elif p["platform"] == "facebook" and p.get("platform_id"):
-                try:
-                    m = meta.fb_insights(p["platform_id"])
-                    db.insert("metrics", {"publication_id": p["id"], **m})
-                    for c in meta.fb_comments(p["platform_id"]):
-                        _store_comment(db, p, "facebook", c)
-                except Exception as e:
-                    log.warning("fb sync failed %s: %s", p["platform_id"], e)
+        # Insights and comments are one slow Graph call each per Reel; fetch them in parallel,
+        # then write to the database from this thread.
+        from concurrent.futures import ThreadPoolExecutor
+
+        def fetch(p):
+            try:
+                if p["platform"] == "instagram":
+                    return p, meta.ig_insights(p["platform_id"]), list(meta.ig_comments(p["platform_id"])), None
+                return p, meta.fb_insights(p["platform_id"]), list(meta.fb_comments(p["platform_id"])), None
+            except Exception as e:
+                return p, None, [], e
+
+        social = [p for p in pubs if p["platform"] in ("instagram", "facebook") and p.get("platform_id")]
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            for p, m, comments, err in pool.map(fetch, social):
+                if err:
+                    log.warning("%s sync failed %s: %s", "ig" if p["platform"] == "instagram" else "fb", p["platform_id"], err)
+                    continue
+                pending_metrics.append({"publication_id": p["id"], **m})
+                for c in comments:
+                    _store_comment(db, p, p["platform"], c)
+    db.insert_many("metrics", pending_metrics)
     try:
         follow_youtube_to_reels(db, channel)
     except Exception as e:
