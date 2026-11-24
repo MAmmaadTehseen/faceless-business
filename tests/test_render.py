@@ -338,3 +338,21 @@ def test_apply_shots_gives_each_segment_its_own_visual():
     assert out[3]["query"] == "Voyager spacecraft"  # cycles when the script gave fewer shots than segments
     legacy = [{"query": "dish"}]
     assert apply_shots(legacy, None, "dish") == [{"query": "dish"}]  # resumed scripts without shots are unchanged
+
+
+def test_chart_and_map_shots(tmp_path):
+    from pipeline.render import apply_shots, _fill_slot
+    from pipeline.graphics import parse_chart, parse_map
+    title, items = parse_chart("US tariff | 2023=25%, 2024=100%")
+    assert title == "US tariff" and [v for _, v, _ in items] == [25.0, 100.0]
+    assert [v for _, v, _ in parse_chart("Cuts | Amazon=14,000, Intel=24,000")[1]] == [14000.0, 24000.0]
+    assert parse_chart("Debt | 2020=1.2 trillion, 2024=2 trillion")[1][1][1] == 2e12
+    assert parse_map("Iran, Oman | Strait of Hormuz") == (["Iran", "Oman"], "Strait of Hormuz")
+    segs = apply_shots([{"query": "q"}, {"query": "q"}], ["CHART: T | a=1, b=2", "MAP: Iran | Hormuz"], "q")
+    assert segs[0]["graphic"] == ("chart", "T | a=1, b=2") and segs[1]["graphic"] == ("map", "Iran | Hormuz")
+    footage = Mock()
+    out = _fill_slot({"query": "MAP: Iran, Oman | Strait of Hormuz", "caption": "c"}, 0.5, "portrait",
+                     tmp_path / "map.mp4", footage)
+    assert out.exists() and (tmp_path / "map.png").exists() and not footage.clip.called
+    out = _fill_slot({"query": "q", "graphic": ("map", "Atlantis | Nowhere")}, 0.5, "landscape", tmp_path / "bad.mp4", footage)
+    assert out.with_suffix(".txt").read_text() == "NOWHERE"  # unknown place falls back to a stat card

@@ -187,6 +187,18 @@ def _background_card(text: str, sec: float, orientation: str, out: Path,
 def _fill_slot(seg: dict, sec: float, orientation: str, out: Path,
                footage: Footage, style: dict | None = None) -> Path:
     from .qa import probe
+    # Long-video shot lists use the same prefixes in `query` ("CARD: ...", "CHART: ...", "MAP: ...").
+    prefix, _, rest = (seg.get("query") or "").partition(":")
+    if not seg.get("card") and not seg.get("graphic") and prefix.strip().upper() in ("CARD", "CHART", "MAP") and rest.strip():
+        kind = prefix.strip().lower()
+        seg = dict(seg, **({"card": rest.strip()[:40]} if kind == "card" else {"graphic": (kind, rest.strip())}),
+                   query=seg.get("caption") or "abstract background")
+    if seg.get("graphic"):
+        clip = _graphic_clip(*seg["graphic"], sec, orientation, out, style)
+        if clip:
+            return clip
+        # An undrawable spec (unknown country, no numbers) falls back to a stat card of its text.
+        return _background_card(seg["graphic"][1].split("|")[-1].strip()[:40] or seg.get("caption", ""), sec, orientation, out, style, big=True)
     if seg.get("card"):
         return _background_card(seg["card"], sec, orientation, out, style, big=True)
     # No truncated fallback ("large radio" for a Voyager script found wildflowers, 2026-11-24):
@@ -321,6 +333,24 @@ def render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation:
         shutil.rmtree(out.parent / f"{out.stem}_work", ignore_errors=True)
 
 
+def _graphic_clip(kind: str, spec: str, sec: float, orientation: str, out: Path, style: dict | None = None) -> Path | None:
+    """CHART:/MAP: shot as a moving clip (slow push-in, so the freeze detector never fires)."""
+    from .graphics import graphic_image
+    w, h = _dims(orientation)
+    img = graphic_image(kind, spec, (w, h), style)
+    if img is None:
+        return None
+    still = out.with_suffix(".png")
+    img.save(still)
+    frames = max(1, math.ceil(sec * 30))
+    vf = (f"scale={int(w * 1.06)}:{int(h * 1.06)},zoompan=z='1+0.05*on/{frames}':d={frames}:"
+          f"x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':s={w}x{h}:fps=30,format=yuv420p")
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-loop", "1", "-i", str(still), "-vf", vf,
+                    "-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", str(out)],
+                   check=True, timeout=max(60, sec * 10))
+    return out
+
+
 def apply_shots(segs: list[dict], shots: list | None, fallback_query: str) -> list[dict]:
     """Give each Short segment its own visual from the script's ordered `shots` list: a stock search
     matching that moment, or 'CARD: <words>' for a branded stat card. Older scripts without shots
@@ -330,8 +360,11 @@ def apply_shots(segs: list[dict], shots: list | None, fallback_query: str) -> li
         return segs
     for i, seg in enumerate(segs):
         shot = shots[min(i, len(shots) - 1)] if i < len(shots) else shots[i % len(shots)]
-        if shot.upper().startswith("CARD:"):
+        head = shot.split(":", 1)[0].strip().upper()
+        if head == "CARD":
             seg["card"] = shot[5:].strip()[:40] or seg.get("caption", "")
+        elif head in ("CHART", "MAP") and ":" in shot:
+            seg["graphic"] = (head.lower(), shot.split(":", 1)[1].strip())
         else:
             seg["query"] = shot
             seg["candidate_queries"] = [fallback_query] if fallback_query and fallback_query != shot else []
