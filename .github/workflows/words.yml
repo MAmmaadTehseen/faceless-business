@@ -65,7 +65,7 @@ jobs:
             echo "apt retry $i"; sleep 30
           done
           command -v ffmpeg
-          fc-list | grep -ciE "NotoSansDevanagari|NotoSansBengali|NotoNastaliqUrdu|NotoSansCJK" || { echo "Noto fonts missing" >&2; exit 1; }
+          fc-list | grep -ciE "NotoSansDevanagari|NotoNastaliqUrdu|NotoSansCJK" || { echo "Noto fonts missing" >&2; exit 1; }
       - name: Install dependencies (CPU torch, Kokoro with ja/zh extras, Piper)
         run: |
           pip install -r requirements.txt

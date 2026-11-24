@@ -59,13 +59,12 @@ PROFILES = {
         "trailer": "R4LnSOzp_iw",
         "description": (
             "Ten Tongues teaches how to say one everyday English word in ten languages: Mandarin, Hindi, Spanish, "
-            "French, Bengali, Portuguese, Russian, Urdu, Japanese and Italian.\n\n"
+            "French, German, Portuguese, Russian, Urdu, Japanese and Italian.\n\n"
             "Each word comes with its native script, pronunciation and an example sentence. "
             "A new full episode every day, and one Short per language through the day.\n\n"
             "Word lists for every episode: " + HUB + "tentongues\n"
             "Instagram: https://www.instagram.com/ten.tongues/\n\n"
-            "Narration and pronunciation audio are AI-generated: a guide, not a native speaker. "
-            "Bengali voice: bn_BD-google (CC BY-SA 4.0)."
+            "Narration and pronunciation audio are AI-generated: a guide, not a native speaker."
         ),
     },
 }

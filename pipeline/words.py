@@ -141,10 +141,10 @@ def episode_prompt(word: str, langs: list[dict]) -> str:
         f"Languages, in this exact order: {listing}\n\n"
         "Write one Ten Tongues episode as JSON. For every language give the most common everyday translation of "
         "the word in the native script, a learner romanisation (pinyin with tone marks for Mandarin, Hepburn for "
-        "Japanese, IAST-style for Hindi, common Urdu romanisation, a simple scheme for Bengali and Russian; for "
+        "Japanese, IAST-style for Hindi, common Urdu romanisation, a simple scheme for Russian; for "
         "Latin-script languages repeat the word), IPA, one short everyday example sentence in the native script with its "
         "romanisation and English, one concrete memory hook, and one true cultural note or usage tip (name a common "
-        "regional variant when there is one, for example Bengali pani vs jol). Choose the form a beginner would learn first. "
+        "regional variant when there is one, for example Brazilian vs European Portuguese). Choose the form a beginner would learn first. "
         "narrator_intro is the English narrator's line for that block: name the language and say the word using the "
         "romanisation, for example 'Number three, Spanish. Water is agua.' Include the block number. narrator_wrap is "
         "the narrator speaking the memory hook and the cultural note in natural spoken English, 25 to 45 words. "
@@ -436,7 +436,7 @@ def produce_episode(db, channel: Channel, *, dry_run=False, no_publish=False, pr
     db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "long", "topic": word,
                           "title": data["title"], "status": "draft"}, on="id")
     style_note = ("Visual style: intentional typographic word cards on a dark background with a coloured bar; "
-                  "non-Latin scripts (Chinese, Devanagari, Bengali, Nastaliq Urdu, Cyrillic) on the cards are expected. "
+                  "non-Latin scripts (Chinese, Devanagari, Nastaliq Urdu, Cyrillic) on the cards are expected. "
                   "Cards are the design, not placeholder footage.")
 
     # Long episode

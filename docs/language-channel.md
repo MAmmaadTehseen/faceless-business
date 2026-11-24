@@ -29,7 +29,7 @@ search demand:
 | 2 | Hindi | Devanagari | Kokoro `h` / `hf_alpha` | Apache 2.0 |
 | 3 | Spanish | Latin | Kokoro `e` / `ef_dora` | Apache 2.0 |
 | 4 | French | Latin | Kokoro `f` / `ff_siwis` | Apache 2.0 (SIWIS CC BY) |
-| 5 | Bengali | Bengali | Piper `bn_BD-google-medium` (speaker 0) | OpenSLR 37 CC BY-SA 4.0 + CMU; attribution line in every description |
+| 5 | German (replaced Bengali 2026-11-24) | Latin | Piper `de_DE-thorsten-medium` | CC0 |
 | 6 | Portuguese | Latin | Kokoro `p` / `pf_dora` | Apache 2.0 |
 | 7 | Russian | Cyrillic | Piper `ru_RU-denis-medium` | CC0 |
 | 8 | Urdu | Nastaliq (Noto Nastaliq Urdu) | Piper `ur_PK-fasih-medium` | MIT |

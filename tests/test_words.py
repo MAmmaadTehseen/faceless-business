@@ -106,7 +106,7 @@ def test_segment_plans(channel, fixture):
         assert cfg["name"] in words.short_title(fixture, cfg, lang)
         assert "{LONG_URL}" in words.short_description(channel, fixture, cfg, lang)
     desc = words.long_description(channel, fixture)
-    assert "Piper bn_BD-google" in desc and "pānī" in desc
+    assert "pānī" in desc and "Wasser" in desc and "bn_BD" not in desc
 
 
 def test_mixed_srt_has_word_chunks_and_whole_segment_cues():

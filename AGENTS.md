@@ -336,8 +336,10 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
 - Languages, TTS voices, colours and playlists live in `channels/tentongues/channel.json`. TTS:
   Kokoro language codes (needs `misaki[zh]`; Japanese needs fugashi/unidic-lite/pyopenjtalk-plus) and
   Piper ONNX voices (`piper-tts`, voices cached in `data/piper` / `PIPER_VOICES_DIR`). Only
-  licence-verified voices: Bengali `bn_BD-google` is CC BY-SA and keeps its attribution line in every
-  description. Arabic and Indonesian are deferred (unclear voice licences).
+  licence-verified voices. German (Piper `de_DE-thorsten-medium`, CC0) replaced Bengali on 2026-11-24
+  (Bengali Shorts drew 0-5 views; German is a top "how to say X in" autocomplete language). Korean was
+  considered and deferred: Piper `ko_KR-kss` is CC BY-NC-SA, and MeloTTS Korean loads `kykim/bert-kor-base`,
+  whose README asks commercial users for an MOU. Arabic and Indonesian are deferred (unclear voice licences).
 - Scheduler: `channel_calendar()` keeps the fixed calendar for the original three channels; other
   channels use `schedule` in channel.json. `shorts_same_day`, `shorts_spacing_hours` and
   `max_youtube_per_day` are per-channel; `rotate_shorts_order: true` (Ten Tongues, 2026-11-23) shifts the child Shorts' slot order by one each day so every language takes every hour in turn; the three-a-day cap still applies to the original channels.

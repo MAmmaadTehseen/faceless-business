@@ -27,3 +27,4 @@ data/piper/
 supabase/.temp/
 data/scoreboard/
 .env.*
+.melo/
