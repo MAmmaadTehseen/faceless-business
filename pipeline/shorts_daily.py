@@ -13,7 +13,7 @@ from .ideate import fetch_news
 from .publish import publish_short, meta
 from .retry import production_notes
 from .qa import run_qa
-from .script import nasa_hint, BANNED_TITLE, SCRIPT_SCHEMA, strip_script_dashes
+from .script import nasa_hint, retention_hint, BANNED_TITLE, SCRIPT_SCHEMA, strip_script_dashes
 from .shorts import make_short
 
 DAILY_WORDS = (70, 160)
@@ -162,6 +162,7 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
             "with the first big number on a 'CARD: ...' (one generic query for a whole Short put wildflowers under a Voyager story; never again). "
             "Entertainment: a concrete image in every sentence, a twist or surprising contrast at the midpoint, nothing a viewer could skip. "
             f"{nasa_hint(claude)}"
+            f"{retention_hint(claude, 'short')}"
             f"Do not repeat any of these recent topics or titles: {json.dumps(recent)}"
         )
         if bank:

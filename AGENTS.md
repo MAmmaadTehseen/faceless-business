@@ -374,3 +374,12 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   run `scripts/meta_page_env.py --all` (hidden prompt, writes all `META_*_<KEY>` to .env), then owner re-sets the secrets.
   Page picture/cover/about need `pages_manage_metadata`, which the app token lacks; set them in the Page UI.
 
+## Visual and sound pass (2026-11-24)
+- Shorts carry an ordered `shots` list (2.5-4 s each): stock queries, or `CARD:` stat cards, `CHART: title | a=1, b=2`
+  bar charts and `MAP: Country, Country | label` maps (`pipeline/graphics.py`, Natural Earth in assets/geo). Long-video
+  shot lists may use the same prefixes. Escape Velocity queries name real spacecraft (NASA video, then NASA photos).
+  No truncated fallback queries. Hook title 92 px black on the channel accent.
+- `pipeline/sfx.py` synthesises cut whooshes and card hits (render `sfx_db`, default -17 dB; None disables).
+- `pipeline/retention_review.py`: weekly from sync, stores drop-off moments in `retention_lessons_<channel>`;
+  prompts include them via `retention_hint`. Details: docs/growth-log.md rounds 5 and 5b.
+

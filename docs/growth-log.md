@@ -806,3 +806,10 @@ Changes:
 - Long videos: shots 4-6.5 s (were 5-9 s).
 - Prompts: entertainment rules. Shorts: a concrete image in every sentence, a twist at the midpoint, nothing skippable. Long videos: re-hook every chapter with an open question, alternate fact and scene, one moment of contrast per chapter, never two abstract sentences in a row.
 Judge: Shorts average % viewed and swipe-away (Studio "stayed to watch") for Shorts published from 2026-11-25 against the previous 14 days, read on 2026-12-08.
+
+### Round 5b (2026-11-24): charts, maps, sound, weekly retention review
+
+- CHART and MAP shots (`pipeline/graphics.py`): scripts can ask for a bar chart of 2-6 numbers they state (`CHART: title | a=25%, b=100%`) or a map highlighting named countries (`MAP: Iran, Oman | Strait of Hormuz`, Natural Earth 1:110m, public domain, in assets/geo). Drawn in the channel accent with a slow push-in; portrait layouts keep bars and highlighted countries below the burned-caption zone. Undrawable specs fall back to a stat card. Long-video shot lists may use CARD/CHART/MAP for about one paragraph in four; Shorts up to four per Short. Gives Future Work and Trade Winds on-topic visuals where stock footage has nothing specific.
+- Sound design (`pipeline/sfx.py`): synthesised whoosh into every cut on Shorts and into graphics on long videos, plus a low hit under every card, chart and map, mixed at -17 dB with a limiter. No sample library, so no licence question. The narration is no longer halved by amix normalisation (normalize=0).
+- Weekly retention review (`pipeline/retention_review.py`, run from sync at most once a week per channel): for recent public videos with 15+ views it finds the steepest drop on the Analytics retention curve, stores the narration spoken there (estimated by word position) and the best-holding opening in `retention_lessons_<channel>`, and every new long-video, child-Short and daily-Short prompt includes them as measured examples to avoid and copy. No model calls.
+Judge with round 5 on 2026-12-08.

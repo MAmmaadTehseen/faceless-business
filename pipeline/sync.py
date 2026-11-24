@@ -114,6 +114,11 @@ def sync_channel(db, channel):
     except Exception as e:
         log.error("reels follow-up failed for %s: %s", channel.key, e)
     try:
+        from .retention_review import review
+        review(db, channel)
+    except Exception as e:
+        log.warning("retention review skipped for %s: %s", channel.key, e)
+    try:
         from .publish.short_links import comment_long_links
         comment_long_links(db, channel)
     except Exception as e:

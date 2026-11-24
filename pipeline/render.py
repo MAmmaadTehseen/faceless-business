@@ -251,7 +251,8 @@ def _check_black(video: Path) -> None:
 
 
 def _render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation: str = "landscape",
-           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None, hook_text: str | None = None) -> Path:
+           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None, hook_text: str | None = None,
+           sfx_db: float | None = -17.0) -> Path:
     """segments: [{query, mood, start, end}] in order, covering the narration."""
     footage = footage or Footage()
     work = out.parent / f"{out.stem}_work"
@@ -279,9 +280,28 @@ def _render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation
         vf = f"{vf},{hook}"
     cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(visual), "-i", str(audio)]
     music = _music()
+    sfx_track = None
+    if sfx_db is not None:
+        try:
+            from .sfx import track
+            sfx_track = track(segments, orientation, total, work / "sfx.wav")
+        except Exception as exc:  # sound design is optional; never fail a render over it
+            log.warning("sfx track skipped: %s", exc)
+    mix, n = ["[1:a]"], 1
+    filters = []
     if music:
         cmd += ["-stream_loop", "-1", "-i", str(music)]
-        fc = f"[2:a]volume={music_db}dB[m];[1:a][m]amix=inputs=2:duration=first:dropout_transition=2[a]"
+        n += 1
+        filters.append(f"[{n}:a]volume={music_db}dB[m]")
+        mix.append("[m]")
+    if sfx_track:
+        cmd += ["-i", str(sfx_track)]
+        n += 1
+        filters.append(f"[{n}:a]volume={sfx_db}dB[s]")
+        mix.append("[s]")
+    if len(mix) > 1:
+        # normalize=0 keeps the narration at full level instead of dividing it by the input count.
+        fc = ";".join(filters + [f"{''.join(mix)}amix=inputs={len(mix)}:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[a]"])
         cmd += ["-filter_complex", fc, "-map", "0:v", "-map", "[a]"]
     else:
         cmd += ["-map", "0:v", "-map", "1:a"]
@@ -326,9 +346,10 @@ def _render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation
 
 
 def render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation: str = "landscape",
-           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None, hook_text: str | None = None) -> Path:
+           footage: Footage | None = None, music_db: float = -22.0, style: dict | None = None, hook_text: str | None = None,
+           sfx_db: float | None = -17.0) -> Path:
     try:
-        return _render(segments, audio, srt, out, orientation, footage, music_db, style, hook_text)
+        return _render(segments, audio, srt, out, orientation, footage, music_db, style, hook_text, sfx_db)
     finally:
         shutil.rmtree(out.parent / f"{out.stem}_work", ignore_errors=True)
 
@@ -358,8 +379,10 @@ def apply_shots(segs: list[dict], shots: list | None, fallback_query: str) -> li
     shots = [str(x).strip() for x in (shots or []) if str(x).strip()]
     if not shots:
         return segs
+    plain = [x for x in shots if x.split(":", 1)[0].strip().upper() not in ("CARD", "CHART", "MAP")] or [fallback_query]
     for i, seg in enumerate(segs):
-        shot = shots[min(i, len(shots) - 1)] if i < len(shots) else shots[i % len(shots)]
+        # Past the end of the list, reuse only footage queries: a repeated card or map looks like a glitch.
+        shot = shots[i] if i < len(shots) else plain[(i - len(shots)) % len(plain)]
         head = shot.split(":", 1)[0].strip().upper()
         if head == "CARD":
             seg["card"] = shot[5:].strip()[:40] or seg.get("caption", "")

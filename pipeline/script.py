@@ -190,6 +190,15 @@ def nasa_hint(claude) -> str:
             "'Artemis II rocket launch', 'James Webb telescope mirror'), overriding the generic-query rule for shot_list.\n")
 
 
+def retention_hint(claude, kind: str) -> str:
+    """This channel's measured drop-off moments from the weekly retention review (pipeline.retention_review)."""
+    ch = getattr(claude, "channel", None)
+    if not ch or not getattr(claude, "db", None):
+        return ""
+    from .retention_review import prompt_block
+    return prompt_block(claude.db, ch.key, kind)
+
+
 def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: int = 4) -> dict:
     user = (
         f"Today's video topic: {topic['topic']}\n"
@@ -197,6 +206,7 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         f"Seed headline: {topic.get('source_headline') or ''}\nSeed url: {topic.get('source_url') or ''}\n"
         f"{search_block(topic)}\n"
         f"{nasa_hint(claude)}"
+        f"{retention_hint(claude, 'long')}{retention_hint(claude, 'short')}"
         "Step 1: research. Use web search to confirm the core facts, find 4-8 concrete, recent, attributable facts "
         "(numbers, names, dates, quotes) and at least one contrasting view. Prefer primary sources and major outlets.\n"
         "Step 2: write the long video following the script sequence and style exactly. 1300-1900 words of narration. "

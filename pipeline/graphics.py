@@ -119,8 +119,10 @@ def chart_image(spec: str, size: tuple[int, int], style: dict | None = None) -> 
     peak = max(v for _, v, _ in items) or 1.0
     n = len(items)
     if portrait:
-        # Horizontal bars in the upper 60 % of the frame, above the burned captions' zone.
-        area_bottom = int(h * 0.62)
+        # Burned captions sit at roughly 36-60 % of the height; the title stays in the top zone and
+        # the bars go below the captions (64-94 %), so neither is covered.
+        top = max(top, int(h * 0.64))
+        area_bottom = int(h * 0.94)
         slot = (area_bottom - top) / n
         bar_h = slot * 0.55
         lfont = _font(int(min(slot * 0.28, w * 0.055)))
@@ -196,7 +198,9 @@ def map_image(spec: str, size: tuple[int, int], style: dict | None = None) -> Im
         span_y = span_x * h / w
     else:
         span_x = span_y * w / h
-    left, top_lat = cx - span_x / 2, cy + span_y / 2
+    # Portrait: put the highlighted countries in the lower part of the frame (centre at 74 %),
+    # below the burned captions; landscape keeps them centred.
+    left, top_lat = cx - span_x / 2, cy + span_y * (0.74 if h > w else 0.5)
 
     def px(lon, lat):
         return ((lon - left) / span_x * w, (top_lat - lat) / span_y * h)
@@ -215,7 +219,8 @@ def map_image(spec: str, size: tuple[int, int], style: dict | None = None) -> Im
     text = label or ", ".join(names)
     portrait = h > w
     font = _fit(d, text, int(w * 0.86), int(w * (0.085 if portrait else 0.05)))
-    y = int(h * (0.07 if portrait else 0.06))
+    # Portrait label goes to the bottom edge: the hook title owns the top zone for the first seconds.
+    y = int(h * (0.88 if portrait else 0.06))
     for i, line in enumerate(_wrap(d, text.upper(), font, int(w * 0.86))):
         d.text((w / 2, y + i * font.size * 1.15), line, font=font, fill=(255, 255, 255), anchor="ma",
                stroke_width=max(2, font.size // 14), stroke_fill=(0, 0, 0))

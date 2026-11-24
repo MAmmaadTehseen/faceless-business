@@ -335,7 +335,7 @@ def test_apply_shots_gives_each_segment_its_own_visual():
     assert out[0]["query"] == "Voyager spacecraft" and out[0]["candidate_queries"] == ["dish"]
     assert out[1]["card"] == "15 BILLION MILES"
     assert out[2]["query"] == "mission control"
-    assert out[3]["query"] == "Voyager spacecraft"  # cycles when the script gave fewer shots than segments
+    assert out[3]["query"] == "Voyager spacecraft" and "card" not in out[3]  # cycles through footage queries only
     legacy = [{"query": "dish"}]
     assert apply_shots(legacy, None, "dish") == [{"query": "dish"}]  # resumed scripts without shots are unchanged
 
@@ -356,3 +356,14 @@ def test_chart_and_map_shots(tmp_path):
     assert out.exists() and (tmp_path / "map.png").exists() and not footage.clip.called
     out = _fill_slot({"query": "q", "graphic": ("map", "Atlantis | Nowhere")}, 0.5, "landscape", tmp_path / "bad.mp4", footage)
     assert out.with_suffix(".txt").read_text() == "NOWHERE"  # unknown place falls back to a stat card
+
+
+def test_sfx_cues_and_track(tmp_path):
+    from pipeline.sfx import cue_times, track
+    segs = [{"query": "a", "start": 0, "end": 2}, {"card": "25,000 JOBS", "start": 2, "end": 4},
+            {"query": "MAP: Iran | Hormuz", "start": 4, "end": 6}, {"query": "b", "start": 6, "end": 8}]
+    assert cue_times(segs, "portrait") == [(2, "whoosh"), (2, "hit"), (4, "whoosh"), (4, "hit"), (6, "whoosh")]
+    assert cue_times(segs, "landscape") == [(2, "whoosh"), (2, "hit"), (4, "whoosh"), (4, "hit")]  # long: graphics only
+    out = track(segs, "portrait", 8.0, tmp_path / "sfx.wav")
+    assert out.exists() and out.stat().st_size > 1000
+    assert track([{"query": "a", "start": 0, "end": 2}], "landscape", 2.0, tmp_path / "none.wav") is None
