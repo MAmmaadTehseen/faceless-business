@@ -4,6 +4,7 @@
 - Quick, warm, energetic. Short sentences, 6-14 words, bursts of three. One longer sentence per paragraph for the payoff.
 - Rhetorical questions welcome, one per section at most.
 - Paragraph breaks every 2-3 sentences.
+- Voice pacing A/B (started 2026-11-24, playbook item 34): the FIRST sentence of every video and Short is written slower and punchier than the body: under ten words, one idea, the number or mission name last. The body keeps its quick bursts. Judge on average % viewed at 48 h against the 2026-11-23 baseline (Shorts 38%, longs 10%) before extending to other channels.
 
 ## Words
 - Precise units: kilometres and miles both the first time, tonnes, orbital altitude, delta-v only if explained.
@@ -57,3 +58,10 @@
 - Named sources in the first half appeared in every top script again (NASASpaceflight, Katalyst Space, CNN, the October 23 briefing). Keep in-line attribution there.
 - Zero comments on all nine uploads. Close on an either-or question a viewer can answer in three words, then pin the question as a channel comment to start the thread.
 - Do not rewrite the bottom five yet. All are November 19 uploads with no impressions data, four of them one Orion cluster plus the long video. Same pattern as last week: new items sit at zero for their first days, so re-judge next week before changing anything.
+
+### Network findings 2026-11-24 (cross-channel scoreboard, growth log)
+- "The rescue didn't doom Swift" is still the channel's best Short (620 views) but its retention was 29%: the click worked, the middle sagged. The newer winners keep the payoff by line three: "Starlink Dies in Five Years, On Purpose" (120 views, 60% retention) resolves the surprise by sentence two. Resolve even earlier on irony hooks.
+- Exact searchable subject first is the network's strongest title signal ("Salt in Japanese: shio" started at 369 views/day). Here that means mission-first: "Voyager 1: four watts less each year" beats "Voyager loses four watts every year" only marginally, but "3I/ATLAS Is Alien. It Looks Like Home." (93 views in 2 days) shows the named-object-plus-paradox shape works when the object is what people type.
+- Bottom-five all share the pattern: no named actor in the first three words and no number anywhere ("Where can a falling telescope land?" 3 views in 14 days; "Voyager's silences aren't mysterious" 8; "The Small Rocks Are the Dangerous Ones" 10). If neither the mission name nor a figure opens the title, rewrite.
+- Keep the number-as-question title for cluster leads ("Only 5 Starship Launches This Year?", 384 views, 64% retention) and the stakes title for the second short ("The Artemis Crew That Won't Leave Earth Orbit", 303).
+- Long videos here average 10% viewed, the lowest of the four channels: the countdown, the number from the data release, or the failure must be the literal first sentence, and the six-block spine (formulas.md) applies with the mission named in the first ten words.

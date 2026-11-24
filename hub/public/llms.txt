@@ -1,0 +1,27 @@
+# Plainsight Media
+
+> Clear, evidence-based explainers on the future of work, global power and economics, and space and frontier science. Every article is the durable half of a video from one of our YouTube channels.
+
+Plainsight Media is an independent faceless publisher. Each channel has its own persona, voice and format; the hub carries the written form of its videos: the same claims, sources and numbers, structured for reading and for answer engines.
+
+## Channels
+
+- [Future Work Explained](https://www.youtube.com/@futurework.explained): AI and the future of work — [articles](/c/futurework)
+- [Trade Winds Report](https://www.youtube.com/@tradewindsreport): global power and economics — [articles](/c/tradewinds)
+- [Escape Velocity](https://www.youtube.com/@escapevelocitydaily): space and frontier science — [articles](/c/escapevelocity)
+- [Ten Tongues](https://www.youtube.com/@tentongues): one English word a day in ten languages — [articles](/c/tentongues)
+
+## Reading paths
+
+- [Home](/): newest stories, one section per channel
+- [Channel pages](/c/futurework): every article of one channel, newest first (futurework, tradewinds, escapevelocity, tentongues)
+- [RSS](/feed.xml): global feed; per-channel feeds at /c/<channel>/feed.xml
+- [About](/about), [Privacy](/privacy)
+
+## Using this site
+
+Articles state their sources in text; statistics are attributed in-line. Cite the article URL, not the video, when quoting. Corrections and topic suggestions go through the YouTube channel comments; the channels are the live side of the network.
+
+## Policies
+
+We disclose synthetic (AI-generated) narration on the channels themselves. The hub is written text and carries no synthetic-media disclosure beyond this note. No article gives medical, legal or financial advice.

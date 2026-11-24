@@ -22,7 +22,7 @@ DAILY_SCHEMA = {
     "type": "object", "additionalProperties": False,
     "required": ["hook_title", "script", "query", "description", "tags", "facts_check"],
     "properties": {
-        "hook_title": {"type": "string", "description": "Under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; shown on screen for the first two seconds"},
+        "hook_title": {"type": "string", "description": "Under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; states the same claim as the first spoken sentence; never begins with a gerund or an adjective; shown on screen for the first two seconds"},
         "script": {"type": "string", "description": "80-115 spoken words; self-contained; first sentence under 12 words naming an actor or a number; payoff by sentence three; last line a question or a loop back to the first line"},
         "query": {"type": "string", "description": "Generic physical stock video search"},
         "description": {"type": "string"},
@@ -148,7 +148,9 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
             f"Write a standalone daily Short about {topic['topic']}. Source seed: {topic.get('source_url') or ''}.\n"
             "Use web search to verify recent facts; at most 3 searches. Follow the channel persona. "
             "80-115 spoken words (about 35-45 seconds), one clear idea with a payoff and human stakes. "
-            "The first sentence is under twelve words and names a specific actor, object or number; no setup and no question-only opener. "
+            "The first sentence is under twelve words, states a checkable fact or an exact answer (never a mood or a metaphor), "
+            "and names a specific actor, object or number; no setup, no question-only opener, and the title never begins with a gerund or an adjective. "
+            "The title states the same claim as the first spoken sentence, and the searchable subject sits in its first three words. "
             "The payoff lands by the third sentence. The last line is a question the viewer can answer in one comment, or loops back to the first line. "
             "The Short must stand alone without a long video. Title under 50 characters. "
             "No income promises, medical/legal/financial advice, fabricated claims or unsupported statistics. "
@@ -190,6 +192,10 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
     data = strip_script_dashes(data)
     if BANNED_TITLE.search(data["hook_title"]):
         raise RuntimeError("Daily Short title failed policy guardrail")
+    # Playbook items 13+15: same per-script review as long videos (minor findings only).
+    from .review_script import review_findings, log_review
+    review = review_findings(data, is_short=True, title_key="hook_title", script_key="script")
+    log_review(review, content_id)
     content_id = f"{prefix}{slugify(topic['topic'], 40)}"
     out = OUT_DIR / content_id
     out.mkdir(parents=True, exist_ok=True)

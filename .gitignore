@@ -26,3 +26,4 @@ experiments/avatar/
 data/piper/
 supabase/.temp/
 data/scoreboard/
+.env.*

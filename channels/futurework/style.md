@@ -58,3 +58,9 @@
 - The zero-view requisition shorts have no impressions yet, so judge them by CTR later, not age; but all four open with a concept and no named actor, which is the known anti-pattern if CTR arrives low.
 - The AT&T short already follows the winning formula: actor, number, twist. Leave it alone and wait for impressions.
 - Every winner is anchored to a dated report from a named institution, while evergreen advice with no news anchor is the shared trait of the bottom four. Anchor every short to a filing, memo or report before writing.
+
+### Network findings 2026-11-24 (cross-channel scoreboard, growth log)
+- The full search phrase in the first three title words is now the strongest title signal on the network: Ten Tongues "Rice in Russian: ris" (921 views) and "Salt in Japanese: shio" (369 views/day, the fastest start anywhere) both put the answer in the title. Apply the same shape here: "Microsoft buyouts: 25,000 jobs" beats "A quarter of Microsoft was just offered an exit" because the first three words are what a person types.
+- Concept-only titles and hooks are the anti-pattern everywhere: "Being Right Is No Longer Enough" (4 views), "The Two Column Job Check" (1), "Nobody Lost the Pipe" (7), "The savings target came before the AI plan" (2). If a title has no proper noun and no number, it does not ship.
+- Long-video average % viewed is 10-16% on this channel: the first sentence must carry the named actor and the number, and the payoff of the title must land inside the first fifteen seconds (six-block spine, formulas.md).
+- The strongest long on the network's pattern is "A Government Just Budgeted AI Job Cuts. 25,000 of Them." (25 views, 4 comments, best long engagement). Claim-then-confirmed-by-number is this channel's title formula: '[Checkable claim]. [Number] of them.'

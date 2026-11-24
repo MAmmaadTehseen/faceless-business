@@ -25,7 +25,7 @@ SCRIPT_SCHEMA = {
         "script": {"type": "array", "items": {"type": "string"}, "description": "Narration paragraphs in order, spoken English only, no headings, no stage directions, 1300-1900 words total"},
         "shot_list": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["paragraph_index", "query", "mood"], "properties": {"paragraph_index": {"type": "integer"}, "query": {"type": "string", "description": "2-4 word stock VIDEO search that a free stock library will certainly have: generic, physical, filmable things (e.g. 'office worker typing', 'server room aisle', 'city street timelapse', 'handshake meeting', 'parliament building exterior'). Never company names, countries, people, abstract nouns, or events."}, "mood": {"type": "string", "enum": ["calm", "tense", "bright", "dark"]}}}, "description": "One entry per paragraph"},
         "facts_check": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["claim", "source", "confidence"], "properties": {"claim": {"type": "string"}, "source": {"type": "string"}, "confidence": {"type": "string", "enum": ["verified", "likely", "unverified"]}}}},
-        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; it is shown on screen for the first two seconds"}, "script": {"type": "string", "description": "Self-contained; QUICK Shorts (1 and 3) 50-70 words, STANDARD Shorts (2 and 4) 75-110 words; first sentence under 12 words with a named actor or a number; payoff by sentence three; last line a question or a loop back to the first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
+        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; states the same claim as the first spoken sentence; never begins with a gerund or an adjective; shown on screen for the first two seconds"}, "script": {"type": "string", "description": "Self-contained; QUICK Shorts (1 and 3) 50-70 words, STANDARD Shorts (2 and 4) 75-110 words; first sentence under 12 words with a named actor or a number; payoff by sentence three; last line a question or a loop back to the first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
     },
 }
 
@@ -54,6 +54,48 @@ TIGHTEN_SCHEMA = {
 
 def word_count(text: str) -> int:
     return len(str(text or "").split())
+
+
+# Playbook item 1: words that open concept-only sentences ("Being right is no longer enough",
+# "The two column job check") and spoken number words. Used only by the opening-quality warning.
+_SENTENCE_NEUTRAL = frozenset("""
+the a an this that these those here there it they you we i he she being before after when where
+how why what who which will would could should is are was were has have had does did do
+nobody nothing everyone most many some all every each imagine picture take make get so but and or
+if now first then next because while despite about into onto at in on for from by with without
+one two three four five six seven eight nine ten eleven twelve twenty
+""".split())
+_NUMBER_WORDS = frozenset("""
+zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen
+sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred
+thousand million billion trillion percent
+""".split())
+
+
+def opening_names_actor_or_number(script: list[str], window: int = 40) -> bool:
+    """Playbook item 1: the first `window` words of a long video must contain a named actor
+    or a number. Concept-only openings ("Being right is no longer enough") are the measured
+    anti-pattern on every channel. Digits count; spoken numbers count (the style guide says
+    numbers are spoken as words); a capitalized word counts when it is either mid-sentence
+    or a sentence start that is not a common opening word ("Microsoft just filed" passes,
+    "The company just filed" does not). Warning-only by design: a reject would strand the
+    paid script response.
+    """
+    words = " ".join(script[:2]).split()[:window]
+    at_sentence_start = True
+    for raw in words:
+        token = raw.strip("\"'“”([{)]")
+        if any(ch.isdigit() for ch in token):
+            return True
+        bare = token.replace("'", "").replace("’", "").replace(",", "").replace(".", "").lower()
+        if bare in _NUMBER_WORDS:
+            return True
+        if token[:1].isupper() and bare != "i" and (not at_sentence_start or bare not in _SENTENCE_NEUTRAL):
+            # capitalized mid-sentence (any proper noun), or a sentence start that is not a
+            # common opening word: "Microsoft just filed" passes, "The company just filed" does not.
+            return True
+        at_sentence_start = token.endswith((".", "!", "?"))
+    return False
 
 
 def tighten_shorts(claude, shorts: list[dict], content_id: str | None = None) -> list[dict]:
@@ -136,20 +178,27 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "Step 1: research. Use web search to confirm the core facts, find 4-8 concrete, recent, attributable facts "
         "(numbers, names, dates, quotes) and at least one contrasting view. Prefer primary sources and major outlets.\n"
         "Step 2: write the long video following the script sequence and style exactly. 1300-1900 words of narration. "
-        "Each of the five parts must introduce a genuinely different angle. No two paragraphs may restate the same point. "
+        "Structure, in order: (1) Hook: one shocking named-authority claim stated as fact, then one sentence of why it breaks the usual assumption; the first 40 words must contain the named actor or number. "
+        "(2) Context beat: that matters because [stake]; [named source] said [paraphrase], before any framework. "
+        "(3) Core message with one memorable framework, previewed by 0:40. "
+        "(4) Evidence: at least two attributed quotes or excerpts from named sources; the strongest goes before the 40% mark, never saved for the end. "
+        "(5) Application: what it means for the viewer's own next twelve months, right before the CTA. "
+        "(6) CTA: one question for the comments, one-sentence subscribe reminder, nothing else. "
+        "Each of the six blocks must introduce a genuinely different angle. No two paragraphs may restate the same point. "
         "Use simple natural spoken English, no filler or generic transitions. Hedge uncertain causes with can, may, "
         "or may indicate. No em dashes in any captions, titles, descriptions or Shorts. Attribute every statistic in-line. "
-        "Each paragraph is 2-5 sentences and is one visual beat. Put a clear framework in the middle. "
-        "Attribute facts in-line in spoken form. End with one question for the comments and a one-sentence CTA to subscribe.\n"
+        "Each paragraph is 2-5 sentences and is one visual beat. End on the application or the question, never a recap.\n"
         "Step 3: produce 5 titles across different formulas, thumbnail text, description with chapters, tags, "
-        "Title rules: the main title begins with the searchable subject (the named organisation, object, event or topic phrase a person would type) inside the first 40 characters, then the angle; clever lines go in title_variants, never first. "
+        "Title rules: the main title begins with the searchable subject (the named organisation, object, event or topic phrase a person would type) inside the first 40 characters, then the angle; it states one checkable claim, never a mood or a metaphor; when a named authority backs the claim, prefer the pattern '[Checkable claim], [named authority] just confirmed it'; the title, the first spoken sentence and the thumbnail text must all state the same claim. "
+        "Clever lines go in title_variants, never first. "
         "Description rule: its first sentence states the subject and the topic phrase plainly; chapter labels are search phrases, not jokes. "
         "one shot-list query per paragraph (generic stock-video phrases that always exist: people at desks, buildings, screens, streets, hands, machines; vary them so no two consecutive paragraphs share a query; never names of companies, countries, or people), "
         f"a facts_check table, and exactly {shorts_per_long} Shorts scripts. Each must cover a DIFFERENT angle "
         "(the number, the human consequence, the contrarian take, the what-to-do-now), be self-contained, "
         "with its own hook in the first line. Length experiment: Shorts 1 and 3 are QUICK, 50-70 words (about 20-28 seconds): one fact, one turn, and a last line that loops into the first; Shorts 2 and 4 are STANDARD, 75-110 words (about 35-45 seconds). No two Shorts may share a hook or statistic. "
-        "Shorts hook rules: hook_title is under 45 characters and names the specific subject (a proper noun or a number) in its first three words, because it is shown on screen for the first two seconds; the first sentence is under twelve words and names a specific actor, object or number; "
-        "no setup, no 'in this video', no question-only opener; the payoff lands by the third sentence; "
+        "Shorts hook rules: hook_title is under 45 characters and names the specific subject (a proper noun or a number) in its first three words, because it is shown on screen for the first two seconds; it states the same claim the first spoken sentence makes, in the same words where possible; "
+        "the first sentence is under twelve words, states a checkable fact or an exact answer (not a mood), and names a specific actor, object or number; "
+        "no setup, no 'in this video', no question-only opener, no title that begins with a gerund or an adjective; the payoff lands by the third sentence; "
         "the last line is either a question the viewer can answer in one comment or a line that loops back to the first sentence.\n"
         "Hard rules: no income promises, no medical/legal/financial advice, no fabricated quotes, no 'experts say' without naming who. "
         "The first two paragraphs must be a pattern break that pays off the title within ninety seconds."
@@ -191,7 +240,10 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         # Hook rewrite pass: cheap, big effect on retention.
         hook_prompt = (
             "Here is the title and the first two narration paragraphs of a video. Rewrite the two paragraphs only if they can be "
-            "made sharper: a bolder specific claim in the first sentence, stakes by the third sentence, no throat-clearing. Keep length similar. "
+            "made sharper: the first sentence states one shocking, named-authority claim as fact (the named actor or a number "
+            "must appear in the first forty words), one sentence of why it breaks the usual assumption follows, and the stakes "
+            "land by the third sentence with no throat-clearing. The first spoken sentence must state the same claim as the "
+            "title. Keep length similar. "
             "Keep every fact and in-line statistic attribution. Use natural spoken English, hedge uncertain causes, "
             "and use no em dashes, filler or generic transitions. If they are already strong, return them unchanged with changed=false.\n\n"
             f"Title: {data['title']}\n\nParagraph 1: {data['script'][0]}\n\nParagraph 2: {data['script'][1] if len(data['script']) > 1 else ''}"
@@ -228,5 +280,24 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
     if not reused:
         data["shorts"] = strip_script_dashes({"shorts": tighten_shorts(claude, data["shorts"], content_id)})["shorts"]
     words = sum(len(p.split()) for p in data["script"])
+    if not opening_names_actor_or_number(data["script"]):
+        # Non-fatal on purpose: rejecting would strand the paid script. The warning is the
+        # measurement: count should drop to zero once the prompt rule bites.
+        log.warning("script opening has no named actor or number in the first 40 words: %r", data["title"])
+    # Playbook items 13+15 (growth log 2026-11-24): per-script review checklist and art-text
+    # digit verification, logged and stored as minor findings (strict QA can still promote them).
+    from .review_script import review_findings as _review_findings, log_review as _log_review
+    review = _review_findings(data)
+    _log_review(review, content_id)
+    if review:
+        notes = {}
+        try:
+            notes = json.loads((db.one("content", {"id": content_id}) or {}).get("qa_notes") or "{}") if db else {}
+        except (ValueError, TypeError):
+            notes = {}
+        if isinstance(notes, dict):
+            notes["script_review"] = review
+            if db:
+                db.update("content", {"id": content_id}, {"qa_notes": json.dumps(notes)})
     log.info("script: %d paragraphs, %d words, title: %s", len(data["script"]), words, data["title"])
     return data

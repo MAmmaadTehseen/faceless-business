@@ -146,6 +146,18 @@ def _queue_auth(db, row, channel, privacy, slot, existing=None):
                 **fields})
 
 
+def parent_long_url(db, row) -> str | None:
+    """The parent long video's YouTube URL from its publication row, so a queued or drained
+    child Short can still link to it (a placeholder that survived a queued parent upload
+    would otherwise go up literally, or with the link stripped entirely)."""
+    if not row.get("parent_id"):
+        return None
+    pub = db.one("publications", {"content_id": row["parent_id"], "platform": "youtube"})
+    if pub and pub.get("platform_id"):
+        return pub.get("url") or f"https://youtu.be/{pub['platform_id']}"
+    return None
+
+
 def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queue=False, force=False):
     youtube.use_channel(channel)
     existing = db.one("publications", {"content_id": row["id"], "platform": "youtube"})
@@ -246,7 +258,16 @@ def _youtube_publish(db, row, channel, privacy, slot, draining=False, force_queu
             return None
         acquired = True
         from .youtube_promotion import description_links, new_upload
-        description = description_links(db, row, channel, row.get("description") or "")
+        raw_description = row.get("description") or ""
+        if "{LONG_URL}" in raw_description:
+            # publish_short keeps the placeholder when the long URL was unknown at call time
+            # (queued parent); resolve it from the parent's publication row, else drop the line.
+            parent_url = parent_long_url(db, row)
+            if parent_url:
+                raw_description = raw_description.replace("{LONG_URL}", parent_url)
+            else:
+                raw_description = "\n".join(l for l in raw_description.splitlines() if "{LONG_URL}" not in l)
+        description = description_links(db, row, channel, raw_description)
         r = youtube.upload(video, row["title"], description, row.get("tags") or [],
             privacy=privacy, publish_at=slot if privacy == "private" else None, thumbnail=thumbnail,
             is_short=row["kind"] == "short", category_id=channel.cfg.get("category_id", "28"))
@@ -382,7 +403,12 @@ def follow_youtube_to_reels(db, channel) -> int:
             continue
         if s.get("media_url") and _stale_media_url(s["media_url"]):
             s = {**s, "media_url": None}  # points at storage we no longer own (old Supabase project)
-        if not s.get("media_url") and not Path(s.get("file_path") or "").is_file():
+        if not Path(s.get("file_path") or "").is_file():
+            # Verify media even when media_url is set: publish_short records failed
+            # instagram/facebook rows for its own errors, and media nobody can fetch
+            # (a dead public URL, a gone queue copy) must skip quietly here instead,
+            # remembered once in reels_follow_missing_<channel>. restore() downloads
+            # the media_url, proving it, before falling back to queue and artifacts.
             try:
                 from ..retry import restore
                 s = restore(db, s, p, deep=False)
@@ -462,15 +488,25 @@ def retry_pending_thumbnails(db, channel, limit: int = 10) -> int:
 
 
 def short_description(s, channel, long_url=None) -> str:
-    """YouTube description for a Short: rebuild keyword-free legacy stubs, otherwise fill the long-video URL."""
+    """YouTube description for a Short: rebuild keyword-free legacy stubs, otherwise fill the long-video URL.
+
+    An unknown long URL keeps the {LONG_URL} placeholder: the DB row must stay resolvable
+    when a queued parent upload delays the Short past its production run.
+    """
     if channel.cfg.get("format") != "words" and uses_legacy_description(s.get("description")):
         return youtube_short_description(s, channel, long_url)
-    return (s.get("description") or "").replace("{LONG_URL}", long_url or "")
+    text = (s.get("description") or "")
+    return text.replace("{LONG_URL}", long_url) if long_url else text
 
 
 def reel_caption(s, channel, desc: str) -> str:
-    """Reels caption: hook + question + niche hashtags for explainer channels; words-format channels keep their own text."""
+    """Reels caption: hook + question + niche hashtags for explainer channels; words-format channels keep their own text.
+
+    The {LONG_URL} placeholder convention never reaches Instagram/Facebook: an unresolvable
+    link line is dropped instead of leaking the placeholder into a public caption.
+    """
     if channel.cfg.get("format") == "words":
+        desc = "\n".join(l for l in (desc or "").splitlines() if "{LONG_URL}" not in l)
         return f"{s['title']}\n\n{desc}".strip()
     return reels_caption(s, channel)
 
@@ -506,6 +542,8 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
         except Exception as exc:
             log.warning("short media persistence deferred for %s (%s)", s["id"], type(exc).__name__)
     desc = short_description(s, channel, long_url)
+    # short_description keeps the {LONG_URL} placeholder when the long URL is unknown, so this
+    # write leaves the DB row resolvable for a later queue drain (see _youtube_publish).
     s["description"] = desc
     db.update("content", {"id": s["id"]}, {"description": desc})
     results = []

@@ -417,3 +417,309 @@ Candidate for the next run (not done unattended, because it moves ~40 scheduled 
 - Ten Tongues hour vs language rotation: judge 2026-12-04.
 - Quick vs standard Shorts: first quick explainer Shorts go public 2026-12-30; judge in January (see above).
 - Thumbnail CTR in Studio Reach from 2026-11-30 (needs the Google sign-in).
+
+
+## Loop run: 2026-11-24 06:50 UTC (LunaRoute, headless — blocked run, honest report)
+
+**This run could not measure, test, or commit.** The headless session's permission system blocked
+every execution and write command: all Python (scoreboard, pytest), `gh run list`, `curl` to the
+autocomplete endpoint, WebSearch/WebFetch, `git pull --rebase`, and even `git add`/`git commit`
+required an approval nothing in this run could give. Only read-only file and git commands worked.
+No scoreboard was taken; no claim below relies on numbers newer than the 2026-11-23T19 snapshot.
+The code fix below is written to disk but **uncommitted and untested** — the next permissioned
+run must run `PYTHON_DOTENV_DISABLED=1 .venv/bin/python -m pytest tests -q` and commit
+`pipeline/publish/__init__.py` + `tests/test_short_long_link.py` (plus this log) if it passes.
+
+### Finding (from code reading, not new measurement): queued parents were breaking the Short-to-long funnel link
+
+`publish_short` resolves the `{LONG_URL}` placeholder only when the long URL is known at call
+time. When the long upload queues (quota bucket or expired OAuth), every child Short goes to
+YouTube later through the drain path, which used the DB description verbatim: explainer legacy
+stubs went up with the literal text `{LONG_URL}`, and words-format Shorts had the placeholder
+stripped to an empty string at production time (the DB row itself was overwritten), leaving
+`Full episode, all 10 languages:` dangling with nothing after it. Both lose the only link from
+a Short to its long video — the pinned backlog item "pinned comment or description link from
+each Short to its long video" was already half-broken in the queue case.
+
+Fix (working tree, not committed): `short_description` now keeps the placeholder when the URL
+is unknown so the DB row stays resolvable; `_youtube_publish` resolves it from the parent's
+publication row at upload time (no API call, no quota) or drops the unresolvable line; words
+Reel captions never leak the placeholder to Instagram/Facebook. Tests: `tests/test_short_long_link.py`
+(8 cases: drain resolution for explainer + words, drop-when-unresolvable, untouched normal path,
+`parent_long_url`, placeholder persistence, Reel caption guard). **Not run — no Python available.**
+
+### Scoreboard (stale: 2026-11-23T19 snapshot, unchanged since)
+
+Best long: Frame and Argument recap 73 (0.7% of 10,000 target). Best Short: "Rice in Russian" 921
+(2.3% of 40,000). Ten Tongues per-language Shorts remain the network's strongest median (27 vs
+10-24 elsewhere). No video on any channel is within 40x of target.
+
+### What a browser-capable / permissioned run should do next (in order)
+
+1. Run the test suite; if green, commit and push the fix above (files are already in the working tree).
+2. Take the scoreboard (`scripts/yt_scoreboard.py`) — last snapshot is 11 h old; compare the 2026-11-23
+   egg/salt/rice Shorts at ~1 day old (Egg in French was 124 views at 5 h, 401/day — the fastest
+   Ten Tongues start yet; check whether it held).
+3. Search Console: request indexing for starship-flight-15, dutch-government, then the Ten Tongues
+   rice, tea, bread, egg, salt articles (8/day cap; none requested since 2026-11-23 morning).
+4. YouTube Studio Reach (impressions, CTR, stayed-to-watch) for all five channels via the account
+   switcher; log them here. Escape Velocity needs its phone verified first (owner to-do).
+5. Community post for the Escape Velocity Starship video (text ready in the 2026-11-23 19:25 entry),
+   plus a post for the 2026-11-24 episodes if any went public.
+6. `gh run list --limit 30`: check produce/shorts/words overnight runs; the words run (03:30 UTC)
+   should have produced the 2026-11-24 episode — confirm it published and its Shorts' descriptions
+   now carry real links (this fix's first live test if the parent had queued).
+
+### Measuring
+
+- Ten Tongues hour vs language rotation: judge 2026-12-04 (unchanged).
+- Quick vs standard Shorts: first quick explainer Shorts 2026-12-30; judge January (unchanged).
+- After this fix ships: audit live Shorts' descriptions for `{LONG_URL}` or dangling `Full video:`/
+  `Full episode` lines (a DB query for `description LIKE '%{LONG_URL}%'` on `status='published'`
+  rows finds how many past uploads were affected; those can only be fixed by videos.update, which
+  costs 50 units each — decide by count).
+- Egg in French (fastest Ten Tongues start): whether the 401/day held past 24 h.
+
+
+## Loop run: 2026-11-24 ~14:00 UTC (LunaRoute, headless — second blocked run; content-quality pass Q1/Q2/Q3 written, code prepared)
+
+**This run could not execute or commit.** Same permission wall as the 06:50 run: every Python
+invocation (scoreboard, pytest), `gh`, `curl`, `git add`/`git commit`/`push` required an approval
+this unattended session could not give; only read-only file/git commands and the file tools worked.
+No new scoreboard snapshot (last is `2026-11-23T19.json`; the analysis below uses it). The 06:50
+fix (`pipeline/publish/__init__.py` + `tests/test_short_long_link.py`) is still uncommitted and
+untested in the working tree; this run's changes are also on disk, uncommitted.
+**Next permissioned run: run the suite once, then commit both batches** (file list at the end).
+
+### Scoreboard (stale, from `2026-11-23T19.json`; unchanged snapshot)
+
+| channel | long n / median / best | short n / median / best |
+|---|---|---|
+| futurework | 13 / 8 / 25 | 42 / 10 / 92 |
+| tradewinds | 11 / 1 / 59 | 43 / 21 / 265 |
+| escapevelocity | 12 / 3.5 / 28 | 41 / 24 / 620 |
+| tentongues | 6 / 3.5 / 30 | 69 / 27 / 921 |
+| filmreview | 1 / 73 / 73 | 4 / 103 / 416 |
+
+Best long: Frame and Argument 73 (0.7% of 10,000). Best Short: Ten Tongues "Rice in Russian: ris"
+921 (2.3% of 40,000). No video is within 40x of target.
+
+### Content-quality pass — Q1: rank channels/formats (from the 2026-11-23T19 snapshot)
+
+Per-video strength (median views): filmreview 103 > tentongues 27 > escapevelocity 24 >
+tradewinds 21 > futurework 10 (Shorts). Average % viewed: tradewinds Shorts 53.5% is the best of
+the explainers (bm_george, +0%), escapevelocity and futurework 38%, filmreview 26.5%, tentongues
+40%. Longs: tentongues 42% > futurework 16% > tradewinds 12.5% > filmreview 13% > escapevelocity 10%.
+
+Top 5 Shorts on the network (views; views/day where young): "Rice in Russian: ris" 921 (406/day),
+"Tea in Russian: chay" 576 (138/day), "Bread in Japanese: pan" 459 (63/day), "The rescue didn't
+doom Swift" 620 (51/day), "Salt in Japanese: shio" 406 (369/day, fastest start anywhere; "Egg in
+French: oeuf" 124 in ~5 h, 401/day, same pattern). Best explainer Shorts after those: "Freight up
+342 percent. Demand isn't." 265 (75% retention), "Only 5 Starship Launches This Year?" 384 (64%),
+"Starlink Dies in Five Years, On Purpose" 120 (60%), filmreview "Heartland: The Confession That
+Broke Nashville" 416 (206/day).
+
+Bottom Shorts (views): "Where can a falling telescope land?" 3, "Voyager's silences aren't
+mysterious" 8, "The Small Rocks Are the Dangerous Ones" 10, "Nobody Lost the Pipe" 7, "The
+savings target came before the AI plan" 2, plus futurework's concept batch ("Being Right Is No
+Longer Enough" 4, "The Two Column Job Check" 1, "Connecticut Is Counting. So Should You" 1).
+Scripts live in the DB; the titles carry the pattern, which is the actionable part.
+
+### Q2: what winners do differently (now written into persona/formulas.md and every style.md)
+
+1. The exact search phrase in the first three title words, with the answer in the title.
+   "Rice in Russian: ris": phrase + colon + answer. The answer being "spoiled" costs nothing;
+   searchers type "how to say rice in Russian" and click the title that already confirms.
+2. Winners open on a checkable fact, number, or named actor; losers open on a concept.
+   "Four hundred thousand dollars per box" vs "Ignore the ban. Find the exemption."
+3. Contradiction shape: fact, then flipped assumption. "Freight up 342 percent. Demand isn't."
+   "Teams wasn't hacked. That's the problem." "Starlink Dies in Five Years, On Purpose."
+4. Gerund/adjective-led titles underperform everywhere ("Being Right...", "Ignore...", "Find...").
+   Banned in prompts now.
+5. Duration: winning Shorts are 26-35 s (words) and 31-50 s (explainers); every 60 s+ Short
+   underperforms. (The quick/standard experiment still starts 2026-12-30; the backlog is full
+   of pre-experiment Shorts.)
+6. Voice/pace: channels whose winners hold 40-75% (tradewinds bm_george +0%, tentongues af_bella
+   -4%) speak at or below 1.0x; the two +rate channels (futurework +4%, escapevelocity +2%) hold
+   38%. Correlation, not proof; the A/B below tests it.
+
+### Q3: voice decisions (playbook item 34, one channel first)
+
+- A/B started: escapevelocity. Worst long retention (10%) and low Shorts retention (38%). Its
+  style.md now requires the first sentence of every video/Short to be slower and punchier (under
+  ten words, number or mission name last); the body keeps its quick bursts. Judge at 48 h per
+  video against the 2026-11-23 baseline from 2026-12-01. If Shorts move 38% to 45%+ and longs
+  10% to 14%+, extend to futurework; if flat, revert and try Kokoro rate +2% to -0% instead
+  (needs the permissioned run; render tests exist).
+- tradewinds (+0%, 53.5%, best explainer retention) and tentongues (-4%, 40%) unchanged: no
+  evidence supports touching the network's two best-retaining voices.
+- futurework am_michael +4% (38%): hold until the escapevelocity A/B reads.
+
+### Shipped this run (written to disk; commit pending a permissioned run)
+
+- persona/formulas.md: six-block spine (playbook items 1, 6, 11, 12) replacing the five-part
+  sequence, with strongest-evidence-before-40% and framework-by-0:40; new "Title rules that
+  separate winners from losers" and voice-delivery sections from the Q2 findings.
+- channels/{futurework,tradewinds,escapevelocity,tentongues,filmreview}/style.md: per-channel
+  "Network findings 2026-11-24" sections, kept distinct per the inauthentic-content rule;
+  escapevelocity carries the voice-pacing A/B (item 34).
+- pipeline/script.py: prompt enforces the six-block spine, named-actor-or-number in the first
+  40 words, "title/hook/thumbnail state the same claim" (items 2, 4), two attributed quotes in
+  the evidence block (item 5), gerund/adjective title ban; new `opening_names_actor_or_number()`
+  warning (item 1's measurable half; a warning, not a reject, so a paid script is never stranded);
+  the hook-rewrite prompt now demands the same claim and the 40-word rule.
+- pipeline/shorts_daily.py: the same claim-first, searchable-subject, no-gerund rules in the
+  daily prompt and the DAILY_SCHEMA hook_title description.
+- pipeline/ideate.py: topic rubric (viral potential, brand fit, series potential, production
+  feasibility; item 9), rising-not-saturated (item 7), and the required "what everyone else
+  missed" own-angle clause (item 8).
+- tests/test_content_quality.py: 9 tests (validator behavior including spoken-number and
+  sentence-start handling; prompt content pinned so a refactor cannot silently drop the rules).
+
+Note: `tests/test_reels_follow_speed.py` was modified by another session during this run (a
+follow_youtube_to_reels skip-quietly test); left untouched and out of both commit batches.
+`scripts/tmp_failed_inventory.py` (untracked, owner-approved inventory script from the 06:50
+session) also left as-is.
+
+### Files for the next permissioned run to commit (after the suite passes)
+
+Batch A (06:50 run): `pipeline/publish/__init__.py`, `tests/test_short_long_link.py`.
+Batch B (this run): `pipeline/script.py`, `pipeline/shorts_daily.py`, `pipeline/ideate.py`,
+`persona/formulas.md`, `channels/{futurework,tradewinds,escapevelocity,tentongues,filmreview}/style.md`,
+`tests/test_content_quality.py`, `docs/growth-log.md`.
+Pre-existing working-tree changes (`.gitignore` .env.* line, `AGENTS.md` tradewinds-locked note,
+`docs/growth-log.md` up to the 06:50 section) belong to the earlier run; include them in the
+same push since they are the same workstream.
+
+### Playbook items (all 35; running table)
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Six-block spine; first-40-words named actor/number | applied this run (prompt + warning); commit pending |
+| 2 | Hook = "[Actor] just [verb] [number]"; hook card = first spoken sentence | applied this run (prompt); commit pending |
+| 3 | Thumbnail: subject+object, <=3 words, strong verb, tone colour | partially in place (thumbnail.py, 2026-11-19); refine loop open |
+| 4 | Title "[claim], [authority] just confirmed it"; same claim in title/hook/thumbnail | applied this run (prompt); commit pending |
+| 5 | Two attributed quotes/excerpts in the evidence block | applied this run (prompt); commit pending |
+| 6 | Context beat right after the hook | applied this run (prompt); commit pending |
+| 7 | Recency scan; rising-not-saturated preference | applied this run (ideate prompt; fetch_news already runs daily); commit pending |
+| 8 | "What nobody covered" own-angle; rival-transcript mining | angle clause applied this run; transcript mining not built (no rival-channel ingestion) |
+| 9 | Topic rubric: rising, brand fit, series potential, feasibility | applied this run (ideate prompt); commit pending |
+| 10 | Answer-first hub articles: question H2s, 40-60 word answers, FAQ | open (article prompt work) |
+| 11 | Application block before CTA | applied this run (spine); commit pending |
+| 12 | Simple CTA; no business pitch | already in place; re-affirmed in the spine |
+| 13 | Never overstate; verify digits in art text | open (QA prompt work) |
+| 14 | Thumbnail refine loop; winners as style reference | open (thumbnail prompt redesign) |
+| 15 | Per-script review checklist as a QA step | open (qa.py work) |
+| 16 | Home tab: featured video, playlist sections, trailer | owner (Studio, browser) |
+| 17 | Channel description: unique first sentence, cadence, links | owner (Studio) |
+| 18 | Watermark, avatar, banner 2048x1152 | owner (Studio; assets exist in assets/brand) |
+| 19 | Opinionated myth-busting post per long video; link in first comment | open (captions.py), posting is owner/browser |
+| 20 | 8-12 repurposed pieces per long video | open (captions/description generation) |
+| 21 | Monthly explicit ask; proof-screenshot images | owner (content decision) |
+| 22 | Pin and refresh a Community post per long video | owner (browser; two posted 2026-11-23) |
+| 23 | Organization schema with sameAs; validate rich results | open (small code fix: sameAs missing in organizationJsonLd) |
+| 24 | robots.txt allows AI crawlers; llms.txt; fast SSR | open (robots.ts already allows all; llms.txt missing) |
+| 25 | Definition pattern; 100-300 token self-contained sections | open (article prompt) |
+| 26 | Topical-authority publishing on a defined topic set | open (schedule policy) |
+| 27 | Off-site mentions; AI-citation testing | owner (Reddit/publications) |
+| 28 | Query fan-out: sub-question articles | open (article/ideation) |
+| 29 | EEAT: author schema, visible sources | open (hub work) |
+| 30 | Weekly metrics loop feeding prompt updates | in place (this loop + weekly review) |
+| 31 | Series potential in topic planning | applied this run (rubric); commit pending |
+| 32 | Commit to one repurposing style for 3 months | owner (strategy decision) |
+| 33 | Keep testing topics continuously | in place (this loop) |
+| 34 | Slower, punchier hook line; A/B on one channel | applied this run (escapevelocity style + A/B started); rate change deferred to a permissioned run |
+| 35 | Do not copy huge-channel tactics blindly | standing rule (playbook caveat; own data first) |
+
+### Owner actions from the playbook (for the to-do artifact; this run cannot write to it)
+
+- Item 16: set each channel's Home tab: featured video = the channel's best performer, playlist
+  sections from the topic playlists, trailer optional. Studio > Customization > Layout.
+- Item 17: rewrite each channel description: unique first sentence, signature phrase, why trust
+  us, upload cadence, one free link to the hub.
+- Item 18: upload the 2048x1152 banner from assets/brand/<key>/, confirm avatar and handle match
+  across YouTube/IG/FB, enable the video watermark.
+- Item 22: pin each long video's Community post (two posted 2026-11-23; the Escape Velocity
+  Starship post text is ready in the 2026-11-23 19:25 entry).
+- Item 27: Reddit mentions of the hub in relevant communities; log them for the AEO citation test.
+- Standing: sign in to Google in the browser pane (blocks Search Console indexing, Studio Reach,
+  Community posts); verify Escape Velocity's phone at youtube.com/verify (thumbnails still failing).
+
+### What a browser-capable / permissioned run should do next (in order)
+
+1. Run `PYTHON_DOTENV_DISABLED=1 .venv/bin/python -m pytest tests -q`. If green, commit and push
+   BOTH batches: (a) 06:50's `pipeline/publish/__init__.py` + `tests/test_short_long_link.py`;
+   (b) this run's `pipeline/script.py`, `pipeline/shorts_daily.py`, `pipeline/ideate.py`,
+   `persona/formulas.md`, the five `channels/*/style.md`, `tests/test_content_quality.py`, and
+   this log. If any test fails, fix it first; do not commit red.
+2. Take a scoreboard snapshot (last is 21+ h old): did "Egg in French: oeuf" hold past 401/day,
+   and the 2026-11-24 words episode (03:30 UTC run) gives the first rotated hour/language datapoint.
+3. `gh run list --limit 30`: confirm the 03:30 words run published; check for failed produce/shorts runs.
+4. Search Console (8/day): starship-flight-15, dutch-government, then tentongues rice/tea/bread/egg/salt.
+5. Studio Reach for all channels via the account switcher; log impressions, CTR, stayed-to-watch.
+6. Community post for the Escape Velocity Starship long (text ready in the 2026-11-23 19:25 entry).
+7. Hub quick wins: `sameAs` with the five channel URLs in `organizationJsonLd()`
+   (hub/src/lib/seo.ts); add `hub/public/llms.txt`; then items 10/25/29 in the article prompt.
+8. Add the six owner playbook actions above to the to-do artifact (collection "todos").
+
+### Measuring (this run's hypotheses)
+
+- Six-block spine + first-40-words rule: longs published after ~2026-11-26 should show avg %
+  viewed above the 16/12.5/10% baselines by ~2026-12-08; the `opening_names_actor_or_number`
+  warning should stop appearing in produce logs.
+- Search-phrase-first titles + claim-first hooks: Shorts published after ~2026-11-26, judged on
+  views at 48 h against the channel medians (10/21/24/27) on 2026-12-08.
+- Escapevelocity voice-pacing A/B: 48 h avg % viewed per video from 2026-12-01 (baselines:
+  Shorts 38%, longs 10%).
+- Ten Tongues hour-vs-language rotation: judge 2026-12-04 (unchanged).
+- Quick vs standard Shorts: first quick explainer Shorts 2026-12-30 (unchanged).
+
+### Before/after for the owner (plain words)
+
+Before: titles and hooks often led with a clever phrase or a mood; long videos took a while to
+reach the point; every channel's opening did its own thing. After: every video must name the
+actor or the number in its first sentence and pay off the title inside fifteen seconds; titles
+must start with the exact words people search; the same claim must appear in the title, the hook
+card and the thumbnail; topics are picked for being new and unsaturated, with a stated "what
+everyone else missed"; Escape Velocity reads its first line slower as an experiment. The rules
+came from our own winners (the rice/tea/salt Shorts, the 342% freight Short), not from a course.
+Nothing is measured yet: the first videos made under these rules go out around 2026-11-26 and
+get judged on 2026-12-08.
+
+
+## Task run: 2026-11-24 (failed-publication cleanup — blocked execution, honest report)
+
+**Owner task:** count failed publications by platform/reason, quick-recover restorable instagram/facebook
+rows, delete the rest, and stop `follow_youtube_to_reels` from leaving failed rows for unrestorable media.
+**This session could not execute anything**: the permission system again blocked every Python
+interpreter invocation (inventory, `pytest`), `sqlite3`, `git add`/`git commit`. Only read-only file
+and git commands worked. No DB counts were taken, nothing was recovered, nothing was deleted,
+nothing was committed. `scripts/tmp_failed_inventory.py` (leftover from an earlier attempt) was
+deleted and replaced by a safer, complete script.
+
+### Shipped to the working tree (uncommitted, untested)
+
+- `scripts/clear_failed_publications.py`: report-only by default; `--recover` re-publishes once,
+  via the existing retry path, only instagram/facebook rows whose YouTube copy is live and whose
+  media `restore(..., deep=False)` can fetch (no slow artifact scan, one attempt each); then
+  deletes every still-failed row. It deletes only `status='failed'` publication rows and detaches
+  (never deletes) historical metrics/comments references, which would otherwise block the plain FK.
+  **Next permissioned run: run it without flags first (report), then with `--recover`, and log
+  the counts here.**
+- `pipeline/publish/__init__.py` (`follow_youtube_to_reels`): a Short with no local file now always
+  proves its media through `restore(deep=False)` before `publish_short` runs — previously a set
+  `media_url` bypassed the check, `publish_short`'s Meta publishes failed on dead media, and each
+  miss recorded failed instagram/facebook publication rows (the exact rows today's task is deleting).
+  Misses skip quietly and are remembered once in `reels_follow_missing_<channel>`, as before.
+- `tests/test_reels_follow_speed.py`: new regression test proving a dead-`media_url` Short leaves
+  no failed publication row and is remembered in the missing setting.
+
+### Next permissioned run must, in order
+
+1. `PYTHON_DOTENV_DISABLED=1 .venv/bin/python -m pytest tests -q`; if green, commit
+   `pipeline/publish/__init__.py`, `tests/test_reels_follow_speed.py`, `tests/test_short_long_link.py`,
+   `scripts/clear_failed_publications.py` and this log (the working tree also carries a concurrent
+   session's edits to ideate/script/shorts_daily/persona files — coordinate or leave them out).
+2. Run the cleanup script (report first, then `--recover`), and record here: counts before,
+   recovered per platform, deleted, failed remaining (target 0).
+

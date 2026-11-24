@@ -44,3 +44,10 @@
 - Comment hooks work when line one touches the viewer's own routine: the coffee-shop chai line drew the only two comments of the week. Name a place the viewer has actually stood.
 - The five zero-view Shorts are all from the 11-21 egg batch with no CTR data yet. That looks like distribution timing, not a content verdict. Stagger the daily batch and re-check next week before rewriting any egg script.
 - Titles should use plain, searchable romanisation. 'œuf' may not match viewers typing 'oeuf'. Keep native script on the card, not in the title.
+
+### Network findings 2026-11-24 (cross-channel scoreboard, growth log; this channel is the network's best-performer)
+- "Rice in Russian: ris" is the best Short on the entire network (921 views at 2.3 days, 8 likes, 3 comments, 406 views/day). Its shape is the search phrase verbatim, colon, then the answer as the title's last word. Keep exactly this shape: WORD in LANGUAGE: answer.
+- "Salt in Japanese: shio" started fastest of anything on the network (369 views in its first day). "Egg in French: œuf" hit 124 in ~5 h (401/day) before slowing. French and Japanese both over-index again; the hour-vs-language rotation (2026-11-24 onward) will separate the causes by 2026-12-04.
+- The answer word belongs in the title even though it "spoils" it: searchers type "how to say egg in French" and the title that already contains the answer wins the click plus the confirmation. Never replace the answer with a teaser.
+- Bottom-performer pattern across languages is uniform (Portuguese median 11, Bengali 12, Mandarin 14): no title or script change is indicated yet; it is audience-size, and the rotation will confirm. Do not rewrite Portuguese/Bengali/Mandarin scripts to chase views.
+- 'œuf' caution from 2026-11-22 stands: use plain romanisation in titles when the native spelling has diacritics the search bar drops (oeuf, cha, dim). The scoreboard shows "Egg in French: œuf" still started fastest, so keep native spelling when it is one diacritic, plain romanisation when it changes letters.

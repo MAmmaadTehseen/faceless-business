@@ -133,10 +133,14 @@ def rebuild_daily(db, row, data, claude, footage, channel, publish, privacy):
     return answer
 
 
-def rebuild_notes(issues, channel, data):
+def rebuild_notes(issues, channel, data, prior_notes=None):
     from .retry import _json
     notes = _json(production_notes(issues, channel, "produce"))
     notes.update({"issues": issues, "rebuild_script": data})
+    # Preserve review metadata written before QA (playbook items 13+15 script review).
+    prior = _json(prior_notes)
+    if prior.get("script_review"):
+        notes["script_review"] = prior["script_review"]
     return json.dumps(notes)
 
 
@@ -216,7 +220,9 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
         data = data if dry_run else write_script(claude, topic, content_id, shorts_per_long)
         write_json(out_dir / "script.json", data)
 
-    db.update("content", {"id": content_id}, {"qa_notes": rebuild_notes([], channel, data)})
+    fresh_row = None if resume else db.one("content", {"id": content_id})
+    prior_notes = (row.get("qa_notes") if resume else (fresh_row or {}).get("qa_notes"))
+    db.update("content", {"id": content_id}, {"qa_notes": rebuild_notes([], channel, data, prior_notes=prior_notes)})
     video = out_dir / f"{content_id}.mp4"
     timings_file = out_dir / "voice_timings.json"
     reused_render = bool(resume and not rerender and video.exists())
@@ -258,7 +264,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     if claude:
         qa = run_qa(claude, video, thumb, tts["duration"], content_id, out_dir / "qa", vision=not (bool(row.get("placeholder")) if reused_render else footage.placeholder), db=db, caption_text="\n\n".join(data["script"]))
     thumb = qa.get("thumbnail") or thumb
-    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": rebuild_notes(qa["issues"], channel, data), "thumbnail_path": str(thumb)})
+    db.update("content", {"id": content_id}, {"qa_status": "passed" if qa["pass"] else "failed", "qa_notes": rebuild_notes(qa["issues"], channel, data, prior_notes=prior_notes), "thumbnail_path": str(thumb)})
     if not qa["pass"]:
         db.update("content", {"id": content_id}, {"status": "qa_failed"})
         raise RuntimeError(f"QA failed for {content_id}: {qa['issues']}")

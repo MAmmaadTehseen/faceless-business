@@ -54,3 +54,10 @@
 - Retitle the Mexico long before any re-push: no politician's name in a title, ever. Lead with the money, "Double Mexico Tariffs: The 800 Billion Dollar Border", and cut its four-in-the-morning Laredo truck opening as a short.
 - The untested Nov 21 openings are on formula: 463 million dollars refunded to one retailer, and a factory traded for tariff relief. Once distribution is fixed, slice the TJX long into three number-first shorts; do not retire the topic.
 - Comments remain zero on all ten uploads. End every short on a task answerable in one comment, then pin the first good reply.
+
+### Network findings 2026-11-24 (cross-channel scoreboard, growth log)
+- "Freight up 342 percent. Demand isn't." remains the channel's best Short (265 views, 75% retention) and is the network's cleanest contradiction title: fact first, assumption flipped second, no mood words. Make it the default title shape here.
+- The network's fastest-rising titles put the exact searchable phrase in the first three words (Ten Tongues "Salt in Japanese: shio", 369 views/day). Apply the same discipline to commodity shorts: "UK diesel: 86 pence is tax" beats "86 pence of your diesel never meets oil" when the first three words are the search phrase. Keep the irony as the second sentence, not the title.
+- Every bottom-five Short on this channel opens on a concept or a method ("Ignore the ban. Find the exemption.", "Find the tariff on one thing you buy", "Blame the tax code, not the garage"): combined ~25 views on 8 Shorts. The winners open on a number or a named object ("four hundred thousand dollars per box", "The Tanker Insurance Bill Up 40 Times"). Number-first, then trace: keep that order.
+- Gerund and adjective titles underperformed everywhere this week; if a title starts with "Ignore", "Find", "Follow", "Learn" or "Being", rewrite it around the number.
+- Long videos here hold 12.5% average viewed; the six-block spine (formulas.md) applies, with the tariff number in the first sentence and the who-pays trace by the third.

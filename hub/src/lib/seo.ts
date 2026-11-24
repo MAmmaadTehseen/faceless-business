@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { channels } from '@/lib/channels';
 export const siteURL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://hub.ammaad.online').replace(/\/+$/, '');
 export const absolute = (path: string) => `${siteURL}${path === '/' ? '' : path}`;
 export function pageMetadata(title: string, description: string, path: string, image = '/opengraph-image'): Metadata {
@@ -9,12 +10,18 @@ export function pageMetadata(title: string, description: string, path: string, i
 }
 
 export function organizationJsonLd() {
+  // sameAs ties the site to every channel identity (playbook item 23; AEO Organization schema).
+  const sameAs = [
+    ...channels.map(c => c.youtube_url),
+    ...channels.flatMap(c => c.instagram_handle ? [`https://www.instagram.com/${c.instagram_handle}/`] : []),
+  ].filter(Boolean);
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'Plainsight Media',
     url: absolute('/'),
     logo: absolute('/icon-512.png'),
+    sameAs,
   };
 }
 
