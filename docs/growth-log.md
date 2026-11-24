@@ -595,41 +595,41 @@ same push since they are the same workstream.
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Six-block spine; first-40-words named actor/number | applied this run (prompt + warning); commit pending |
-| 2 | Hook = "[Actor] just [verb] [number]"; hook card = first spoken sentence | applied this run (prompt); commit pending |
-| 3 | Thumbnail: subject+object, <=3 words, strong verb, tone colour | partially in place (thumbnail.py, 2026-11-19); refine loop open |
-| 4 | Title "[claim], [authority] just confirmed it"; same claim in title/hook/thumbnail | applied this run (prompt); commit pending |
-| 5 | Two attributed quotes/excerpts in the evidence block | applied this run (prompt); commit pending |
-| 6 | Context beat right after the hook | applied this run (prompt); commit pending |
-| 7 | Recency scan; rising-not-saturated preference | applied this run (ideate prompt; fetch_news already runs daily); commit pending |
-| 8 | "What nobody covered" own-angle; rival-transcript mining | angle clause applied this run; transcript mining not built (no rival-channel ingestion) |
-| 9 | Topic rubric: rising, brand fit, series potential, feasibility | applied this run (ideate prompt); commit pending |
-| 10 | Answer-first hub articles: question H2s, 40-60 word answers, FAQ | open (article prompt work) |
-| 11 | Application block before CTA | applied this run (spine); commit pending |
-| 12 | Simple CTA; no business pitch | already in place; re-affirmed in the spine |
-| 13 | Never overstate; verify digits in art text | open (QA prompt work) |
-| 14 | Thumbnail refine loop; winners as style reference | open (thumbnail prompt redesign) |
-| 15 | Per-script review checklist as a QA step | open (qa.py work) |
-| 16 | Home tab: featured video, playlist sections, trailer | owner (Studio, browser) |
-| 17 | Channel description: unique first sentence, cadence, links | owner (Studio) |
-| 18 | Watermark, avatar, banner 2048x1152 | owner (Studio; assets exist in assets/brand) |
-| 19 | Opinionated myth-busting post per long video; link in first comment | open (captions.py), posting is owner/browser |
-| 20 | 8-12 repurposed pieces per long video | open (captions/description generation) |
-| 21 | Monthly explicit ask; proof-screenshot images | owner (content decision) |
-| 22 | Pin and refresh a Community post per long video | owner (browser; two posted 2026-11-23) |
-| 23 | Organization schema with sameAs; validate rich results | open (small code fix: sameAs missing in organizationJsonLd) |
-| 24 | robots.txt allows AI crawlers; llms.txt; fast SSR | open (robots.ts already allows all; llms.txt missing) |
-| 25 | Definition pattern; 100-300 token self-contained sections | open (article prompt) |
-| 26 | Topical-authority publishing on a defined topic set | open (schedule policy) |
-| 27 | Off-site mentions; AI-citation testing | owner (Reddit/publications) |
-| 28 | Query fan-out: sub-question articles | open (article/ideation) |
-| 29 | EEAT: author schema, visible sources | open (hub work) |
-| 30 | Weekly metrics loop feeding prompt updates | in place (this loop + weekly review) |
-| 31 | Series potential in topic planning | applied this run (rubric); commit pending |
-| 32 | Commit to one repurposing style for 3 months | owner (strategy decision) |
-| 33 | Keep testing topics continuously | in place (this loop) |
-| 34 | Slower, punchier hook line; A/B on one channel | applied this run (escapevelocity style + A/B started); rate change deferred to a permissioned run |
-| 35 | Do not copy huge-channel tactics blindly | standing rule (playbook caveat; own data first) |
+| 1 | Six-block spine; first-40-words named actor/number | applied (f93a328): six-block spine in the script prompt; warning-only first-40-words check |
+| 2 | Hook = "[Actor] just [verb] [number]"; hook card = first spoken sentence | applied (f93a328): hook prompt + hook card = first spoken claim |
+| 3 | Thumbnail: subject+object, <=3 words, strong verb, tone colour | applied (this commit): thumbnail_text 2-3 words with a strong verb or key number; design from 2026-11-19 |
+| 4 | Title "[claim], [authority] just confirmed it"; same claim in title/hook/thumbnail | applied (f93a328): claim-first title pattern; title, first sentence and thumbnail state one claim |
+| 5 | Two attributed quotes/excerpts in the evidence block | applied (f93a328): two attributed quotes in the evidence block |
+| 6 | Context beat right after the hook | applied (f93a328): context beat after the hook |
+| 7 | Recency scan; rising-not-saturated preference | applied (f93a328): rising-not-saturated rule in ideation; news fetched every run |
+| 8 | "What nobody covered" own-angle; rival-transcript mining | applied (f93a328): 'what everyone else missed' angle clause; rival-transcript mining skipped (no rival ingestion, and copying rivals is item 35's caveat) |
+| 9 | Topic rubric: rising, brand fit, series potential, feasibility | applied (f93a328): 1-5 rubric (viral, fit, series, feasibility) in ideation |
+| 10 | Answer-first hub articles: question H2s, 40-60 word answers, FAQ | applied (this commit): article section headings are search questions, each opening with a 40-60 word direct answer |
+| 11 | Application block before CTA | applied (f93a328): application block before the CTA |
+| 12 | Simple CTA; no business pitch | in place: simple CTA, no business pitch (re-affirmed in the spine) |
+| 13 | Never overstate; verify digits in art text | applied (f93a328): review_script.art_text_mismatch flags art digits/currency the narration never states (K/M/B aware) |
+| 14 | Thumbnail refine loop; winners as style reference | owner: no image model to iterate on; use YouTube Studio Test & Compare (3 thumbnails per new long video), see owner actions |
+| 15 | Per-script review checklist as a QA step | applied (f93a328): per-script review checklist (strategy, voice, accuracy, CTA) logged before QA |
+| 16 | Home tab: featured video, playlist sections, trailer | owner: Home tab layout (see owner actions) |
+| 17 | Channel description: unique first sentence, cadence, links | owner: channel descriptions (see owner actions) |
+| 18 | Watermark, avatar, banner 2048x1152 | owner: watermark, avatar, banner upload (see owner actions) |
+| 19 | Opinionated myth-busting post per long video; link in first comment | owner/browser: posting is manual or the loop's browser run; the text comes from the video's closing question and contrarian Short |
+| 20 | 8-12 repurposed pieces per long video | in place: each long video already yields 4 Shorts, 4 Instagram Reels, 4 Facebook Reels, a hub article, a Facebook link post and a Community post (about 15 pieces) |
+| 21 | Monthly explicit ask; proof-screenshot images | owner: monthly explicit ask and proof screenshots (content decision) |
+| 22 | Pin and refresh a Community post per long video | owner/browser: pin and refresh a Community post per long video |
+| 23 | Organization schema with sameAs; validate rich results | applied (f93a328): Organization schema with sameAs in hub/src/lib/seo.ts; owner validates in Rich Results Test |
+| 24 | robots.txt allows AI crawlers; llms.txt; fast SSR | applied (f93a328): hub/public/llms.txt; robots.ts already allows all crawlers; pages are SSR/ISR |
+| 25 | Definition pattern; 100-300 token self-contained sections | applied (this commit): definition pattern and 100-300 word self-contained sections in the article prompt |
+| 26 | Topical-authority publishing on a defined topic set | in place: topics come from each channel's fixed niche_keywords and four topic_playlists (a defined topic set) |
+| 27 | Off-site mentions; AI-citation testing | owner: off-site mentions (Reddit, publications) and AI-citation testing |
+| 28 | Query fan-out: sub-question articles | applied (this commit): FAQs are the follow-up sub-questions (query fan-out) |
+| 29 | EEAT: author schema, visible sources | in place: Article JSON-LD author (channel organisation), visible linked sources in evidence boxes |
+| 30 | Weekly metrics loop feeding prompt updates | in place: this growth loop plus the weekly persona review |
+| 31 | Series potential in topic planning | applied (f93a328): series potential scored in the ideation rubric |
+| 32 | Commit to one repurposing style for 3 months | owner: commit to one repurposing style for three months (strategy decision) |
+| 33 | Keep testing topics continuously | in place: the loop keeps testing topics continuously |
+| 34 | Slower, punchier hook line; A/B on one channel | applied (this commit): voice.hook_rate slows only the first paragraph; A/B on Escape Velocity (-6% hook, +2% body), judged from 2026-12-01 |
+| 35 | Do not copy huge-channel tactics blindly | standing rule: own data before huge-channel tactics |
 
 ### Owner actions from the playbook (for the to-do artifact; this run cannot write to it)
 
@@ -723,3 +723,17 @@ deleted and replaced by a safer, complete script.
 2. Run the cleanup script (report first, then `--recover`), and record here: counts before,
    recovered per platform, deleted, failed remaining (target 0).
 
+
+### Owner actions from the playbook (2026-11-24)
+
+1. Thumbnail Test & Compare (item 14): in YouTube Studio, open each new long video, Thumbnail, Test & compare, upload two alternatives (Claude can render them on request). Studio picks the winner by watch time.
+2. Home tab (item 16): Studio, Customisation, Layout: set a channel trailer for non-subscribers, a featured video for returning viewers, and sections for each topic playlist.
+3. Channel descriptions (item 17): Studio, Customisation, Basic info: first sentence says what the channel is about in search words, then the upload cadence, then the hub and Instagram links.
+4. Branding (item 18): upload the watermark, avatar and 2048x1152 banner from assets/brand/<key>/ in Studio, Customisation, Branding.
+5. Community posts (items 19, 22): one opinionated post per long video (the myth it busts plus the link), pinned and refreshed; the browser loop can draft and post these when asked.
+6. Monthly ask (item 21): one post a month asking viewers what to cover next, with a screenshot of a real result.
+7. Off-site mentions (item 27): answer relevant Reddit or forum questions with the hub article when it genuinely helps; never spam.
+8. Repurposing style (item 32): keep the current Shorts plus hub-article format unchanged for three months before judging it.
+9. Rich results (item 23): run https://search.google.com/test/rich-results on one hub article and the home page.
+
+PLAYBOOK COMPLETE (2026-11-24): all 35 items have a final status (applied, in place, owner or standing rule).

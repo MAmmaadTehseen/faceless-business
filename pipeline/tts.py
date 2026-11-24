@@ -77,6 +77,11 @@ def backend() -> str:
     return b
 
 
+def rate_to_speed(rate: str) -> float:
+    """"+4%" -> 1.04, "-6%" -> 0.94; edge-style rate strings to a Kokoro speed factor."""
+    return 1.0 + int(str(rate or "0").replace("%", "").replace("+", "") or 0) / 100.0
+
+
 def synthesize(paragraphs: list[str], out_dir: Path, voice=DEFAULT_VOICE, name: str = "voice") -> dict:
     """Synthesize paragraph by paragraph so we get exact paragraph boundaries, then concat.
     `voice` is either an edge voice name (str) or a channel voice dict {kokoro, edge, rate}."""
@@ -86,15 +91,18 @@ def synthesize(paragraphs: list[str], out_dir: Path, voice=DEFAULT_VOICE, name: 
         v_edge, v_kok, rate = voice.get("edge", DEFAULT_VOICE), voice.get("kokoro", "am_michael"), voice.get("rate", "+0%")
     else:
         v_edge, v_kok, rate = voice, "am_michael", "+4%"
-    speed = 1.0 + int(rate.replace("%", "").replace("+", "") or 0) / 100.0
+    speed = rate_to_speed(rate)
+    # Playbook item 34: an optional slower first paragraph (the hook) via voice["hook_rate"], A/B on one channel.
+    hook_rate = voice.get("hook_rate") if isinstance(voice, dict) else None
     parts, timings, offset = [], [], 0.0
     gap = 0.35  # seconds of silence between paragraphs
     for i, para in enumerate(paragraphs):
         mp3 = out_dir / f"{name}_{i:03d}.mp3"
+        p_rate = hook_rate if (hook_rate and i == 0) else rate
         if be == "kokoro":
-            words = _kokoro_synth(_spoken(para), v_kok, mp3, speed)
+            words = _kokoro_synth(_spoken(para), v_kok, mp3, rate_to_speed(p_rate))
         else:
-            words = asyncio.run(_synth(_spoken(para), v_edge, mp3, rate))
+            words = asyncio.run(_synth(_spoken(para), v_edge, mp3, p_rate))
         dur = _mp3_duration(mp3)
         if not words:
             raise RuntimeError("edge-tts returned no word boundaries; check network or voice name")

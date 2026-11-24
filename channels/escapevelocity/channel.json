@@ -29,7 +29,8 @@
   "voice": {
     "kokoro": "af_heart",
     "edge": "en-US-AvaMultilingualNeural",
-    "rate": "+2%"
+    "rate": "+2%",
+    "hook_rate": "-6%"
   },
   "style": {
     "accent": [
