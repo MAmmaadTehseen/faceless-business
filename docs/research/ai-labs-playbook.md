@@ -83,15 +83,44 @@ The courses cover the clone/avatar only as consistency (same voice, no off days)
 - Measure by running target prompts in ChatGPT/Google AI/Gemini and logging when we are cited. [AEO › Lesson 5]
 - Already in our hub per AGENTS.md: JSON-LD (Article/FAQ/Breadcrumb/Video), sitemap, RSS. Gaps to check: answer-first paragraph under each H2, Organization schema with `sameAs` to the channels, llms.txt.
 
-## Top 10 changes for our pipeline (ranked by expected impact / effort)
+## Full ranked change list (every actionable item found)
 
-1. **Spine enforcement in the long-script prompt** (script prompt): require Hook (named actor + checkable claim) → Context → Core → Evidence → Application → CTA, and fail validation if the first 40 words lack a named actor or number. [RE]
-2. **Subject-first claim hook, shared by narration and hook card** (script prompt + hook card): hook card text equals the first spoken sentence; template `[Actor] just [verb] [number]`; no hook may promise more than the body shows. [RE, TH]
-3. **Thumbnail two-element rule with 2-4 word strong-verb text** (thumbnail): one subject/logo plus one object, text three words or less, colour tied to tone, reject candidates that need more than one second to read; verify digits and units in the text. [TH, RE]
-4. **Evidence block with named quotes/excerpts** (script prompt): require at least two attributed expert or company statements drawn from the supplied sources only (already our citation rule). [RE]
-5. **Topic ingestion from news plus rival-transcript angle** (ideation): add a Google News/Discover-style recency scan and "what has nobody covered" angle to the ideation prompt; skip topics already used; prefer mass-appeal items. [TI, CM]
-6. **Topic scoring rubric** (ideation): score viral potential (rising, not saturated), brand fit, series potential, production feasibility; pick the top. [CM]
-7. **Channel home-tab and description audit** (schedule/ops, one-off task): featured video = best performer, topic playlists as sections, description with unique first sentence and cadence, watermark, consistent avatar. [CO]
-8. **Hub articles in answer-first form** (hub/article prompt): question H2s, 40-60 word direct answer first, one list or table per article, FAQ block with FAQ schema, Organization schema with `sameAs`, llms.txt. [AEO]
-9. **Captions: opinionated post per long video plus a pinned first-comment link** (captions): one strong-viewpoint post per platform using `beliefs.md`, link in first comment, monthly explicit ask; cross-post shaped per platform. [FBB, CM]
-10. **Hypothesis-labelled experiments for delivery** (voice): A/B Kokoro speed and a slower hook line on one channel, judged by Shorts retention; the courses give no data, so record results in `docs/growth-log.md`. *(inference)*
+Ranked by expected impact on views/retention for our format, then effort. "Where" names the pipeline area.
+
+| # | Change | Where | Source |
+|---|---|---|---|
+| 1 | Enforce the six-block spine; reject scripts whose first 40 words lack a named actor or number | script prompt | RE |
+| 2 | Hook = "[Actor] just [verb] [number]"; hook card text equals first spoken sentence | script prompt, hook card | RE, TH |
+| 3 | Thumbnail: one subject/logo + one object, 3 words or fewer, strong verb, tone-matched colour, one-second readability check | thumbnail | TH, RE |
+| 4 | Title pattern "[claim], [named authority] just confirmed it"; title, hook and thumbnail state the same claim | script prompt, thumbnail | RE, TH |
+| 5 | At least two attributed quotes/excerpts from supplied sources in the evidence block | script prompt | RE |
+| 6 | Context beat right after the hook that proves the claim | script prompt | RE |
+| 7 | Recency news scan (Discover/News style) as ideation input; prefer mass-appeal, skip covered topics | ideation | TI |
+| 8 | Add a "what nobody covered" own-angle to every topic; rival-transcript angle mining | ideation | TI |
+| 9 | Topic scoring rubric: rising-not-saturated, brand fit, series potential, production feasibility | ideation | CM |
+| 10 | Answer-first hub articles: question H2s, 40-60 word direct answer, list/table, FAQ block | hub | AEO |
+| 11 | Application block ("why you should care") before the CTA | script prompt | RE |
+| 12 | Simple CTA: ask for a comment, one-line subscribe reminder, no business pitch in most videos | script prompt, captions | RE |
+| 13 | Never overstate in thumbnail/hook; reject conflict the body cannot support; verify digits and units in art text | thumbnail, QA | TH |
+| 14 | Thumbnail refine loop in single-change steps; reuse prior winning thumbnails as style reference | thumbnail | TH |
+| 15 | Per-script review checklist (strategy fit, voice, accuracy, value, CTA) as a QA step | QA/script prompt | CM |
+| 16 | Home tab: featured best video, topic playlist sections, trailer if useful | channel setup (schedule/ops) | CO |
+| 17 | Channel description: unique first sentence, signature phrase, why trust us, cadence, one free link | channel setup | CO |
+| 18 | Watermark logo, consistent avatar/handle across YouTube, IG, FB; banner at 2048x1152 minimum | channel setup | CO |
+| 19 | One opinionated, myth-busting post per long video from `beliefs.md`; link in the first comment | captions | FBB |
+| 20 | Platform-adapted repurposing: 8-12 supporting pieces per long video (description, posts per platform) | captions | CM |
+| 21 | Monthly explicit ask, otherwise story/belief posts; proof screenshot as image where available | captions | FBB |
+| 22 | Pin and refresh a Community post per long video | captions/ops | CO |
+| 23 | Organization schema with `sameAs` to channels; Article/FAQ/HowTo/VideoObject/Breadcrumb validated in Rich Results Test | hub | AEO |
+| 24 | `robots.txt` allows AI crawlers, add `llms.txt`, keep pages fast and server-rendered | hub | AEO |
+| 25 | Definition pattern ("What is X? X is ...") and 100-300 token self-contained sections | hub | AEO |
+| 26 | Topical-authority publishing: consistent articles per defined topic set | hub, schedule | AEO |
+| 27 | Off-site mentions (Reddit, publications); log AI-citation tests per target prompt | hub/ops | AEO |
+| 28 | Query fan-out: write articles for the sub-questions of each core query | hub, ideation | AEO |
+| 29 | Author/experience signals (EEAT): author schema, visible sources | hub | AEO |
+| 30 | Weekly metrics loop (watch time, engagement, growth) feeding the next prompt update | schedule/ops | CM |
+| 31 | Series potential: plan topics as series and cross-platform adaptations | ideation, schedule | CM |
+| 32 | Commit to one platform's repurposing style for three months before judging | schedule | FBB |
+| 33 | Keep testing topics; treat the channel as continuous experiments | ideation | CO |
+| 34 | Slower, punchier hook line; one idea per sentence; number/name last (inference, A/B on one channel) | voice | inference |
+| 35 | Do not copy huge-channel tactics blindly; they can skip steps small channels need | all | FBB |
