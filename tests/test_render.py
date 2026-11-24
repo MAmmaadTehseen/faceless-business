@@ -308,10 +308,12 @@ def test_hook_filter_only_for_portrait(tmp_path):
     assert _hook_filter("Swift fell 114 km", tmp_path, "landscape") is None
     f = _hook_filter("Swift fell 114 km", tmp_path, "portrait")
     assert f.startswith("drawtext=") and f"enable='lt(t,{HOOK_SECONDS})'" in f
-    assert f.count("drawtext=") == 1 and (tmp_path / "hook_0.txt").read_text() == "Swift fell 114 km"
-    two = _hook_filter("Only 5 Starship Launches This Year?", tmp_path, "portrait")
+    # 15-character lines since 2026-11-24 (92 px type): "Swift fell 114 km" wraps to two lines.
+    assert f.count("drawtext=") == 2 and (tmp_path / "hook_0.txt").read_text() == "Swift fell 114"
+    assert "fontcolor=black" in f and "boxcolor=0xfbbf24" in f  # black on the default accent
+    two = _hook_filter("Only 5 Starship Launches This Year?", tmp_path, "portrait", {"accent": (34, 211, 238)})
     assert two.count("drawtext=") == 3  # one per wrapped line (ffmpeg 8 draws newlines as missing glyphs)
-    assert (tmp_path / "hook_2.txt").read_text() == "Year?"
+    assert "boxcolor=0x22d3ee" in two and (tmp_path / "hook_2.txt").read_text() == "Year?"
 
 
 def test_add_hook_card_reencodes_portrait_clip(tmp_path):
@@ -324,3 +326,15 @@ def test_add_hook_card_reencodes_portrait_clip(tmp_path):
     assert dst.is_file() and dst != src
     assert abs(probe(dst)["duration"] - 2.0) < 0.3
     assert not (tmp_path / "s.hook_hookwork").exists()
+
+
+def test_apply_shots_gives_each_segment_its_own_visual():
+    from pipeline.render import apply_shots
+    segs = [{"query": "dish", "caption": f"c{i}"} for i in range(4)]
+    out = apply_shots(segs, ["Voyager spacecraft", "CARD: 15 BILLION MILES", "mission control"], "dish")
+    assert out[0]["query"] == "Voyager spacecraft" and out[0]["candidate_queries"] == ["dish"]
+    assert out[1]["card"] == "15 BILLION MILES"
+    assert out[2]["query"] == "mission control"
+    assert out[3]["query"] == "Voyager spacecraft"  # cycles when the script gave fewer shots than segments
+    legacy = [{"query": "dish"}]
+    assert apply_shots(legacy, None, "dish") == [{"query": "dish"}]  # resumed scripts without shots are unchanged

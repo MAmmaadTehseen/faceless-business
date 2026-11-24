@@ -793,3 +793,16 @@ Search brings in very few views (FW 15, TW 9, EV 65, TT 56), but the phrases are
 - Native-language tags: Ten Tongues Shorts from the 2026-11-25 episode onward. Rerun `scripts/search_terms.py --channels tentongues --days 7` on 2026-12-02 and compare search views with this baseline (56 in 28 days, about 14 a week).
 - Escape Velocity CTR: re-read the 1.2% in Studio once the owner verifies the phone and the thumbnails land.
 - Unchanged: Ten Tongues title A/B and hour rotation (2026-12-04/08), quick vs standard Shorts (January), escapevelocity hook-pace A/B (from 2026-12-01).
+
+### Round 5 (2026-11-24): the pictures did not match the story
+
+Owner: content is not entertaining enough. Diagnosis from a frame grid (one frame every 3 s) of the Escape Velocity daily Short "Voyager 1 Went Silent, Then Saved Itself": not one frame showed Voyager, space or NASA. Viewers saw wildflowers, a bird, city skylines and a TV tower. Root causes in code: the daily-Short prompt asked for ONE "generic physical footage query" for the whole Short, child Shorts had one query each, the long-video shot list forbade names, countries and events, and when a query ran out the renderer retried with its first two words ("large radio" -> wildflowers). The hook title was 68 px white on translucent grey (barely readable), and each clip held for up to 9 s.
+
+Changes:
+- Shorts (child and daily) now carry an ordered `shots` list, one visual per 3-4 s of narration: a stock search for exactly what is being said, or `CARD: <words>` for a full-screen branded stat card (key numbers and names stock cannot show). `render.apply_shots` maps them to segments of 2.5-4 s (was 3-5 s of one repeated query). Older saved scripts without shots render as before.
+- No more truncated two-word fallback queries; an exhausted slot gets the branded caption card instead of an off-topic clip.
+- Escape Velocity: shot queries may name real spacecraft and missions (`nasa_hint`), and the NASA provider now also uses public-domain NASA photos with Ken Burns motion when no NASA video matches. Demo rebuild of the same Voyager Short: 9 of 10 slots came from NASA (Voyager team, mission control, launch, the spacecraft).
+- Hook title: 92 px black on the channel accent (was 68 px white on grey). Stat cards: one drawtext per line, upper third (clear of the captions), accent colour.
+- Long videos: shots 4-6.5 s (were 5-9 s).
+- Prompts: entertainment rules. Shorts: a concrete image in every sentence, a twist at the midpoint, nothing skippable. Long videos: re-hook every chapter with an open question, alternate fact and scene, one moment of contrast per chapter, never two abstract sentences in a row.
+Judge: Shorts average % viewed and swipe-away (Studio "stayed to watch") for Shorts published from 2026-11-25 against the previous 14 days, read on 2026-12-08.

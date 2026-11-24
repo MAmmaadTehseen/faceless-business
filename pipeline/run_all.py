@@ -20,7 +20,7 @@ from .db import DB
 from .footage import Footage
 from .ideate import choose_topic
 from .qa import probe, run_qa
-from .render import render, segments_from_timings
+from .render import apply_shots, render, segments_from_timings
 from .script import write_script
 from .shorts import make_short
 from .thumbnail import make_thumbnail
@@ -80,7 +80,7 @@ def rerender_short(short: dict, out_dir: Path, voice, footage: Footage, name: st
     tts = retained_tts(out_dir, f"{name}_voice")
     shots = [{"paragraph_index": t["index"], "query": short["query"], "mood": "bright"}
              for t in tts["timings"]]
-    segs = segments_from_timings(tts["timings"], shots, min_shot=3.0, max_shot=5.0)
+    segs = apply_shots(segments_from_timings(tts["timings"], shots, min_shot=2.5, max_shot=4.0), short.get("shots"), short["query"])
     video = out_dir / f"{name}.mp4"
     render(segs, tts["audio"], tts["srt"], video, "portrait", footage, music_db=-20.0, style=style, hook_text=short.get("hook_title"))
     return {"file": video, "duration": tts["duration"], "title": short["hook_title"], "script": short["script"]}
@@ -237,7 +237,7 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
                "audio": out_dir / "voice.mp3", "srt": out_dir / "voice.srt"}
     else:
         tts = retained_tts(out_dir) if rerender and (out_dir / "voice.mp3").is_file() else synthesize(data["script"], out_dir, voice=voice)
-        segs = segments_from_timings(tts["timings"], data["shot_list"])
+        segs = segments_from_timings(tts["timings"], data["shot_list"], min_shot=4.0, max_shot=6.5)
         video = render(segs, tts["audio"], tts["srt"], video, "landscape", footage, style=style)
     thumb = out_dir / f"{content_id}.jpg"
     if not (resume and not rerender and thumb.exists()):

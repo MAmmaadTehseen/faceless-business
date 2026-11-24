@@ -49,6 +49,13 @@ class Footage:
                     return path
             except Exception as e:
                 log.warning("nasa video failed for %r: %s", query, e)
+            try:
+                # A real NASA photo of the named spacecraft beats an unrelated stock clip (2026-11-24).
+                path = self._nasa_image(query, min_sec, orientation)
+                if path:
+                    return path
+            except Exception as e:
+                log.warning("nasa image failed for %r: %s", query, e)
         if self.pb_key:
             try:
                 path = self._pixabay_video(query, min_sec, orientation)
@@ -115,6 +122,30 @@ class Footage:
             if path.stat().st_size < 50_000:
                 continue
             return path
+        return None
+
+    def _nasa_image(self, query: str, min_sec: float, orientation: str) -> Path | None:
+        """Public-domain NASA still (images-api.nasa.gov) with Ken Burns motion."""
+        r = requests.get("https://images-api.nasa.gov/search", params={"q": query, "media_type": "image", "page_size": 20}, timeout=30)
+        r.raise_for_status()
+        for it in r.json().get("collection", {}).get("items", []):
+            data = (it.get("data") or [{}])[0]
+            nid = data.get("nasa_id")
+            if not nid or f"nasaimg{nid}" in self.used:
+                continue
+            try:
+                assets = requests.get(f"https://images-api.nasa.gov/asset/{nid}", timeout=30).json().get("collection", {}).get("items", [])
+            except Exception:
+                continue
+            urls = [a["href"] for a in assets if a.get("href", "").lower().endswith((".jpg", ".jpeg", ".png"))]
+            pick = next((u for u in urls if "~large" in u), None) or next((u for u in urls if "~medium" in u), None) or next((u for u in urls if "~orig" in u), None)
+            if not pick:
+                continue
+            self.used.add(f"nasaimg{nid}")
+            img = self._download(pick.replace("http://", "https://"), f"nasaimg_{re.sub(r'[^A-Za-z0-9]+', '_', nid)[:60]}{Path(pick).suffix.lower()}")
+            if img.stat().st_size < 30_000:
+                continue
+            return self._ken_burns(img, min_sec, orientation)
         return None
 
     # ---------- Pixabay ----------

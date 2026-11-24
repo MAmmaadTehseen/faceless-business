@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .common import log
 from .footage import Footage
-from .render import render, segments_from_timings
+from .render import apply_shots, render, segments_from_timings
 from .tts import synthesize
 
 
@@ -18,7 +18,8 @@ def make_short(short: dict, out_dir: Path, voice, footage: Footage, name: str, s
         paragraphs = [" ".join(sents[i:i + 2]) for i in range(0, len(sents), 2)]
     tts = synthesize(paragraphs, out_dir, voice=voice, name=f"{name}_voice")
     shots = [{"paragraph_index": i, "query": short["query"], "mood": "bright"} for i in range(len(paragraphs))]
-    segs = segments_from_timings(tts["timings"], shots, min_shot=3.0, max_shot=5.0)
+    # 2.5-4 s per visual (was 3-5 s of one repeated query); each gets its own shot from the script.
+    segs = apply_shots(segments_from_timings(tts["timings"], shots, min_shot=2.5, max_shot=4.0), short.get("shots"), short["query"])
     out = out_dir / f"{name}.mp4"
     render(segs, tts["audio"], tts["srt"], out, orientation="portrait", footage=footage, music_db=-20.0, style=style, hook_text=short.get("hook_title"))
     log.info("short: %s (%.1fs)", out, tts["duration"])

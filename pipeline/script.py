@@ -25,7 +25,7 @@ SCRIPT_SCHEMA = {
         "script": {"type": "array", "items": {"type": "string"}, "description": "Narration paragraphs in order, spoken English only, no headings, no stage directions, 1300-1900 words total"},
         "shot_list": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["paragraph_index", "query", "mood"], "properties": {"paragraph_index": {"type": "integer"}, "query": {"type": "string", "description": "2-4 word stock VIDEO search that a free stock library will certainly have: generic, physical, filmable things (e.g. 'office worker typing', 'server room aisle', 'city street timelapse', 'handshake meeting', 'parliament building exterior'). Never company names, countries, people, abstract nouns, or events."}, "mood": {"type": "string", "enum": ["calm", "tense", "bright", "dark"]}}}, "description": "One entry per paragraph"},
         "facts_check": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["claim", "source", "confidence"], "properties": {"claim": {"type": "string"}, "source": {"type": "string"}, "confidence": {"type": "string", "enum": ["verified", "likely", "unverified"]}}}},
-        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query"], "properties": {"hook_title": {"type": "string", "description": "Short title under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; states the same claim as the first spoken sentence; never begins with a gerund or an adjective; shown on screen for the first two seconds"}, "script": {"type": "string", "description": "Self-contained; QUICK Shorts (1 and 3) 50-70 words, STANDARD Shorts (2 and 4) 75-110 words; first sentence under 12 words with a named actor or a number; payoff by sentence three; last line a question or a loop back to the first line"}, "query": {"type": "string", "description": "stock footage search for the short"}}}},
+        "shorts": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["hook_title", "script", "query", "shots"], "properties": {"hook_title": {"type": "string", "description": "Short title under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; states the same claim as the first spoken sentence; never begins with a gerund or an adjective; shown on screen for the first two seconds"}, "script": {"type": "string", "description": "Self-contained; QUICK Shorts (1 and 3) 50-70 words, STANDARD Shorts (2 and 4) 75-110 words; first sentence under 12 words with a named actor or a number; payoff by sentence three; last line a question or a loop back to the first line"}, "query": {"type": "string", "description": "stock footage search for the short"}, "shots": {"type": "array", "items": {"type": "string"}, "description": "Ordered visuals, one per 3-4 seconds of narration (8-12 for a 35-45 second Short, 6-8 for a quick one): each is either a 2-5 word stock video search showing exactly what the narration says at that moment (a physical, filmable thing: 'cargo ship at port', 'rocket engine firing', 'worker packing boxes'), or 'CARD: <2-4 words>' for a full-screen branded text card with a key number or name stock footage cannot show ('CARD: 25,000 JOBS', 'CARD: VOYAGER 1'). Use a CARD for the first big number and at most three more; never repeat a query."}}}},
     },
 }
 
@@ -179,12 +179,24 @@ def search_block(topic: dict) -> str:
         return ""
 
 
+def nasa_hint(claude) -> str:
+    """Channels with the NASA library (Escape Velocity) may name spacecraft and missions in shot queries:
+    images-api.nasa.gov has real footage and photos of them, generic stock does not."""
+    ch = getattr(claude, "channel", None)
+    if not ch or not (getattr(ch, "footage", None) or {}).get("nasa"):
+        return ""
+    return ("Footage note: this channel searches the NASA image and video library first, so shot queries and Shorts `shots` "
+            "SHOULD name the real spacecraft, rocket, telescope or mission when the narration is about it ('Voyager spacecraft', "
+            "'Artemis II rocket launch', 'James Webb telescope mirror'), overriding the generic-query rule for shot_list.\n")
+
+
 def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: int = 4) -> dict:
     user = (
         f"Today's video topic: {topic['topic']}\n"
         f"Angle: {topic.get('angle') or 'choose the persona\'s strongest honest angle'}\n"
         f"Seed headline: {topic.get('source_headline') or ''}\nSeed url: {topic.get('source_url') or ''}\n"
         f"{search_block(topic)}\n"
+        f"{nasa_hint(claude)}"
         "Step 1: research. Use web search to confirm the core facts, find 4-8 concrete, recent, attributable facts "
         "(numbers, names, dates, quotes) and at least one contrasting view. Prefer primary sources and major outlets.\n"
         "Step 2: write the long video following the script sequence and style exactly. 1300-1900 words of narration. "
@@ -210,7 +222,13 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "Shorts hook rules: hook_title is under 45 characters and names the specific subject (a proper noun or a number) in its first three words, because it is shown on screen for the first two seconds; it states the same claim the first spoken sentence makes, in the same words where possible; "
         "the first sentence is under twelve words, states a checkable fact or an exact answer (not a mood), and names a specific actor, object or number; "
         "no setup, no 'in this video', no question-only opener, no title that begins with a gerund or an adjective; the payoff lands by the third sentence; "
-        "the last line is either a question the viewer can answer in one comment or a line that loops back to the first sentence.\n"
+        "the last line is either a question the viewer can answer in one comment or a line that loops back to the first sentence. "
+        "Shorts visuals (growth log 2026-11-24: one generic query per Short put wildflowers and city skylines under a Voyager story): "
+        "write every sentence about something that can be shown, and give `shots` in narration order so the picture changes every 3-4 seconds and always shows what is being said; "
+        "put the first big number on a CARD. Entertainment rules for Shorts: a concrete image in every sentence, one twist or surprising contrast at the midpoint "
+        "('but here is the part nobody mentions'), and no sentence a viewer could skip without losing the thread.\n"
+        "Long-video entertainment rules: re-hook at the start of every chapter with an open question the chapter answers; alternate a fact with a concrete scene or example; "
+        "at least one moment of contrast or irony per chapter; never two abstract sentences in a row.\n"
         "Hard rules: no income promises, no medical/legal/financial advice, no fabricated quotes, no 'experts say' without naming who. "
         "The first two paragraphs must be a pattern break that pays off the title within ninety seconds."
     )

@@ -13,18 +13,19 @@ from .ideate import fetch_news
 from .publish import publish_short, meta
 from .retry import production_notes
 from .qa import run_qa
-from .script import BANNED_TITLE, SCRIPT_SCHEMA, strip_script_dashes
+from .script import nasa_hint, BANNED_TITLE, SCRIPT_SCHEMA, strip_script_dashes
 from .shorts import make_short
 
 DAILY_WORDS = (70, 160)
 
 DAILY_SCHEMA = {
     "type": "object", "additionalProperties": False,
-    "required": ["hook_title", "script", "query", "description", "tags", "facts_check"],
+    "required": ["hook_title", "script", "query", "shots", "description", "tags", "facts_check"],
     "properties": {
         "hook_title": {"type": "string", "description": "Under 45 chars, no hashtags; names the specific subject (proper noun or number) in its first three words; states the same claim as the first spoken sentence; never begins with a gerund or an adjective; shown on screen for the first two seconds"},
         "script": {"type": "string", "description": "80-115 spoken words; self-contained; first sentence under 12 words naming an actor or a number; payoff by sentence three; last line a question or a loop back to the first line"},
-        "query": {"type": "string", "description": "Generic physical stock video search"},
+        "query": {"type": "string", "description": "Fallback physical stock video search for the whole Short"},
+        "shots": SCRIPT_SCHEMA["properties"]["shorts"]["items"]["properties"]["shots"],
         "description": {"type": "string"},
         "tags": {"type": "array", "items": {"type": "string"}},
         "facts_check": SCRIPT_SCHEMA["properties"]["facts_check"],
@@ -156,7 +157,11 @@ def produce_daily(db, channel, *, dry_run=False, placeholder=False, no_publish=F
             "No income promises, medical/legal/financial advice, fabricated claims or unsupported statistics. "
             "Use simple natural spoken English without filler or generic transitions. Hedge uncertain causes, "
             "attribute every statistic in-line and use no em dashes. "
-            "Include attributable source URLs in facts_check and description. Use a generic physical footage query. "
+            "Include attributable source URLs in facts_check and description. "
+            "Visuals: give `shots` in narration order, one per 3-4 seconds, each showing exactly what is being said at that moment, "
+            "with the first big number on a 'CARD: ...' (one generic query for a whole Short put wildflowers under a Voyager story; never again). "
+            "Entertainment: a concrete image in every sentence, a twist or surprising contrast at the midpoint, nothing a viewer could skip. "
+            f"{nasa_hint(claude)}"
             f"Do not repeat any of these recent topics or titles: {json.dumps(recent)}"
         )
         if bank:

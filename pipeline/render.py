@@ -40,7 +40,7 @@ def hook_lines(text: str, max_chars: int = 18, max_lines: int = 3) -> list[str]:
     return lines
 
 
-def _hook_filter(text: str, work: Path, orientation: str) -> str | None:
+def _hook_filter(text: str, work: Path, orientation: str, style: dict | None = None) -> str | None:
     """drawtext filter showing the hook title for the first HOOK_SECONDS of a portrait Short.
 
     Growth log 2026-11-17: Shorts autoplay muted and faceless openers have no face to
@@ -48,12 +48,15 @@ def _hook_filter(text: str, work: Path, orientation: str) -> str | None:
     the same frame is Instagram's cover (thumb offset 2 s). Placed in the upper third,
     clear of the right-hand action rail and the burned captions at the bottom.
     """
-    lines = hook_lines(text)
+    lines = hook_lines(text, max_chars=15)
     if not lines or orientation != "portrait":
         return None
     font = _font()
     fontfile = f"fontfile='{str(Path(font).resolve()).replace(chr(92), '/')}':" if font else ""
-    size, gap = 68, 22
+    # 2026-11-24: the 68 px white-on-grey title was unreadable at phone size in contact sheets;
+    # now 92 px black on the channel accent, the most legible pairing on any footage.
+    accent = "0x" + "".join(f"{int(c):02x}" for c in (style or {}).get("accent", (251, 191, 36)))
+    size, gap = 92, 26
     parts = []
     # One drawtext per line: ffmpeg 8 renders the newline itself as a missing glyph.
     for i, line in enumerate(lines):
@@ -61,8 +64,8 @@ def _hook_filter(text: str, work: Path, orientation: str) -> str | None:
         tf.write_text(line, encoding="utf-8")
         path = str(tf.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
         y = f"h*0.12+{i * (size + gap)}"
-        parts.append(f"drawtext={fontfile}textfile='{path}':fontsize={size}:fontcolor=white:"
-                     f"borderw=3:bordercolor=black:box=1:boxcolor=black@0.5:boxborderw=18:"
+        parts.append(f"drawtext={fontfile}textfile='{path}':fontsize={size}:fontcolor=black:"
+                     f"box=1:boxcolor={accent}@0.96:boxborderw=22:"
                      f"x=(w-text_w)/2:y={y}:enable='lt(t,{HOOK_SECONDS})'")
     return ",".join(parts)
 
@@ -137,20 +140,41 @@ def _fit_clip(src: Path, sec: float, orientation: str, out: Path) -> Path:
 
 
 def _background_card(text: str, sec: float, orientation: str, out: Path,
-                     style: dict | None = None) -> Path:
-    """Encode a branded card in the same single command as a normal slot."""
+                     style: dict | None = None, big: bool = False) -> Path:
+    """Encode a branded card in the same single command as a normal slot.
+
+    big=True is the stat card a script asks for with a 'CARD: <words>' shot: a key number or name
+    in huge accent-coloured type, a pattern interrupt that is always on topic (growth log 2026-11-24).
+    """
     style = style or {}
     w, h = _dims(orientation)
     accent = "0x" + "".join(f"{int(c):02x}" for c in style.get("accent", (251, 191, 36)))
     # Keep the card visibly nonblack even with the channel's very dark background.
     bg = "0x" + "".join(f"{max(32, int(c)):02x}" for c in style.get("bg", (32, 32, 40)))
     import textwrap
-    label = out.with_suffix(".txt")
-    label.write_text("\n".join(textwrap.wrap(text, width=48 if w > h else 27)), encoding="utf-8")
-    label_path = str(label.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+    if big:
+        wrap = 10 if w < h else 16
+        lines = textwrap.wrap(text.upper(), width=wrap)[:3]
+        size = (w // 6 if w < h else h // 6) if max((len(l) for l in lines), default=1) <= 8 else (int(w / 7.5) if w < h else h // 8)
+        colour = accent
+    else:
+        lines = textwrap.wrap(text, width=48 if w > h else 27)
+        size, colour = max(8, h // 24), "white"
+    font = _font()
+    fontfile = f"fontfile='{str(Path(font).resolve()).replace(chr(92), '/')}':" if font else ""
+    # One drawtext per line (ffmpeg 8 draws a newline as a missing-glyph box). Stat cards sit in
+    # the upper third so the burned narration captions in the middle never cover them.
+    step = int(size * 1.15)
+    top = f"h*0.16" if big and w < h else f"(h-{step * len(lines)})/2"
+    draws = []
+    for i, line in enumerate(lines):
+        label = out.with_suffix(".txt" if i == 0 else f".{i}.txt")
+        label.write_text(line, encoding="utf-8")
+        label_path = str(label.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+        draws.append(f"drawtext={fontfile}textfile='{label_path}':expansion=none:fontcolor={colour}:"
+                     f"borderw={max(2, size // 25)}:bordercolor=black:fontsize={size}:x=(w-text_w)/2:y={top}+{i * step}")
     vf = (f"drawbox=x=0:y=0:w=iw:h={max(8, h//60)}:color={accent}:t=fill,"
-          f"drawtext=textfile='{label_path}':expansion=none:fontcolor=white:"
-          f"fontsize={max(8, h//24)}:x=(w-text_w)/2:y=(h-text_h)/2,"
+          + ",".join(draws) + ","
           f"zoompan=z='1+0.025*on/30':d=1:x='iw/2-iw/zoom/2':"
           f"y='ih/2-ih/zoom/2':s={w}x{h}:fps=30,format=yuv420p")
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
@@ -163,8 +187,11 @@ def _background_card(text: str, sec: float, orientation: str, out: Path,
 def _fill_slot(seg: dict, sec: float, orientation: str, out: Path,
                footage: Footage, style: dict | None = None) -> Path:
     from .qa import probe
-    alternatives = seg.get("candidate_queries") or [" ".join(seg["query"].split()[:2])]
-    queries = list(dict.fromkeys([seg["query"], *alternatives]))
+    if seg.get("card"):
+        return _background_card(seg["card"], sec, orientation, out, style, big=True)
+    # No truncated fallback ("large radio" for a Voyager script found wildflowers, 2026-11-24):
+    # an off-topic clip is worse than the branded caption card below.
+    queries = list(dict.fromkeys([seg["query"], *(seg.get("candidate_queries") or [])]))
     if seg.get("_retry"):
         queries = queries[1:] + queries[:1]
     with tempfile.TemporaryDirectory(dir=out.parent) as temp:
@@ -235,7 +262,7 @@ def _render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation
     srt_path = str(srt.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     fontsdir = f":fontsdir={FONT_DIR}" if _font() else ""
     vf = f"subtitles='{srt_path}':force_style='{_caption_style(orientation, style)}'{fontsdir}"
-    hook = _hook_filter(hook_text, work, orientation) if hook_text else None
+    hook = _hook_filter(hook_text, work, orientation, style) if hook_text else None
     if hook:
         vf = f"{vf},{hook}"
     cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(visual), "-i", str(audio)]
@@ -292,6 +319,23 @@ def render(segments: list[dict], audio: Path, srt: Path, out: Path, orientation:
         return _render(segments, audio, srt, out, orientation, footage, music_db, style, hook_text)
     finally:
         shutil.rmtree(out.parent / f"{out.stem}_work", ignore_errors=True)
+
+
+def apply_shots(segs: list[dict], shots: list | None, fallback_query: str) -> list[dict]:
+    """Give each Short segment its own visual from the script's ordered `shots` list: a stock search
+    matching that moment, or 'CARD: <words>' for a branded stat card. Older scripts without shots
+    keep their single query."""
+    shots = [str(x).strip() for x in (shots or []) if str(x).strip()]
+    if not shots:
+        return segs
+    for i, seg in enumerate(segs):
+        shot = shots[min(i, len(shots) - 1)] if i < len(shots) else shots[i % len(shots)]
+        if shot.upper().startswith("CARD:"):
+            seg["card"] = shot[5:].strip()[:40] or seg.get("caption", "")
+        else:
+            seg["query"] = shot
+            seg["candidate_queries"] = [fallback_query] if fallback_query and fallback_query != shot else []
+    return segs
 
 
 def segments_from_timings(timings: list[dict], shot_list: list[dict], min_shot: float = 5.0, max_shot: float = 9.0) -> list[dict]:
