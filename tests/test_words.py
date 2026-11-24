@@ -187,3 +187,16 @@ def test_short_title_ab_by_day():
     assert words.short_title(data, cfg, lang, "2026-11-26", ab=True) == "How to Say Rice in Russian (ris)"
     assert words.short_title(data, cfg, lang, "2026-11-26", ab=False) == "Rice in Russian: ris"
     assert "how to say rice in Russian" in words.short_tags("rice", cfg)
+
+
+def test_short_tags_native_queries():
+    hindi = words.short_tags("milk", {"name": "Hindi", "code": "hi"}, {"romanisation": "dūdh"})
+    assert "hindi mein dudh kaise likhte hain" in hindi
+    assert "milk ko hindi mein kya kehte hain" in hindi
+    assert "dudh in english" in hindi
+    spanish = words.short_tags("milk", {"name": "Spanish", "code": "es"}, {"romanisation": "leche"})
+    assert "cómo se dice leche en inglés" in spanish
+    assert words.plain("shuǐguǒ") == "shuiguo"
+    french = words.short_tags("fruit", {"name": "French", "code": "fr"}, {"romanisation": "fruit"})
+    assert "fruit in english" not in french and len(french) == len(set(french)) <= 15
+    assert words.short_tags("rice", {"name": "Russian", "code": "ru"}) == words.short_tags("rice", {"name": "Russian"})

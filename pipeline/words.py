@@ -18,6 +18,7 @@ import re
 import shutil
 import subprocess
 import traceback
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -381,11 +382,37 @@ def short_title(data: dict, cfg: dict, lang: dict, day: str | None = None, ab: b
     return f"{word} in {cfg['name']}: {lang['romanisation']}"[:100]
 
 
-def short_tags(word: str, cfg: dict) -> list[str]:
-    """Phrases from YouTube autocomplete (2026-11-24): "how to say egg in french", "egg in french pronunciation"."""
+# Native speakers search the other way round, in their own language (Studio search terms 2026-11-24:
+# "hindi mein dudh kaise likhate hain", "chai ko hindi mein kya bolate hain", "cómo se dice leche en inglés").
+# {w} is the English word, {r} the romanisation without accents.
+NATIVE_QUERIES = {
+    "hi": ["{w} ko hindi mein kya kehte hain", "hindi mein {r} kaise likhte hain", "{r} ko english mein kya kehte hain"],
+    "ur": ["{w} ko urdu mein kya kehte hain", "{r} ko english mein kya kehte hain"],
+    "es": ["cómo se dice {r} en inglés", "{w} en español"],
+    "pt": ["como se diz {r} em inglês", "{w} em português"],
+    "fr": ["comment dit-on {r} en anglais", "{w} en français"],
+    "de": ["was heißt {r} auf englisch", "{w} auf deutsch"],
+    "it": ["come si dice {r} in inglese", "{w} in italiano"],
+}
+
+
+def plain(text: str) -> str:
+    """Romanisation as people type it: "dūdh" -> "dudh", "shuǐguǒ" -> "shuiguo"."""
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)).lower()
+
+
+def short_tags(word: str, cfg: dict, lang: dict | None = None) -> list[str]:
+    """Phrases from YouTube autocomplete (2026-11-24): "how to say egg in french", "egg in french pronunciation",
+    plus the native-language questions in NATIVE_QUERIES and "<romanisation> in english" when the language is known."""
     name = cfg["name"]
-    return [name, f"learn {name}", word, "word of the day", f"{word} in {name}", f"how to say {word} in {name}",
+    tags = [name, f"learn {name}", word, "word of the day", f"{word} in {name}", f"how to say {word} in {name}",
             f"{word} in {name} pronunciation", f"{name} word for {word}"]
+    if lang and lang.get("romanisation"):
+        r = plain(lang["romanisation"])
+        tags += [q.format(w=word, r=r) for q in NATIVE_QUERIES.get(cfg.get("code", ""), [])]
+        if r != word.lower():
+            tags.append(f"{r} in english")
+    return list(dict.fromkeys(tags))[:15]
 
 
 def short_description(channel: Channel, data: dict, cfg: dict, lang: dict) -> str:
@@ -477,7 +504,7 @@ def produce_episode(db, channel: Channel, *, dry_run=False, no_publish=False, pr
         db.upsert("content", {"id": sid, "channel": channel.key, "kind": "short", "parent_id": content_id,
                               "topic": word, "title": short_title(data, cfg, lang, today, bool(channel.cfg.get("short_title_ab"))), "file_path": str(sfile),
                               "description": short_description(channel, data, cfg, lang), "script": snarr,
-                              "tags": short_tags(word, cfg),
+                              "tags": short_tags(word, cfg, lang),
                               "duration_sec": stts["duration"], "placeholder": False,
                               "status": "rendered" if sqa["pass"] else "qa_failed",
                               "qa_status": "passed" if sqa["pass"] else "failed",
