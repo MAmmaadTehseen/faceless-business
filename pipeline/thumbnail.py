@@ -153,6 +153,11 @@ def make_card_thumbnail(text: str, out: Path, accent: tuple, bg: tuple = (14, 18
     longest = max((len(l) for l in lines), default=1)
     size = 190 if longest <= 7 else 160 if longest <= 9 else 130
     font = _font(size)
+    # Shrink until the widest line fits inside the 64 px margins (13-char lines like
+    # "HORMUZ: WATCH" overflowed the 1280 px frame at 130 px).
+    while size > 60 and max((draw.textlength(l, font=font) for l in lines), default=0) > 1280 - 64 * 2:
+        size -= 6
+        font = _font(size)
     lh = int(size * 1.0)
     y = (720 - lh * len(lines)) // 2 + 10
     for i, line in enumerate(lines):
