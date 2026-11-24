@@ -4,8 +4,7 @@
     PYTHONPATH=. .venv/bin/python scripts/backfill_thumbnails.py --channel escapevelocity --apply    # thumbnails.set, 50 units each
 
 Text: one small model call per video producing 2-5 subject/number words (falls back to the title's
-first clause). Frame: a stock clip for the title's subject via the normal footage providers, since
-the rendered video is not on this machine. Design: pipeline.thumbnail.make_thumbnail.
+first clause). Design: pipeline.thumbnail.make_card_thumbnail (branded card; stock photos matched badly).
 """
 import argparse
 import json
@@ -23,7 +22,7 @@ from pipeline.db import DB  # noqa: E402
 from pipeline.footage import Footage  # noqa: E402
 from pipeline.publish import youtube  # noqa: E402
 from pipeline.publish.quota import THUMB_COST, reserve  # noqa: E402
-from pipeline.thumbnail import make_thumbnail  # noqa: E402
+from pipeline.thumbnail import make_card_thumbnail  # noqa: E402
 
 TEXT_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["thumbnail_text", "image_query"],
                "properties": {"thumbnail_text": {"type": "string"}, "image_query": {"type": "string"}}}
@@ -85,11 +84,9 @@ def main():
     for r in sorted(rows, key=lambda r: pub[r["id"]]["publish_at"]):
         vid = pub[r["id"]]["platform_id"]
         text, query = plan_text(claude, r["title"], r["id"])
-        frame = frame_for(footage, query, work / f"{vid}.frame.jpg")
-        if not frame:
-            print(f"SKIP {vid} no frame | {r['title'][:50]}")
-            continue
-        out = make_thumbnail(Path("/nonexistent.mp4"), text, work / f"{vid}.jpg", frame=frame, accent=accent)
+        # Branded card, not a stock photo: keyword stock search picked unrelated images (a Ferris wheel
+        # for Starship, a pug for Google ads) on 2026-11-23. The production render uses the video's own frames.
+        out = make_card_thumbnail(text, work / f"{vid}.jpg", accent)
         print(f"{pub[r['id']]['publish_at'][:10]} {vid} | {text:28} | {query:24} | {r['title'][:45]}")
         if args.apply:
             if not reserve(db, THUMB_COST):

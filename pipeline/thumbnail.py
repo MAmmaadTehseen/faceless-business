@@ -129,3 +129,34 @@ def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, fram
         frame.unlink(missing_ok=True)
     log.info("thumbnail: %s (%d KB)", out, out.stat().st_size // 1024)
     return out
+
+
+def make_card_thumbnail(text: str, out: Path, accent: tuple, bg: tuple = (14, 18, 26)) -> Path:
+    """Branded typographic thumbnail (no photo): dark channel background, accent glow and bar, big text.
+
+    Used when no frame from the video itself is available (backfills of scheduled videos): a stock
+    image picked by keyword often shows something unrelated (a Ferris wheel for Starship), which
+    misleads more than it helps.
+    """
+    accent = tuple(accent)
+    img = Image.new("RGB", (1280, 720), tuple(bg))
+    glow = Image.new("RGB", (1280, 720), tuple(bg))
+    gd = ImageDraw.Draw(glow)
+    for r in range(900, 0, -12):
+        t = r / 900
+        c = tuple(int(bg[k] + (accent[k] - bg[k]) * 0.28 * (1 - t)) for k in range(3))
+        gd.ellipse([1150 - r, 620 - r, 1150 + r, 620 + r], fill=c)
+    img = Image.blend(img, glow, 0.9)
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([(0, 0), (18, 720)], fill=accent)
+    lines = thumbnail_lines(text)
+    longest = max((len(l) for l in lines), default=1)
+    size = 190 if longest <= 7 else 160 if longest <= 9 else 130
+    font = _font(size)
+    lh = int(size * 1.0)
+    y = (720 - lh * len(lines)) // 2 + 10
+    for i, line in enumerate(lines):
+        color = accent if i == len(lines) - 1 and len(lines) > 1 else (255, 255, 255)
+        draw.text((64, y + i * lh), line, font=font, fill=color)
+    img.save(out, "JPEG", quality=90, optimize=True)
+    return out
