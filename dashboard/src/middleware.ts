@@ -15,6 +15,7 @@ export async function middleware(req: NextRequest) {
     pathname === "/login" ||
     pathname === "/api/login" ||
     pathname === "/api/jarvis/summary" ||
+    pathname === "/api/warm" ||
     pathname === "/api/jarvis/query" ||
     pathname === "/privacy" ||
     pathname === "/terms"
