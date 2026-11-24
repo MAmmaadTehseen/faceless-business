@@ -17,6 +17,16 @@ async function loadContent(
   includeMetrics = true,
   days?: string,
 ): Promise<ContentItem[]> {
+  const items = await getContentBase(channel, days);
+  if (!includeMetrics) return items;
+  const latest = new Map<number, Metric>();
+  for (const m of await latestMetrics(items.flatMap((c) => c.publications.map((p) => p.id)))) latest.set(m.publication_id, m);
+  return items.map((c) => ({ ...c, publications: c.publications.map((p) => ({ ...p, metric: latest.get(p.id) ?? null })) }));
+}
+
+/** Content with its publications but no metrics; shared by the list (which adds latest metrics) and analytics. */
+const getContentBase = cached("content-base", loadContentBase);
+async function loadContentBase(channel: ChannelFilter, days?: string): Promise<ContentItem[]> {
   let q = db()
     .from("content")
     .select(CONTENT_COLS)
@@ -27,15 +37,17 @@ async function loadContent(
       "created_at",
       new Date(Date.now() - Number(days) * 86400000).toISOString(),
     );
+  // Unfiltered lists cover nearly every publication, so read that table in pages, alongside content.
+  const everyPublication = channel === "all" && !days ? allPublications() : null;
   const rows: Content[] = [];
-  for (let offset = 0; ; offset += 500) {
-    const { data, error } = await q.range(offset, offset + 499);
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await q.range(offset, offset + 999);
     if (error) throw error;
     rows.push(...((data ?? []) as Content[]));
-    if ((data ?? []).length < 500) break;
+    if ((data ?? []).length < 1000) break;
   }
   if (!rows.length) return [];
-  const pubChunks = await Promise.all(
+  const pubChunks = everyPublication ? [await everyPublication] : await Promise.all(
     Array.from({ length: Math.ceil(rows.length / 100) }, async (_, i) => {
       const { data: pubs, error: pe } = await db()
         .from("publications")
@@ -45,17 +57,19 @@ async function loadContent(
       return (pubs ?? []) as Publication[];
     }),
   );
-  const publications = pubChunks.flat();
-  const latest = new Map<number, Metric>();
-  if (includeMetrics && publications.length) {
-    for (const m of await latestMetrics(publications.map((p) => p.id))) latest.set(m.publication_id, m);
+  const byContent = new Map<string, ContentItem["publications"]>();
+  for (const p of pubChunks.flat()) byContent.set(p.content_id, [...(byContent.get(p.content_id) ?? []), { ...p, metric: null }]);
+  return rows.map((c) => ({ ...c, publications: byContent.get(c.id) ?? [] }));
+}
+
+async function allPublications(): Promise<Publication[]> {
+  const out: Publication[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await db().from("publications").select(PUB_COLS).order("id").range(offset, offset + 999);
+    if (error) throw error;
+    out.push(...((data ?? []) as Publication[]));
+    if ((data ?? []).length < 1000) return out;
   }
-  return rows.map((c) => ({
-    ...c,
-    publications: publications
-      .filter((p) => p.content_id === c.id)
-      .map((p) => ({ ...p, metric: latest.get(p.id) ?? null })),
-  }));
 }
 
 /** Newest snapshot per publication via migration 017's latest_metrics (one row each); scans snapshots if it is missing. */
