@@ -21,6 +21,8 @@
   "shorts_per_long": 10,
   "playlists_for_shorts": true,
   "category_id": "27",
+  "short_title_ab": true,
+  "short_link_comment": "Hear the word in all ten languages: {title}\n{url}",
   "description_footer": "Narration and pronunciation audio are AI-generated. Pronunciation is a guide, not a native speaker: check it with one before an exam. New word every day: subscribe.",
   "youtube_url": "https://www.youtube.com/@tentongues",
   "tts_attribution": "Bengali voice: Piper bn_BD-google (OpenSLR 37, CC BY-SA 4.0; CMU Indic).",

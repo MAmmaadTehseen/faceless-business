@@ -178,3 +178,12 @@ def test_shorts_join_language_playlists(monkeypatch, channel):
     # Other channels still exclude Shorts.
     promo.new_upload(db, {"id": "x", "kind": "short", "title": "AI jobs"}, Channel("futurework"), "v3")
     assert api.playlistItems.return_value.insert.call_count == 2
+
+
+def test_short_title_ab_by_day():
+    data, cfg, lang = {"word": "rice"}, {"name": "Russian"}, {"romanisation": "ris"}
+    assert words.short_title(data, cfg, lang) == "Rice in Russian: ris"
+    assert words.short_title(data, cfg, lang, "2026-11-25", ab=True) == "Rice in Russian: ris"
+    assert words.short_title(data, cfg, lang, "2026-11-26", ab=True) == "How to Say Rice in Russian (ris)"
+    assert words.short_title(data, cfg, lang, "2026-11-26", ab=False) == "Rice in Russian: ris"
+    assert "how to say rice in Russian" in words.short_tags("rice", cfg)

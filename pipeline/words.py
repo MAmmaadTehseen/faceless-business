@@ -370,8 +370,22 @@ def long_description(channel: Channel, data: dict) -> str:
     return "\n\n".join(parts)
 
 
-def short_title(data: dict, cfg: dict, lang: dict) -> str:
-    return f"{data['word'].capitalize()} in {cfg['name']}: {lang['romanisation']}"[:100]
+def short_title(data: dict, cfg: dict, lang: dict, day: str | None = None, ab: bool = False) -> str:
+    """Control: "Rice in Russian: ris". With channel.json `short_title_ab`, even-numbered days use the
+    question stem YouTube autocomplete offers for every word ("how to say rice in ..."); all ten
+    languages share the day's variant, so the comparison is day against day (growth log 2026-11-24).
+    """
+    word = data["word"].capitalize()
+    if ab and day and int(day[-2:]) % 2 == 0:
+        return f"How to Say {word} in {cfg['name']} ({lang['romanisation']})"[:100]
+    return f"{word} in {cfg['name']}: {lang['romanisation']}"[:100]
+
+
+def short_tags(word: str, cfg: dict) -> list[str]:
+    """Phrases from YouTube autocomplete (2026-11-24): "how to say egg in french", "egg in french pronunciation"."""
+    name = cfg["name"]
+    return [name, f"learn {name}", word, "word of the day", f"{word} in {name}", f"how to say {word} in {name}",
+            f"{word} in {name} pronunciation", f"{name} word for {word}"]
 
 
 def short_description(channel: Channel, data: dict, cfg: dict, lang: dict) -> str:
@@ -461,9 +475,9 @@ def produce_episode(db, channel: Channel, *, dry_run=False, no_publish=False, pr
         sqa = run_qa(claude, sfile, None, stts["duration"], sid, out / f"qa-{sid}", vision=bool(claude), db=db,
                      caption_text=snarr, style_note=style_note)
         db.upsert("content", {"id": sid, "channel": channel.key, "kind": "short", "parent_id": content_id,
-                              "topic": word, "title": short_title(data, cfg, lang), "file_path": str(sfile),
+                              "topic": word, "title": short_title(data, cfg, lang, today, bool(channel.cfg.get("short_title_ab"))), "file_path": str(sfile),
                               "description": short_description(channel, data, cfg, lang), "script": snarr,
-                              "tags": [cfg["name"], f"learn {cfg['name']}", word, "word of the day", f"{word} in {cfg['name']}"],
+                              "tags": short_tags(word, cfg),
                               "duration_sec": stts["duration"], "placeholder": False,
                               "status": "rendered" if sqa["pass"] else "qa_failed",
                               "qa_status": "passed" if sqa["pass"] else "failed",

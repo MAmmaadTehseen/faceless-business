@@ -114,6 +114,11 @@ def sync_channel(db, channel):
     except Exception as e:
         log.error("reels follow-up failed for %s: %s", channel.key, e)
     try:
+        from .publish.short_links import comment_long_links
+        comment_long_links(db, channel)
+    except Exception as e:
+        log.warning("short link comments skipped for %s: %s", channel.key, e)
+    try:
         from .publish.reschedule import compress
         moved = compress(db, channel)
         if moved:

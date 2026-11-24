@@ -40,3 +40,11 @@ def test_escapevelocity_carries_the_ab_and_others_do_not():
 def test_article_prompt_is_answer_first():
     src = Path("pipeline/article.py").read_text()
     assert "Answer-first structure" in src and "40-60 word" in src and "sub-questions" in src
+
+
+def test_opening_has_viewer_stake():
+    from pipeline.script import opening_has_viewer_stake
+    assert opening_has_viewer_stake(["The price on your screen may not be the price on your neighbor's screen."])
+    assert not opening_has_viewer_stake(["The Dutch government just put a number on the desk jobs it no longer needs. Twenty-five thousand."])
+    # "you" after the 45-word window does not count
+    assert not opening_has_viewer_stake([" ".join(["word"] * 50) + " you"])

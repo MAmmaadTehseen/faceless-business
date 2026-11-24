@@ -98,6 +98,16 @@ def opening_names_actor_or_number(script: list[str], window: int = 40) -> bool:
     return False
 
 
+def opening_has_viewer_stake(script: list[str], window: int = 45) -> bool:
+    """Retention rule (growth log 2026-11-24): the first `window` spoken words address the viewer
+    ("you", "your"). Measured: openings that stayed in third person lost 25-32% of viewers at
+    seconds 10-21; the one second-person opening kept 65% to one minute. Warning-only, like
+    opening_names_actor_or_number.
+    """
+    words = " ".join(script[:2]).lower().split()[:window]
+    return any(w.strip("\"'“”,.!?;:()") in {"you", "your", "you're", "you’re", "you'll", "you’ll", "yours"} for w in words)
+
+
 def tighten_shorts(claude, shorts: list[dict], content_id: str | None = None) -> list[dict]:
     """Shorten any Short script over the word budget with one small model call each.
 
@@ -179,6 +189,7 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         "(numbers, names, dates, quotes) and at least one contrasting view. Prefer primary sources and major outlets.\n"
         "Step 2: write the long video following the script sequence and style exactly. 1300-1900 words of narration. "
         "Structure, in order: (1) Hook: one shocking named-authority claim stated as fact, then one sentence of why it breaks the usual assumption; the first 40 words must contain the named actor or number. "
+        "Retention rule for the first fifteen seconds (measured 2026-11-24: every long video lost a quarter to a third of its viewers between second 10 and 21, right where the opening finished restating the title and turned to background; the one that opened on the viewer's own stake kept 65% to the one-minute mark against 26-42%): within the first 45 spoken words, say what this means for the viewer in second person ('you', 'your') and promise the specific thing the video will reveal later (an open question answered after the midpoint). Unit conversions, exact dates, 'the headlines say' and background come only after that promise. "
         "(2) Context beat: that matters because [stake]; [named source] said [paraphrase], before any framework. "
         "(3) Core message with one memorable framework, previewed by 0:40. "
         "(4) Evidence: at least two attributed quotes or excerpts from named sources; the strongest goes before the 40% mark, never saved for the end. "
@@ -243,7 +254,9 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
             "made sharper: the first sentence states one shocking, named-authority claim as fact (the named actor or a number "
             "must appear in the first forty words), one sentence of why it breaks the usual assumption follows, and the stakes "
             "land by the third sentence with no throat-clearing. The first spoken sentence must state the same claim as the "
-            "title. Keep length similar. "
+            "title. Within the first 45 words, say what it means for the viewer in second person (you, your) and promise the "
+            "specific thing the video reveals later; move unit conversions, exact dates and 'the headlines say' after that "
+            "promise (viewers were measured leaving at seconds 10-21 when the opening turned to background instead). Keep length similar. "
             "Keep every fact and in-line statistic attribution. Use natural spoken English, hedge uncertain causes, "
             "and use no em dashes, filler or generic transitions. If they are already strong, return them unchanged with changed=false.\n\n"
             f"Title: {data['title']}\n\nParagraph 1: {data['script'][0]}\n\nParagraph 2: {data['script'][1] if len(data['script']) > 1 else ''}"
@@ -284,6 +297,8 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         # Non-fatal on purpose: rejecting would strand the paid script. The warning is the
         # measurement: count should drop to zero once the prompt rule bites.
         log.warning("script opening has no named actor or number in the first 40 words: %r", data["title"])
+    if not opening_has_viewer_stake(data["script"]):
+        log.warning("script opening never addresses the viewer (you/your) in the first 45 words: %r", data["title"])
     # Playbook items 13+15 (growth log 2026-11-24): per-script review checklist and art-text
     # digit verification, logged and stored as minor findings (strict QA can still promote them).
     from .review_script import review_findings as _review_findings, log_review as _log_review
