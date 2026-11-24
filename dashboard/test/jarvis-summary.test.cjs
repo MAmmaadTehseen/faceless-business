@@ -34,7 +34,7 @@ test('route rejects requests before database access and uses no-store', async ()
   try {
     let reads=0;
     const { GET } = compile('src/app/api/jarvis/summary/route.ts', {
-      '@/lib/jarvis-summary': {authorized,summarize}, '@/lib/supabase': { db:()=>{reads++; throw Error('offline')} },
+      '@/lib/jarvis-summary': {authorized,summarize}, '@/lib/jarvis-data': { loadSummaryRows: async()=>{reads++; throw Error('offline')} },
       'next/server': { NextResponse: { json:(body, init)=>({body,...init}) } },
     });
     const req = (token, window='1h') => ({headers:new Headers({authorization:token}), nextUrl:new URL(`https://fixture.invalid/api/jarvis/summary?window=${window}`)});
