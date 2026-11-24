@@ -165,7 +165,7 @@ def _background_card(text: str, sec: float, orientation: str, out: Path,
     # One drawtext per line (ffmpeg 8 draws a newline as a missing-glyph box). Stat cards sit in
     # the upper third so the burned narration captions in the middle never cover them.
     step = int(size * 1.15)
-    top = f"h*0.16" if big and w < h else f"(h-{step * len(lines)})/2"
+    top = f"h*0.06" if big and w < h else f"(h-{step * len(lines)})/2"
     draws = []
     for i, line in enumerate(lines):
         label = out.with_suffix(".txt" if i == 0 else f".{i}.txt")
