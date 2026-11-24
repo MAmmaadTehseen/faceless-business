@@ -32,7 +32,7 @@ def test_build_article_tables_sections_and_faq(channel, episode):
     assert "How do you say water in Russian?" in questions and len(questions) == 6
     assert "水 (shuǐ) in Mandarin" in data["quick_answer"]
     assert len(data["meta_description"]) <= 160 and len(data["meta_title"]) <= 70
-    assert channel.cfg["tts_attribution"] in body
+    assert "bn_BD" not in body  # Bengali (CC BY-SA credit line) replaced by German 2026-11-24
 
 
 def test_table_cells_escape_pipes(channel, episode):
