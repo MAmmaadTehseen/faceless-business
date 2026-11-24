@@ -752,3 +752,44 @@ PLAYBOOK COMPLETE (2026-11-24): all 35 items have a final status (applied, in pl
 
 **Short-to-long links.** Shorts descriptions already carry the long URL but sit behind "more". New `pipeline/publish/short_links.py`, run by sync: once a child Short and its parent are both public, the channel comments "Full video: <title> <url>" on the Short (Ten Tongues: "Hear the word in all ten languages: ..."), once per Short (setting `yt_link_comment_<id>` written before the call), 50 units each, at most 10 per sync, off with `short_link_comments_enabled` = false. The API cannot pin comments. The Studio-only "Related video" field (a tappable link on the Short) is set by the 6-hour loop in Chrome; first one set on rXC_rpOyaM4 -> UsX-KRHzk2Y. Judge: long-video views with traffic source "Shorts" in Studio after two weeks.
 - 2026-11-24 (owner decision): German replaces Bengali in Ten Tongues from the next episode (Piper de_DE-thorsten-medium, CC0; tested locally). Bengali Shorts drew 0-5 views; German is among the top languages in "how to say <word> in" autocomplete. Korean was the first choice but has no commercial-clean voice yet (Piper ko_KR-kss is CC BY-NC-SA; MeloTTS Korean depends on kykim/bert-kor-base, whose README asks commercial users for an MOU). The Bengali playlist and its Home section keep the old episodes; a "German word of the day" playlist is created on the first German Short.
+
+## Loop run: 2026-11-24 13:24 UTC
+
+### Scoreboard (`data/scoreboard/2026-11-24T13.json`)
+
+| channel | long n / median / best | short n / median / best |
+|---|---|---|
+| futurework | 13 / 9 / 27 | 43 / 9 / 92 |
+| tradewinds | 12 / 0.5 / 59 | 43 / 21 / 265 |
+| escapevelocity | 12 / 4 / 29 | 42 / 25 / 620 |
+| tentongues | 7 / 3 / 31 | 74 / 24 / 922 |
+| filmreview | 1 / 73 / 73 | 4 / 112.5 / 424 |
+
+Best long: Frame and Argument 73 (0.7% of 10,000). Best Short: "Rice in Russian: ris" 922 (2.3% of 40,000). Nothing is within 40x of target. Since 07:39 the whole network gained under 100 views; the biggest movers were +16 (Heartland Short) and +11 (Salt in Hindi, Fruit in Mandarin). "Egg in French" did not hold: 124 views at 5 h, 133 at 26 h. Ten Tongues Shorts get one first-day push and then stall. Today's FRUIT episode and Shorts are up (Fruit in Mandarin 11 views in 5 h, the rest 0-2). Trade Winds "The Six-Digit Code That Decides Every Tariff" is public with 0 views at 0.2 days. Quick vs standard: still 0 quick explainer Shorts older than 48 h (7 standard, median 11), so no verdict yet. All workflow runs in the last 30 succeeded.
+
+### Studio (browser pane, Escape Velocity, last 28 days)
+
+- Long videos: 1.6K thumbnail impressions, **1.2% CTR**, average view 1:56, 97 views. Traffic: YouTube search 65%, suggested 19.6%, browse 9.3%. Its custom thumbnails are still rejected (unverified phone), so search results show auto-picked frames. Owner to-do added, priority 1: "Verify Escape Velocity's phone".
+- Shorts: 3.3K views, 1.3K engaged, 39.9% stayed to watch (60.1% swiped away). Shorts feed 83.4%, search 14%.
+- Other channels not read this run. The built-in pane only had Escape Velocity selected, and switching accounts there takes many clicks.
+
+### Search terms (new `scripts/search_terms.py`, Analytics `insightTrafficSourceDetail`, 28 days)
+
+Search brings in very few views (FW 15, TW 9, EV 65, TT 56), but the phrases are telling. Escape Velocity viewers searched for mission names: "artemis 14", "starship flight 15", "3i atlas", "asteroid 1998 ky26", "moon base". So the subject-first titles are matching real searches. The top Ten Tongues terms are native speakers asking **in their own language**: "hindi mein dudh kaise likhate hain" (10), "bangla cha" (7), "chai ko hindi mein kya bolate hain/kahate hain" (4), "dudh ko english mein kya bolate hain", "cómo se dice leche en inglés". Bengali drew 7 search views just as it was replaced by German; I left the owner's decision as it is, and the data is here if it gets revisited.
+
+### Shipped (d206c6e)
+
+- `pipeline/words.py` `short_tags`: Ten Tongues Short tags now include the native-language question shapes per language. Hindi gets "<word> ko hindi mein kya kehte hain", "hindi mein <roman> kaise likhte hain" and "<roman> ko english mein kya kehte hain". Urdu gets the same. Spanish, Portuguese, French, German and Italian get their "how do you say X in English" phrase plus "<word> in <language>". Every language also gets "<roman> in english", with accents stripped (dūdh -> dudh). Capped at YouTube's 15 tags. Test: `tests/test_words.py::test_short_tags_native_queries`. Suite 490 passed.
+- `scripts/search_terms.py` (read-only), with its first output in `data/search_terms.json`.
+
+### Browser
+
+- Search Console (built-in pane, signed in): starship-flight-15 is **already indexed**. Requested indexing for dutch-government and the rice, tea, bread, salt, egg and fruit Ten Tongues articles. That is 8 requests: bread was sent twice because of a focus slip. The Search Console reports say indexed 11, discovered-not-indexed 19. Sitemap last read 2026-11-22. Next: /c/tentongues, milk, then the remaining discovered list.
+- Claude in Chrome was not connected, so this run skipped the Community-post and "Related video" steps. No new FW/TW/EV long video went public since the last run apart from ey6S36JUzRA, which was already posted at 11:05.
+- Owner to-do "Sign in to Google in Claude's browser pane again" is effectively resolved, since the pane is signed in, but I left it for the owner to tick.
+
+### Measuring
+
+- Native-language tags: Ten Tongues Shorts from the 2026-11-25 episode onward. Rerun `scripts/search_terms.py --channels tentongues --days 7` on 2026-12-02 and compare search views with this baseline (56 in 28 days, about 14 a week).
+- Escape Velocity CTR: re-read the 1.2% in Studio once the owner verifies the phone and the thumbnails land.
+- Unchanged: Ten Tongues title A/B and hour rotation (2026-12-04/08), quick vs standard Shorts (January), escapevelocity hook-pace A/B (from 2026-12-01).
