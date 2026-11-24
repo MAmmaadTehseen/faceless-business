@@ -737,3 +737,4 @@ deleted and replaced by a safer, complete script.
 9. Rich results (item 23): run https://search.google.com/test/rich-results on one hub article and the home page.
 
 PLAYBOOK COMPLETE (2026-11-24): all 35 items have a final status (applied, in place, owner or standing rule).
+- 2026-11-24: playbook items 16-18 via the API (scripts/channel_profile.py): new About descriptions on all four channels (search words first, then schedule, then hub and Instagram links; Future Work had none), new-visitor trailers set (FW mX8MSCkWrbE, TW mTzhMe5JJPk, EV JhjYStQ7LOI, TT R4LnSOzp_iw, each the channel's best long video), watermarks set (HTTP 204). Remaining Studio-only: avatar upload, Home tab featured video for subscribers and playlist sections.
