@@ -546,9 +546,14 @@ def regenerate(db, accounts_, project_id, piece, runner=None, log=print):
         account.write_text("qa.json", json.dumps(qa, indent=2, ensure_ascii=False), folder)
         passed = bool(state["items"].get(piece, {}).get("qa", {}).get("pass"))
         long_up = bool(state["items"].get("long", {}).get("uploaded"))
+        long_ok = long_up or bool(state["items"].get("long", {}).get("qa", {}).get("pass"))
+        if destination == "review" and long_ok:
+            # The long gate is open now: promote the folder so the next upload run takes every passing piece.
+            account.move(folder, account.folders()["approve"])
+            destination = "approve"
         log(f"recap cloud: {project_id} {piece} regenerated; qa {'passed' if passed else 'failed'}; folder in {destination}")
         return {"project_id": project_id, "piece": piece, "status": "regenerated" if passed else "qa failed",
-                "folder": destination, "queued_for_upload": passed and destination == "approve" and (long_up or bool(state["items"].get("long", {}).get("qa", {}).get("pass")))}
+                "folder": destination, "queued_for_upload": passed and destination == "approve" and long_ok}
     finally:
         local.unlink(missing_ok=True)
         shutil.rmtree(work, ignore_errors=True)

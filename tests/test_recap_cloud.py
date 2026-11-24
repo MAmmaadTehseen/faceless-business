@@ -438,3 +438,32 @@ def test_short_media_retired_after_reels_or_grace(tmp_path, monkeypatch, db):
     assert cloud.retire_reel_media(db, [account], log=lambda *_: None) == 2
     remaining = {f["name"] for f in account.files.values() if f["parent"] == folder}
     assert remaining == {"state.json", "short3.mp4"}
+
+
+def test_regenerate_promotes_review_folder_once_long_passes(tmp_path, monkeypatch, db):
+    """A folder parked in review/ because its long failed QA moves to approve/ when the regenerated long passes,
+    even while another piece still fails; the upload run then takes every passing piece."""
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    monkeypatch.setattr(cloud, "INBOX_DIR", tmp_path / "inbox")
+    project = "g" * 32
+    src = FakeAccount(1, {"Film 2024.mp4": b"movie", "Film 2024.rights.json": b"{}"})
+    src.files["in0"]["parent"] = "f-done"; src.files["in1"]["parent"] = "f-done"
+    db.upsert("recap_films", {"id": "r" * 32, "filename": "Film 2024.mp4", "source": "drive:1:in0", "normalized_title": "film", "year": 2024,
+                              "file_size": 1, "duration": 1, "content_hash": "h", "status": "already processed", "project_id": project,
+                              "content_ids": "[]", "rights": "{}", "duplicate_confirmed": False}, on="id")
+    account = FakeAccount(2, {})
+    state = _produced_project(account, "rev-3", "review", project)
+    state["items"]["long"]["qa"] = {"pass": False, "issues": [{"severity": "blocking", "text": "cropped"}]}
+    account.upload_file_bytes("state.json", json.dumps(state).encode(), "rev-3")
+
+    def runner(work, state, only=None, **kw):
+        piece = work / only
+        piece.mkdir()
+        (piece / "video.mp4").write_bytes(b"new")
+        state["items"][only].update(qa={"pass": True, "issues": []})
+        core.dump(work / "state.json", state)
+    result = cloud.regenerate(db, [src, account], project, "long", runner=runner, log=lambda *_: None)
+    assert result == {"project_id": project, "piece": "long", "status": "regenerated", "folder": "approve", "queued_for_upload": True}
+    assert account.files["rev-3"]["parent"] == "f-approve"
+    latest = json.loads([f for f in account.files.values() if f["parent"] == "rev-3" and f["name"] == "state.json"][-1]["bytes"])
+    assert latest["items"]["long"]["qa"]["pass"] and not latest["items"]["short2"]["qa"]["pass"]
