@@ -35,36 +35,20 @@ async function loadContent(
     if ((data ?? []).length < 500) break;
   }
   if (!rows.length) return [];
-  const publications: Publication[] = [];
-  for (let offset = 0; offset < rows.length; offset += 100) {
-    const { data: pubs, error: pe } = await db()
-      .from("publications")
-      .select(PUB_COLS)
-      .in(
-        "content_id",
-        rows.slice(offset, offset + 100).map((c) => c.id),
-      );
-    if (pe) throw pe;
-    publications.push(...((pubs ?? []) as Publication[]));
-  }
+  const pubChunks = await Promise.all(
+    Array.from({ length: Math.ceil(rows.length / 100) }, async (_, i) => {
+      const { data: pubs, error: pe } = await db()
+        .from("publications")
+        .select(PUB_COLS)
+        .in("content_id", rows.slice(i * 100, i * 100 + 100).map((c) => c.id));
+      if (pe) throw pe;
+      return (pubs ?? []) as Publication[];
+    }),
+  );
+  const publications = pubChunks.flat();
   const latest = new Map<number, Metric>();
   if (includeMetrics && publications.length) {
-    // Sync writes every live publication every 6 h, so the last 3 days cover almost all of them.
-    const since = new Date(Date.now() - 3 * 86400000).toISOString();
-    for (const window of [since, null]) {
-      const ids = publications.map((p) => p.id).filter((id) => !latest.has(id));
-      for (let i = 0; i < ids.length; i += 200) {
-        for (let offset = 0; ; offset += 1000) {
-          let q = db().from("metrics").select(METRIC_COLS).in("publication_id", ids.slice(i, i + 200));
-          if (window) q = q.gte("captured_at", window);
-          const { data: ms, error: me } = await q.order("captured_at", { ascending: false }).order("id", { ascending: false }).range(offset, offset + 999);
-          if (me) throw me;
-          for (const m of (ms ?? []) as Metric[])
-            if (!latest.has(m.publication_id)) latest.set(m.publication_id, m);
-          if ((ms ?? []).length < 1000) break;
-        }
-      }
-    }
+    for (const m of await latestMetrics(publications.map((p) => p.id))) latest.set(m.publication_id, m);
   }
   return rows.map((c) => ({
     ...c,
@@ -72,6 +56,26 @@ async function loadContent(
       .filter((p) => p.content_id === c.id)
       .map((p) => ({ ...p, metric: latest.get(p.id) ?? null })),
   }));
+}
+
+/** Newest snapshot per publication via migration 017's latest_metrics (one row each); scans snapshots if it is missing. */
+export async function latestMetrics(ids: number[]): Promise<Metric[]> {
+  const chunks = Array.from({ length: Math.ceil(ids.length / 500) }, (_, i) => ids.slice(i * 500, i * 500 + 500));
+  const parts = await Promise.all(chunks.map(async (chunk) => {
+    const { data, error } = await db().rpc("latest_metrics", { p_ids: chunk }).select(METRIC_COLS);
+    if (!error) return (data ?? []) as Metric[];
+    if (error.code !== "PGRST202") throw error;
+    const latest = new Map<number, Metric>();
+    for (let offset = 0; ; offset += 1000) {
+      const { data: ms, error: me } = await db().from("metrics").select(METRIC_COLS).in("publication_id", chunk)
+        .order("captured_at", { ascending: false }).order("id", { ascending: false }).range(offset, offset + 999);
+      if (me) throw me;
+      for (const m of (ms ?? []) as Metric[]) if (!latest.has(m.publication_id)) latest.set(m.publication_id, m);
+      if ((ms ?? []).length < 1000) break;
+    }
+    return [...latest.values()];
+  }));
+  return parts.flat();
 }
 
 /** Hub articles are publications in the articles table, rather than social uploads. */

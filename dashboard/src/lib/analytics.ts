@@ -13,6 +13,51 @@ export type Totals = {
   comments: number;
   watch: number | null;
 };
+const chunked = (ids: number[], size: number) => Array.from({ length: Math.ceil(ids.length / size) }, (_, i) => ids.slice(i * size, i * size + size));
+
+async function snapshotsAt(ids: number[], times: string[] | null): Promise<Metric[] | null> {
+  if (!times) return null;
+  try {
+    const parts = await Promise.all(chunked(ids, 100).map(async (chunk) => {
+      const rows: Metric[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await db().rpc("metric_snapshots_at", { p_ids: chunk, p_times: times }).range(offset, offset + 999);
+        if (error) throw error;
+        rows.push(...((data ?? []) as Metric[]));
+        if ((data ?? []).length < 1000) break;
+      }
+      return rows;
+    }));
+    return parts.flat();
+  } catch (error) {
+    if ((error as { code?: string }).code === "PGRST202") return null;
+    throw error;
+  }
+}
+
+async function allSnapshots(ids: number[], since: string | null): Promise<Metric[]> {
+  // One paged reader per chunk of ids, all chunks in parallel (PostgREST caps each response at 1,000 rows).
+  const parts = await Promise.all(chunked(ids, 200).map(async (chunk) => {
+    const rows: Metric[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      let q = db()
+        .from("metrics")
+        .select("id,publication_id,captured_at,views,likes,comments,ctr")
+        .in("publication_id", chunk);
+      if (since) q = q.gte("captured_at", since);
+      const { data, error } = await q
+        .order("captured_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, offset + 999);
+      if (error) throw error;
+      rows.push(...((data ?? []) as Metric[]));
+      if ((data ?? []).length < 1000) break;
+    }
+    return rows;
+  }));
+  return parts.flat();
+}
+
 export const getAnalytics = cached("analytics", loadAnalytics);
 async function loadAnalytics(
   channel: ChannelFilter,
@@ -34,30 +79,14 @@ async function loadAnalytics(
     })),
   );
   const ids = pubs.map((p) => p.id);
-  const snapshots: Metric[] = [];
   // Only the two compared periods matter (plus a day so the snapshot at the window start exists).
   const since = allTime ? null : new Date((endAt ?? Date.now()) - (2 * days + 1) * 86400000).toISOString();
-  // One paged reader per chunk of ids, all chunks in parallel (PostgREST caps each response at 1,000 rows).
-  const chunks = Array.from({ length: Math.ceil(ids.length / 200) }, (_, i) => ids.slice(i * 200, i * 200 + 200));
-  const parts = await Promise.all(chunks.map(async (chunk) => {
-    const rows: Metric[] = [];
-    for (let offset = 0; ; offset += 1000) {
-      let q = db()
-        .from("metrics")
-        .select("id,publication_id,captured_at,views,likes,comments,ctr")
-        .in("publication_id", chunk);
-      if (since) q = q.gte("captured_at", since);
-      const { data, error } = await q
-        .order("captured_at", { ascending: true })
-        .order("id", { ascending: true })
-        .range(offset, offset + 999);
-      if (error) throw error;
-      rows.push(...((data ?? []) as Metric[]));
-      if ((data ?? []).length < 1000) break;
-    }
-    return rows;
-  }));
-  for (const rows of parts) snapshots.push(...rows);
+  // Windowed totals are only evaluated at day boundaries, so migration 017's metric_snapshots_at
+  // returns just the snapshot in force at each one; all-time (or a database without 017) reads every snapshot.
+  const windowEnd = endAt ?? Date.now(), windowStart = windowEnd - days * 86400000;
+  const boundaries = allTime ? null : [windowStart - days * 86400000, windowEnd,
+    ...Array.from({ length: Math.max(1, Math.ceil(days)) + 1 }, (_, i) => windowStart + i * 86400000)].map((t) => new Date(t).toISOString());
+  const snapshots = (await snapshotsAt(ids, boundaries)) ?? (await allSnapshots(ids, since));
   snapshots.sort((a, b) => a.captured_at.localeCompare(b.captured_at) || a.id - b.id);
   const byPub = new Map<number, Metric[]>();
   for (const m of snapshots) {
@@ -77,7 +106,7 @@ async function loadAnalytics(
           86400000,
       ) + 1,
     );
-  const end = endAt ?? Date.now(),
+  const end = windowEnd,
     start = end - days * 86400000,
     previous = start - days * 86400000;
   // Snapshot times parsed once; at() binary-searches the last snapshot at or before `time`.

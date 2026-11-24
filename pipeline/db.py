@@ -10,6 +10,8 @@ from typing import Any
 
 from .common import DATA_DIR, log
 
+PAGE = 1000  # PostgREST max rows per response
+
 JSON_COLS = {
     "articles": {"faqs", "entities", "takeaways"},
     "content": {"title_variants", "chapters", "tags"},
@@ -133,9 +135,16 @@ class DB:
                 q = q.lte(k, v)
             if order:
                 q = q.order(order, desc=desc)
-            if limit:
-                q = q.limit(limit)
-            return [self._decode(table, r) for r in (q.execute().data or [])]
+            # PostgREST returns at most 1,000 rows per request, so read in pages until the
+            # limit (or the end of the table) instead of silently truncating.
+            rows: list[dict] = []
+            while limit is None or len(rows) < limit:
+                size = PAGE if limit is None else min(PAGE, limit - len(rows))
+                page = q.range(len(rows), len(rows) + size - 1).execute().data or []
+                rows.extend(page)
+                if len(page) < size:
+                    break
+            return [self._decode(table, r) for r in rows]
         clauses, params = [], []
         for k, v in (match or {}).items():
             if v is None:
