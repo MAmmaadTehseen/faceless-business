@@ -72,7 +72,7 @@ def new_upload(db, row, channel, video_id):
             if not reserve(db, 50):
                 return
             playlist_id = youtube.yt().playlists().insert(part='snippet,status', body={
-                'snippet': {'title': match['title']}, 'status': {'privacyStatus': 'private'}}).execute()['id']
+                'snippet': {'title': match['title']}, 'status': {'privacyStatus': 'public'}}).execute()['id']
             db.set_setting(playlist_key, playlist_id)
         if not reserve(db, 50):
             return

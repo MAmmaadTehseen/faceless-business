@@ -187,7 +187,7 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   uses settings `yt_links_new_<video-id>` written only on new successful uploads while enabled.
 - Each channel config has four `topic_playlists` (key, title, cross_mention_keywords).
   Only long videos with title overlap enter the best match, at most one playlist per
-  video. Creation is lazy and PRIVATE (50 units), insertion costs 50 units. IDs live in
+  video. Creation is lazy and PUBLIC since 2026-11-24, owner decision (50 units), insertion costs 50 units. IDs live in
   `yt_playlist_<channel>_<key>` settings; `yt_playlist_video_<video-id>` retains insertion
   attempts to avoid duplicates on uncertain failures. Serialize publishers per channel
   to avoid competing first-time playlist creation. Failed/uncertain optional operations
