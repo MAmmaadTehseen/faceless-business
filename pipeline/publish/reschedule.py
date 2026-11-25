@@ -51,12 +51,15 @@ def movable(db, channel: Channel, now=None):
     """Future, non-public YouTube publications of the channel, oldest slot first."""
     now = now or datetime.now(timezone.utc)
     content = {c["id"]: c for c in db.select("content", {"channel": channel.key})}
+    pinned = set(db.setting(f"schedule_pinned_{channel.key}", None) or [])
     rows = []
     for p in db.select("publications", {"platform": "youtube"}):
         c = content.get(p["content_id"])
         if not c or p.get("status") not in ("live", "queued") or not p.get("publish_at") or p.get("privacy") == "public":
             continue
         if _dt(p["publish_at"]) <= now + timedelta(hours=1):
+            continue
+        if p["content_id"] in pinned:  # owner-spaced burst releases (scripts/release_burst.py) keep their slots
             continue
         rows.append((p, c))
     rows.sort(key=lambda pc: (_dt(pc[0]["publish_at"]), pc[1].get("kind") != "long"))
