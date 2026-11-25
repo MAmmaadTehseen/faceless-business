@@ -57,7 +57,8 @@ class HomelabStore:
             Path(dst).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(src, dst)
             return
-        remote = f'{self.user}@{self.host}:{shlex.quote(str(dst if to_remote else src))}'
+        # OpenSSH 9+ scp uses SFTP: the remote path is taken literally, so it must not be shell-quoted.
+        remote = f'{self.user}@{self.host}:{dst if to_remote else src}'
         pair = [str(src), remote] if to_remote else [remote, str(dst)]
         for attempt in range(3):
             try:
