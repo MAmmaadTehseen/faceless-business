@@ -331,6 +331,25 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     return result
 
 
+def backlog_full(db, channel: Channel, args) -> bool:
+    """Fresh publishing runs skip while the long-video queue reaches past max_long_backlog_days.
+
+    Resume, rebuild, dry-run and bank runs are never braked. Off with setting
+    production_backlog_brake_enabled = false; limit from channel.json (default 14 days).
+    """
+    if args.resume or args.dry_run or args.bank or not args.publish or args.no_publish:
+        return False
+    if db.setting("production_backlog_brake_enabled", True) is False:
+        return False
+    from .publish import long_backlog_days
+    limit = float(channel.cfg.get("max_long_backlog_days", 14))
+    days = long_backlog_days(db, channel)
+    if days > limit:
+        log.info("produce skipped: %s long videos are scheduled %.1f days ahead (limit %g)", channel.key, days, limit)
+        return True
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="fixture script, placeholder footage, no Claude")
@@ -359,6 +378,9 @@ def main():
     if db.setting("pipeline_paused", False) and not args.dry_run:
         log.warning("pipeline paused from dashboard; exiting")
         db.update("runs", {"id": run["id"]}, {"status": "skipped", "finished_at": now_iso(), "log": "paused"})
+        return
+    if backlog_full(db, channel, args):
+        db.update("runs", {"id": run["id"]}, {"status": "skipped", "finished_at": now_iso(), "log": "long-video backlog full"})
         return
     claude = None if args.dry_run else Claude(db, channel=channel)
     guard = None if args.dry_run else CostGuard(db)

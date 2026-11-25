@@ -27,6 +27,23 @@ def channel_calendar(channel: Channel) -> tuple[set[int], int]:
     return days, int(schedule.get("utc_hour", 6))
 
 
+def long_backlog_days(db, channel: Channel, now=None) -> float:
+    """Days until the channel's last scheduled, not-yet-public long video goes public (0 if none).
+
+    Growth log 2026-11-25: Future Work had 16 long videos queued to 2027-01-02, so each new
+    production published five weeks later and every content change took that long to measure.
+    """
+    now = now or datetime.now(timezone.utc)
+    longs = {c["id"] for c in db.select("content", {"channel": channel.key}) if c.get("kind") == "long"}
+    last = None
+    for p in db.select("publications", {"platform": "youtube"}):
+        if (p["content_id"] in longs and p.get("status") in ("live", "queued") and p.get("publish_at")
+                and p.get("privacy") != "public"):
+            at = datetime.fromisoformat(str(p["publish_at"]).replace("Z", "+00:00"))
+            last = at if last is None or at > last else last
+    return max(0.0, (last - now).total_seconds() / 86400) if last else 0.0
+
+
 def _next_slot(db, kind: str, channel: Channel | None = None, *, now=None,
                parent_slot=None, after=None, content_id=None) -> datetime:
     """Assign a channel calendar slot; failed publications do not occupy slots."""

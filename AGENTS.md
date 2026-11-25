@@ -88,6 +88,10 @@ YouTube publications per channel per UTC day pushes overflow forward; long video
 use their next cron day. Live and queued publications occupy slots; failed rows do not.
 The cron days/hours are fixed by channel in the scheduler and match `schedule.days` and
 `schedule.utc_hour` in channel.json; those schedule fields are not scheduler overrides.
+Backlog brake (2026-11-25): fresh `run_all --publish` runs skip (run status `skipped`) while the
+channel's last scheduled non-public long video is more than channel.json `max_long_backlog_days`
+(default 14) away (`long_backlog_days()` in `pipeline/publish/__init__.py`). Resume, rebuild,
+dry-run, bank and words runs are not braked; setting `production_backlog_brake_enabled` = false turns it off.
 
 ## Current state (2026-10-29)
 Done: pipeline end to end (one private long video + 2 Shorts on Future Work), Supabase schema + channel

@@ -813,3 +813,40 @@ Judge: Shorts average % viewed and swipe-away (Studio "stayed to watch") for Sho
 - Sound design (`pipeline/sfx.py`): synthesised whoosh into every cut on Shorts and into graphics on long videos, plus a low hit under every card, chart and map, mixed at -17 dB with a limiter. No sample library, so no licence question. The narration is no longer halved by amix normalisation (normalize=0).
 - Weekly retention review (`pipeline/retention_review.py`, run from sync at most once a week per channel): for recent public videos with 15+ views it finds the steepest drop on the Analytics retention curve, stores the narration spoken there (estimated by word position) and the best-holding opening in `retention_lessons_<channel>`, and every new long-video, child-Short and daily-Short prompt includes them as measured examples to avoid and copy. No model calls.
 Judge with round 5 on 2026-12-08.
+
+## Loop run: 2026-11-25 05:41 UTC
+
+### Scoreboard (`data/scoreboard/2026-11-25T05.json`)
+
+| channel | long n / median / best | short n / median / best |
+|---|---|---|
+| futurework | 13 / 9 / 27 | 45 / 9 / 92 |
+| tradewinds | 12 / 1 / 59 | 45 / 20 / 265 |
+| escapevelocity | 12 / 5 / 29 | 45 / 27 / 620 |
+| tentongues | 7 / 3 / 32 | 77 / 24 / 920 |
+| filmreview | 2 / 38 / 76 | 5 / 91 / 421 |
+
+Best long: Frame and Argument 76 (0.8% of 10,000). Best Short: "Rice in Russian: ris" 920 (2.3% of 40,000). The network barely moved in 16 h. Trade Winds "The Six-Digit Code That Decides Every Tariff" still has 0 views at 0.8 days. Best new Shorts in their first hours: EV "Cat's Head Nebula" 29 views at 0.4 d (72/day), "Maybe Don't Bring the Mars Rocks Home" 18 views. Quick vs standard: still no explainer Short under 30 s is public. Owner to-do: nothing newly ticked; Escape Velocity phone verification is still open.
+
+Workflows: every run in the last 30 succeeded apart from the two `retry` runs and one `recap` run on 11-24 16:00, which other sessions dispatched. GitHub cron is running hours late: `words` (03:30 cron) fired at 14:10 on 11-24 and had not fired today by 05:41, and the 04:15 `sync` had not run either. Another session's uncommitted homelab slot-guard work in `.github/workflows/*` and `ops/` targets this, so I left it alone.
+
+### Finding: Future Work's queue runs to 2027-01-02
+
+The `compress_schedule.py` dry run (read-only) shows 81 scheduled YouTube uploads for Future Work, including **16 long videos**, with the last slot on 2027-01-02. Trade Winds has 42 (last slot 2026-12-11) and Escape Velocity 48 (2026-12-13). Long videos are the binding constraint because there are only three cron slots a week and each long brings four child Shorts. The banked stockpile added the surplus. Produce keeps adding three longs a week, so the Future Work queue never shrinks. As a result, every content change (rounds 4 and 5: viewer-stake openings, shot lists, stat cards, sound) reaches Future Work viewers about 5.5 weeks later, and topical news is weeks stale when it airs.
+
+### Shipped
+
+- **Backlog brake** (`pipeline/run_all.py` `backlog_full`, `pipeline/publish/__init__.py` `long_backlog_days`): a fresh `--publish` produce run is skipped (run status `skipped`, log "long-video backlog full") while the channel's last scheduled non-public long video is more than `max_long_backlog_days` days away (channel.json, default 14). Resume, rebuild, dry-run, bank and words runs are never braked. Setting `production_backlog_brake_enabled` = false turns it off. Current values: futurework 37.0 days (braked until about 2026-12-18), tradewinds 15.2 (about one day), escapevelocity 18.4 (about four days), tentongues 1.1 (words.yml is not affected). The brake spends no model calls on videos that would air in January, and when production resumes it picks topics about two weeks before they air instead of six. Tests: `tests/test_backlog_brake.py` (3). Suite 499 passed.
+- Not done (needs a decision): drain Future Work faster by adding long-video days or raising `max_youtube_per_day`. Moving the queue costs 51 units per scheduled video (about 4,100 units for Future Work) and changes the channel's fixed calendar, which is part of keeping the channels distinct.
+
+### Browser (Claude in Chrome)
+
+- Community post on Future Work for E_c9M-SD2TY "One Number Decides Every Restructure", public at 06:00. The text covers the performance-review myth, then the span-of-control arithmetic from the script (10,000 workers: 4 reports per manager gives about 3,300 managers over seven layers; 10 reports gives about 1,100 over four), plus the link. Setting `community_post_E_c9M-SD2TY` written.
+- "Related video" set on 15 child Shorts, chosen by views: Ten Tongues D-gBD5v9Qkg, SbnZAf0bvYY, NinMrHA1YjE, mVS8S_ct9a0, Zc6Z84C0bP8, qrDzSXo-n18, Dx-75j6QTFw, wV4fIk1FQj8, y4OW8a2YEE8, g91fB_jCOmU, J8qGA8FaJYU, Zz4QtFl6-GA, a2MH0q2Nz7w, and Future Work kqrLYTkqvsE, S9UL8Fq2h7g. Each Short links to its parent episode or long video, and `yt_related_set_<id>` is written for each. 106 eligible pairs remain. Method note: in Chrome, `computer type` fails inside the Studio picker ("Cannot access a chrome-extension:// URL of different extension"). Setting the search input's value plus input/Enter events in JS works, as does clicking the `[role=option]` whose aria-label starts with the parent title and then `#save`. The picker list only loads about 40 recent videos, so search is needed for older parents.
+- Search Console indexing and the Studio Reach read were skipped this run (time). Next run: /c/tentongues, milk, and the discovered-not-indexed list.
+
+### Measuring
+
+- Backlog brake: re-run `compress_schedule.py` dry runs on each loop. Future Work's last long slot should stop moving later. Success means the first post-brake Future Work long publishes within 14 days of being produced.
+- Related video: Studio "Shorts" traffic source into the linked long videos (TEA, MILK, SALT, RICE, EGG, COFFEE episodes) after 14 days, read on 2026-12-09.
+- Unchanged: Ten Tongues title A/B and hour rotation (2026-12-04/08), native-language tags (2026-12-02), round 5 visuals (2026-12-08), quick vs standard Shorts (January).
