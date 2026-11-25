@@ -24,6 +24,7 @@ from pipeline.common import Channel, log  # noqa: E402
 from pipeline.publish import youtube  # noqa: E402
 
 TARGET = {"long": 10_000, "short": 40_000}
+HISTORY = Path(__file__).resolve().parent.parent / "data" / "scoreboard"
 CHANNELS = ["futurework", "tradewinds", "escapevelocity", "tentongues", "filmreview"]
 
 
@@ -43,6 +44,17 @@ def channel_for(key: str):
     return Channel(key)
 
 
+def known_ids(key: str, folder: Path | None = None) -> list[str]:
+    """Video ids earlier scoreboards saw for this channel, oldest file first."""
+    ids = []
+    for f in sorted((folder or HISTORY).glob("*.json")):
+        try:
+            ids += [v["id"] for v in json.loads(f.read_text()).get("videos", []) if v.get("channel") == key]
+        except (ValueError, AttributeError, KeyError, TypeError):
+            continue
+    return ids
+
+
 def channel_videos(key: str, max_items: int = 200) -> list[dict]:
     ch = channel_for(key)
     youtube.use_channel(ch)
@@ -57,7 +69,9 @@ def channel_videos(key: str, max_items: int = 200) -> list[dict]:
             break
     # The uploads playlist can repeat items across pages (seen 2026-11-23: 23 Future Work
     # videos twice), which inflated n and skewed medians.
-    ids = list(dict.fromkeys(ids))
+    # The playlist also drops public videos at random (2026-11-25: 11 public videos missing,
+    # Trade Winds 116 items / 100 unique), so add every id earlier scoreboards saw.
+    ids = list(dict.fromkeys(ids + known_ids(key)))
     rows = []
     for i in range(0, len(ids), 50):
         res = youtube.yt().videos().list(part="snippet,statistics,status,contentDetails", id=",".join(ids[i:i + 50])).execute()
