@@ -12,6 +12,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 from .drive import DriveFull, digest
@@ -49,8 +50,15 @@ class HomelabStore:
     def _run(self, command):
         if self.local:
             return subprocess.run(['bash', '-c', command], check=True, capture_output=True, text=True).stdout
-        return subprocess.run(['ssh', *self._ssh_args(), f'{self.user}@{self.host}', command],
-                              check=True, capture_output=True, text=True, timeout=600).stdout
+        for attempt in range(4):
+            done = subprocess.run(['ssh', *self._ssh_args(), f'{self.user}@{self.host}', command],
+                                  capture_output=True, text=True, timeout=600)
+            if done.returncode == 0:
+                return done.stdout
+            # 255 is ssh's own connection failure (tailnet path still settling); command errors fail at once.
+            if done.returncode != 255 or attempt == 3:
+                raise RuntimeError(f'homelab ssh failed ({done.returncode}): {done.stderr.strip()[-300:]}')
+            time.sleep(15 * (attempt + 1))
 
     def _copy(self, src, dst, to_remote):
         if self.local:
