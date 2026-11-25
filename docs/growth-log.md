@@ -906,3 +906,38 @@ Shipped (code by LunaRoute GLM 5.3 headless, reviewed and fixed by me):
 Samples (motion/out/samples, not committed): FW 40.8 s, TW 42.9 s, EV 36.7 s, TT 32.3 s, picture and audio in sync.
 
 Measuring: one animated long video per channel published immediately on 2026-11-25. Compare 48 h views and the 10-30 s retention against the previous five long videos per channel on 2026-11-28 (`scripts/retention_curves.py`). If retention at 30 s is not better, keep motion for Shorts only.
+
+## Loop run: 2026-11-25 19:22 UTC
+
+### Scoreboard (`data/scoreboard/2026-11-25T19.json`, Frame and Argument only)
+
+Every main-channel read returned `quotaExceeded` (403). The latest full measurement is still `data/scoreboard/2026-11-25T13.json`:
+
+| channel | long n / median / best | short n / median / best |
+|---|---|---|
+| futurework | 16 / 7.5 / 27 | 47 / 9 / 92 |
+| tradewinds | 12 / 1 / 59 | 48 / 17 / 265 |
+| escapevelocity | 12 / 5.5 / 29 | 48 / 26.5 / 620 |
+| tentongues | – / 2.5 / 34 | – / 24 / 920 |
+| filmreview (19:22) | 2 / 40 / 77 | 6 / 66 / 421 |
+
+Best long: Frame and Argument 77 (0.8% of 10,000). Best Short: "Rice in Russian: ris" 920 (2.3% of 40,000). Neither moved measurably today. Quick vs standard, explainer Shorts older than 48 h at 13:25: 0 under 30 s, 7 standard (median 5), 118 other (median 17.5). No verdict. The owner to-do page scoreboard was left at 13:25: a refresh would only show Frame and Argument. Owner to-do: nothing newly ticked.
+
+### Finding: quota gone by 19:22 UTC
+
+`quota_log` 2026-11-25 shows 9,000 units / 64 uploads, so the ledger is at its cap (10,000 minus the 1,000 read reserve). Google still refused reads, which means at least 1,000 units went outside the ledger. Timeline: a release burst between 08:10 and 09:36 put up 64 uploads (FW 25, TW 20, EV 10, TT 9). Thumbnails, playlists, description links and re-slots against those uploads filled the ledgered 9,000. Six or more syncs ran today (12:15, 14:12, 14:45, 16:38, 17:08, 18:15). Each one's stats, analytics and `commentThreads.list` reads are not ledgered. Sync was re-reading the comment threads of every video with at least one comment on every run, even when the count had not changed. From the quota exhaustion until the 08:00 UTC reset, comment reads, reconciliation, the scoreboard and the related-link comments all fail.
+
+### Shipped
+
+- `pipeline/sync.py` `comments_grew`: comment threads are re-read only when the video's public comment count rose since the previous metrics row (or there is no row yet). A drop in the count, from deletions, does not trigger a read. Test: `tests/test_sync_comments.py`. Suite 576 passed.
+
+### Browser
+
+- Claude in Chrome is not connected, so I skipped the Community posts for Trade Winds di3sENUcTbA ("Why Beans Enter Cheap and Chocolate Does Not", public 18:00) and Escape Velocity QbB3ChEuyH0 ("3 Rungs Measure the Universe", public 15:31). FW tGSs7AWY4UA already has its post. Both are due next run. Draft facts from the scripts: cocoa beans often enter at zero duty while finished chocolate can face close to ten percent; parallax uses Earth's orbit, about 300 million km across, and Gaia has charted more than a billion stars.
+- Related video: skipped (Chrome). 45 `yt_related_set_` settings exist.
+- Search Console: the built-in pane is still signed out of Google. The open to-do `browser-google-signin-2` covers it.
+
+### Measuring
+
+- Quota: the next `quota_log` day should end without Google 403s on reads while the ledger is below 9,000. If 403s continue, the next suspects are stats/analytics in frequent syncs and recap/other-session scripts.
+- Unchanged: motion longs (2026-11-28), native-language tags (2026-12-02), Ten Tongues title A/B and hour rotation (2026-12-04/08), round 5 visuals (2026-12-08), Related video (2026-12-09), backlog brake (each run), quick vs standard Shorts (January).

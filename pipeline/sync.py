@@ -20,6 +20,19 @@ def flag_reason(text: str) -> str | None:
     return None
 
 
+def comments_grew(db, publication_id, count) -> bool:
+    """Re-read YouTube comment threads only when the public count rose since the last sync.
+
+    Each commentThreads.list is a quota unit outside the reservation ledger, and sync runs
+    several times a day over every commented video, so unchanged threads were re-read for
+    nothing (2026-11-25: Google refused reads while the ledger still showed the read reserve).
+    """
+    if not count:
+        return False
+    last = db.latest_metrics(publication_id)
+    return last is None or (last.get("comments") or 0) < count
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description=__doc__)
@@ -81,7 +94,7 @@ def sync_channel(db, channel):
                                   "ctr": a.get("ctr"), "avg_view_duration_sec": a.get("avg_view_duration_sec"), "impressions": a.get("impressions")})
             if s["privacy"] != p.get("privacy"):
                 db.update("publications", {"id": p["id"]}, {"privacy": s["privacy"]})
-            if s["comments"]:
+            if comments_grew(db, p["id"], s["comments"]):
                 for c in youtube.comments(p["platform_id"]):
                     if c.pop("is_own", False):
                         continue
