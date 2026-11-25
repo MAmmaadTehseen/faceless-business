@@ -1,10 +1,35 @@
 name: engage
+run-name: ${{ inputs.slot && format('engage slot {0}', inputs.slot) || 'engage' }}
 on:
   schedule:
     - cron: "45 */6 * * *"   # 30 min after sync
   workflow_dispatch:
+    inputs:
+      slot:
+        description: "Internal: homelab scheduler slot id (duplicate guard)"
+        required: false
+        default: ""
 jobs:
+  guard:
+    # One run per scheduled slot: the homelab server and GitHub cron both trigger; the second exits here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { actions: read, contents: read }
+    outputs:
+      proceed: ${{ steps.guard.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: ops/homelab }
+      - id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_FILE: engage.yml
+          SLOT_INPUT: ${{ inputs.slot }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: python3 ops/homelab/slot_guard.py
   engage:
+    needs: guard
+    if: needs.guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

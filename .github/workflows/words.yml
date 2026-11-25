@@ -1,10 +1,14 @@
 name: words
-run-name: words ${{ inputs.word || github.run_id }}
+run-name: words ${{ inputs.word || (inputs.slot && format('slot {0}', inputs.slot)) || github.run_id }}
 on:
   schedule:
     - cron: "30 3 * * *"       # tentongues: daily 03:30 UTC; long publishes 07:00, Shorts 09:00-18:00
   workflow_dispatch:
     inputs:
+      slot:
+        description: "Internal: homelab scheduler slot id (duplicate guard)"
+        required: false
+        default: ""
       channel:
         description: "words-format channel key"
         default: tentongues
@@ -44,6 +48,23 @@ permissions:
   contents: write
   actions: read
 jobs:
+  guard:
+    # One run per scheduled slot: the homelab server and GitHub cron both trigger; the second exits here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { actions: read, contents: read }
+    outputs:
+      proceed: ${{ steps.guard.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: ops/homelab }
+      - id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_FILE: words.yml
+          SLOT_INPUT: ${{ inputs.slot }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: python3 ops/homelab/slot_guard.py
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -62,7 +83,8 @@ jobs:
           fi
           echo "jobs=$(python3 -c "import json,sys; print(json.dumps(list(range(1, int(sys.argv[1]) + 1))))" "$n")" >> "$GITHUB_OUTPUT"
   words:
-    needs: plan
+    needs: [guard, plan]
+    if: needs.guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     strategy:

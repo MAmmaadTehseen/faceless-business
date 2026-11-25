@@ -1,0 +1,37 @@
+name: ops-guard-test
+run-name: ${{ inputs.slot && format('ops-guard-test slot {0}', inputs.slot) || 'ops-guard-test' }}
+# Harmless target for verifying the slot guard (docs/homelab.md): dispatch twice with the same slot;
+# the second run's work job is skipped.
+on:
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: "Slot id, e.g. guardtest@20261124T1700Z"
+        required: false
+        default: ""
+permissions:
+  contents: read
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { actions: read, contents: read }
+    outputs:
+      proceed: ${{ steps.guard.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: ops/homelab }
+      - id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_FILE: ops-guard-test.yml
+          SLOT_INPUT: ${{ inputs.slot }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: python3 ops/homelab/slot_guard.py
+  work:
+    needs: guard
+    if: needs.guard.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: sleep 90 && echo "did the work"

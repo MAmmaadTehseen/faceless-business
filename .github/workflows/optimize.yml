@@ -1,10 +1,35 @@
 name: optimize
+run-name: ${{ inputs.slot && format('optimize slot {0}', inputs.slot) || 'optimize' }}
 on:
   schedule:
     - cron: "30 9 * * *"
   workflow_dispatch:
+    inputs:
+      slot:
+        description: "Internal: homelab scheduler slot id (duplicate guard)"
+        required: false
+        default: ""
 jobs:
+  guard:
+    # One run per scheduled slot: the homelab server and GitHub cron both trigger; the second exits here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { actions: read, contents: read }
+    outputs:
+      proceed: ${{ steps.guard.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: ops/homelab }
+      - id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_FILE: optimize.yml
+          SLOT_INPUT: ${{ inputs.slot }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: python3 ops/homelab/slot_guard.py
   optimize:
+    needs: guard
+    if: needs.guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

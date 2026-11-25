@@ -1,0 +1,15 @@
+services:
+  faceless-ops:
+    build: .
+    restart: unless-stopped
+    env_file: ./ops.env
+    environment:
+      TZ: UTC
+      OPS_STATE: /data/state.json
+    volumes:
+      - ./data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
