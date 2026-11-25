@@ -301,7 +301,7 @@ class FakeGitHub:
 
 def selftest(jarvis: Jarvis, state_dir: Path) -> bool:
     """Forced failure: dispatch fails at the slot, retry 1/4 fires after the (scaled) 1 h."""
-    scale = float(os.getenv("OPS_LADDER_SCALE") or 1 / 60)  # 1 h -> 1 min
+    scale = 1 / 60  # 1 h -> 1 min, whatever the service uses
     slot_at = datetime(2026, 11, 24, 6, 15, tzinfo=UTC)
     now = [slot_at - timedelta(seconds=30)]
     gh = FakeGitHub(fail_dispatches=1)
