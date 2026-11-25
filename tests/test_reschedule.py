@@ -63,6 +63,7 @@ def test_apply_updates_youtube_for_live_rows_and_db_for_all(monkeypatch):
     assert reschedule.apply(db, channel, items) == 5
     assert sorted(b["id"] for b in calls) == ["v0", "v1", "vL"]  # queued rows need no API call
     assert all(b["status"]["privacyStatus"] == "private" and b["status"]["publishAt"].endswith("Z") for b in calls)
+    assert all(b["status"]["embeddable"] and b["status"]["publicStatsViewable"] for b in calls)
     assert db.one("publications", {"content_id": "S3"})["publish_at"] == items[-1]["new"].isoformat()
 
 

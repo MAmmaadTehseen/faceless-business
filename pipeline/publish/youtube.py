@@ -142,7 +142,10 @@ def upload(video: Path, title: str, description: str, tags: list[str], privacy: 
     body = {
         "snippet": {"title": title[:100], "description": description[:4900], "tags": tags[:15], "categoryId": category_id,
                     "defaultLanguage": "en", "defaultAudioLanguage": "en"},
-        "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False, "containsSyntheticMedia": synthetic_media()},
+        # Explicit, because the channel's Studio upload defaults otherwise apply: on 2026-11-25 136 of
+        # 146 FW/TW/EV uploads were not embeddable (hub embeds blocked) and hid their view count.
+        "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False, "containsSyntheticMedia": synthetic_media(),
+                   "embeddable": True, "publicStatsViewable": True},
     }
     if publish_at and privacy == "private":
         body["status"]["publishAt"] = publish_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

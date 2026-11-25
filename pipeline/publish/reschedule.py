@@ -116,6 +116,8 @@ def apply(db, channel: Channel, items: list[dict], max_updates: int | None = Non
                     continue
                 v["status"]["privacyStatus"] = "private"
                 v["status"]["publishAt"] = new.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                # Same call, no extra units: undo channel upload defaults that blocked embeds and hid view counts.
+                v["status"].update(embeddable=True, publicStatsViewable=True)
                 youtube.yt().videos().update(part="status", body={"id": p["platform_id"], "status": v["status"]}).execute()
             except Exception as e:
                 details = youtube.error_details(e)
