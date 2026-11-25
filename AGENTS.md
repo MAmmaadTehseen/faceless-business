@@ -402,3 +402,4 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   max 40), each claiming its own inbox film (`recap_claim_<film id>` setting; stale after 6 h) and never uploading.
   Films without a rights sidecar stay in the inbox as `needs rights`. Uploads still come only from `approve` via the
   scheduled run, and every upload takes a channel calendar slot.
+- Setting `stockpile_delete_released` (true since 2026-11-25, owner decision) permanently deletes a bundle's Drive folder after release instead of moving it to `released/`; `banked_release_per_day` raised to 2.

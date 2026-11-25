@@ -31,6 +31,8 @@ class FakeDrive:
         return target
     def release(self, folder, root):
         self.moves.append(folder)
+    def delete_folder(self, folder):
+        self.moves.append('deleted:' + folder)
 
 
 def bundle(tmp_path, monkeypatch, *, short=False):

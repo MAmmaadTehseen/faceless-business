@@ -70,3 +70,14 @@ def test_fill_gap_releases_only_when_day_uncovered(tmp_path, monkeypatch):
 
 def test_fill_gap_ignores_explainer_channels(tmp_path, monkeypatch):
     assert release_banked.fill_gap(DB(), Channel('futurework')) == 0
+
+
+def test_released_bundle_deleted_when_setting_on(tmp_path, monkeypatch):
+    db, drive = words_bundle(tmp_path, monkeypatch)
+    ch = Channel('tentongues')
+    meta = stockpile.bank_bundle(db, CID, ch, drive=drive)
+    mock_publish(monkeypatch)
+    monkeypatch.setattr('pipeline.words_article.write_words_article', lambda db, cid: None)
+    db.set_setting('stockpile_delete_released', True)
+    assert release_banked.release(db, ch, drive=drive) == 1
+    assert drive.moves == ['deleted:' + meta['folder_id']]

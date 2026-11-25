@@ -154,6 +154,14 @@ class Drive:
             temporary.unlink(missing_ok=True)
         return target
 
+    def delete_folder(self, folder_id):
+        """Permanent delete (trash would still count against the quota); a missing folder is already gone."""
+        try:
+            self.service.files().delete(fileId=folder_id).execute()
+        except Exception as exc:
+            if getattr(getattr(exc, 'resp', None), 'status', None) != 404:
+                raise
+
     def release(self, folder_id, root):
         destination = self.folder('released', root)
         current = self.service.files().get(fileId=folder_id, fields='parents').execute().get('parents', [])

@@ -124,7 +124,11 @@ def release_one(db, channel, row, drive):
     elif manifest.get('article_failed'):
         log.warning('Stockpile bundle %s released without article after preparation failure', row['id'])
     # A failed move leaves a discoverable pending checkpoint and is safe to retry.
-    drive.release(checkpoint['folder_id'], checkpoint['root_id'])
+    if db.setting('stockpile_delete_released', False) is True:
+        # Owner decision 2026-11-25: every video is on YouTube, so the Drive copy is deleted to free space.
+        drive.delete_folder(checkpoint['folder_id'])
+    else:
+        drive.release(checkpoint['folder_id'], checkpoint['root_id'])
     for saved in rows:
         current = db.one('content', {'id': saved['id']})
         db.update('content', {'id': saved['id']}, {'qa_notes': json.dumps({**notes(current),
