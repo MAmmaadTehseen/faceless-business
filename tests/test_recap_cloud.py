@@ -484,3 +484,29 @@ def test_claimed_film_is_skipped_by_parallel_job(tmp_path, monkeypatch, db, vide
     # A stale claim (cancelled runner) is taken over.
     db.set_setting("recap_claim_" + taken, "dead@1")
     assert cloud.claim_film(db, taken)
+
+
+def test_homelab_holds_film_and_checkpoints_and_drive_copy_goes(tmp_path, monkeypatch, db, video):
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    monkeypatch.setattr(cloud, "INBOX_DIR", tmp_path / "inbox")
+    root = tmp_path / "stock"
+    monkeypatch.setenv("STOCKPILE_BACKEND", "homelab")
+    monkeypatch.setenv("HOMELAB_LOCAL", "1")
+    monkeypatch.setenv("HOMELAB_STOCKPILE_ROOT", str(root))
+    monkeypatch.setattr("pipeline.homelab_store.FLOOR", 0)
+
+    def runner(work, state, **kw):
+        (work / "transcript.json").write_text("{}")
+        fake_runner(work, state)
+    account = FakeAccount(1, {"My Film 2024.mp4": Path(video).read_bytes(), "My Film 2024.json": json.dumps({"basis": "own work"}).encode()})
+    [result] = cloud.produce(db, [account], limit=1, runner=runner, log=lambda *_: None)
+    assert result["status"] == "already processed"
+    assert "in0" not in account.files and account.files["in1"]["parent"] == "f-done"
+    film_dir = root / "recap" / result["id"]
+    assert (film_dir / "transcript.json").exists()
+    assert any(p.name.endswith("My Film 2024.mp4") for p in film_dir.iterdir())
+    state = json.loads((core.job_dir(result["project_id"]) / "state.json").read_text())
+    fetched = cloud.fetch_source(db, [account], state, log=lambda *_: None)
+    assert fetched.read_bytes() == Path(video).read_bytes()
+    cloud.free_space(account, [account], "x", {}, state, lambda *_: None)
+    assert not film_dir.exists()

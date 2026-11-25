@@ -196,6 +196,18 @@ def scan(db, accounts_):
     return report
 
 
+def homelab():
+    """The home-server store when STOCKPILE_BACKEND=homelab: films and checkpoints live there, not on Drive."""
+    if os.getenv("STOCKPILE_BACKEND") != "homelab":
+        return None
+    from ..homelab_store import HomelabStore
+    return HomelabStore()
+
+
+def homelab_dir(store, ident):
+    return store.folder(ident, store.folder("recap"))
+
+
 CLAIM_TTL = 6 * 3600  # longer than the 350-minute job timeout
 
 
@@ -280,6 +292,12 @@ def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True, cl
                                           "project_id": state["id"], "content_ids": "[]", "rights": json.dumps(rights), "duplicate_confirmed": False}, on="id")
                 state["batch_resume"] = True
                 state["cloud_source"] = {"slot": account.slot, "film": f["id"], "sidecar": film["sidecar"]["id"], "registry": ident}
+                store = homelab()
+                if store:
+                    # Keep a checksummed copy on the home server; the Drive copy goes once the recap is produced.
+                    from ..drive import digest
+                    state["cloud_source"]["homelab"] = {"key": store.upload(local, homelab_dir(store, ident)),
+                                                        "sha256": digest(local), "name": f["name"]}
                 core.dump(work / "state.json", state)
                 restore_checkpoints(account, ident, work)
                 try:
@@ -292,8 +310,12 @@ def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True, cl
                 folder = publish_review(account, work, state, "approve" if ready else "review")
                 db.update("recap_films", {"id": ident}, {"status": "already processed",
                           "content_ids": json.dumps(["filmreview-" + state["id"] + "-" + p for p in core.PIECES])})
-                for item in (f, film["sidecar"]):
-                    account.move(item["id"], folders["done"])
+                if store:
+                    account.delete(f["id"])  # the home server holds the film now; Drive keeps only the sidecar
+                    account.move(film["sidecar"]["id"], folders["done"])
+                else:
+                    for item in (f, film["sidecar"]):
+                        account.move(item["id"], folders["done"])
                 results.append({"id": ident, "status": "already processed", "project_id": state["id"], "review_folder": folder, "queued_for_upload": ready})
             except Exception as exc:
                 log(f"recap cloud: film {ident} failed: {type(exc).__name__}")
@@ -313,6 +335,15 @@ CHECKPOINTS = ("transcript.json", "scenes.json")
 
 def restore_checkpoints(account, ident, work):
     """Transcript and scene cuts from an earlier attempt, so a retry skips the long transcription."""
+    store = homelab()
+    if store:
+        base = homelab_dir(store, ident)
+        for name in CHECKPOINTS:
+            try:
+                store._copy(store._inside(f"{base}/{name}"), work / name, False)
+            except Exception:
+                pass  # no checkpoint yet
+        return base
     folder = account.folder(ident, account.folders()["checkpoints"])
     for f in account.list(folder):
         if f["name"] in CHECKPOINTS and f.get("md5Checksum"):
@@ -321,6 +352,16 @@ def restore_checkpoints(account, ident, work):
 
 
 def save_checkpoints(account, ident, work):
+    store = homelab()
+    if store:
+        base = homelab_dir(store, ident)
+        for name in CHECKPOINTS:
+            if (work / name).exists():
+                try:
+                    store._copy(work / name, store._inside(f"{base}/{name}"), True)
+                except Exception as exc:
+                    print(f"recap cloud: checkpoint {name} not saved: {type(exc).__name__}")
+        return
     folder = account.folder(ident, account.folders()["checkpoints"])
     for name in CHECKPOINTS:
         if (work / name).exists():
@@ -430,6 +471,12 @@ def free_space(account, accounts_, folder_id, files, state, log):
                 owner.delete(source[key])
             except Exception as exc:
                 log(f"recap cloud: could not delete source {key}: {type(exc).__name__}")
+    if source.get("homelab") and source.get("registry"):
+        try:
+            store = homelab() or __import__("pipeline.homelab_store", fromlist=["x"]).HomelabStore()
+            store.delete_folder(homelab_dir(store, source["registry"]))
+        except Exception as exc:
+            log(f"recap cloud: could not delete home-server copy: {type(exc).__name__}")
     for name, f in files.items():
         # The long MP4 goes now; Short MP4s stay until their Reels have followed (see retire_reel_media).
         if name == "long.mp4":
@@ -499,6 +546,15 @@ def fetch_source(db, accounts_, state, log=print):
     candidates = [a for a in ([owner] if owner else []) + accounts_ if a]
     row = db.one("recap_films", {"id": source["registry"]}) if source.get("registry") else None
     filename = row["filename"] if row else None
+    copy = source.get("homelab")
+    if copy:
+        try:
+            from ..homelab_store import HomelabStore
+            local = INBOX_DIR / copy["name"]
+            log(f"recap cloud: downloading source for {state['id']} from the home server")
+            return HomelabStore().download(copy["key"], local, copy["sha256"])
+        except Exception as exc:
+            log(f"recap cloud: home-server copy unavailable: {type(exc).__name__}")
     seen = set()
     for account in candidates:
         if account.slot in seen:

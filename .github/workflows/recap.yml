@@ -114,8 +114,23 @@ jobs:
       HF_HOME: ${{ github.workspace }}/.hf
       GATED: ${{ github.event_name == 'schedule' && '--gated' || '' }}
       BATCH: ${{ inputs.parallel > 1 && '--no-upload' || '' }}
+      STOCKPILE_BACKEND: ${{ vars.STOCKPILE_BACKEND || 'drive' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Join the tailnet (home-server film store)
+        if: vars.STOCKPILE_BACKEND == 'homelab'
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Home-server SSH key
+        if: vars.STOCKPILE_BACKEND == 'homelab'
+        env:
+          HOMELAB_SSH_KEY: ${{ secrets.HOMELAB_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && printf '%s\n' "$HOMELAB_SSH_KEY" > ~/.ssh/homelab_ci && chmod 600 ~/.ssh/homelab_ci
+          echo "HOMELAB_SSH_KEY_FILE=$HOME/.ssh/homelab_ci" >> "$GITHUB_ENV"
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
       - run: for i in 1 2 3 4; do sudo apt-get update -qq && sudo apt-get install -y -qq --fix-missing ffmpeg fonts-dejavu-core espeak-ng && break; echo "apt retry $i"; sleep 30; done; command -v ffmpeg
