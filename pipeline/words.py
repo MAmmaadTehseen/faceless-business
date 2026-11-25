@@ -114,7 +114,8 @@ def validate_episode(data: dict, langs: list[dict]) -> dict:
     got = [l.get("code") for l in data.get("languages", [])]
     if got != expected:
         by_code = {l.get("code"): l for l in data.get("languages", [])}
-        if set(by_code) != set(expected) or len(got) != len(expected):
+        # GLM sometimes appends an invented extra entry ("fr-example-note"); every configured language is what counts.
+        if not set(expected) <= set(by_code) or len(set(got) & set(expected)) != len(expected):
             raise ValueError(f"episode languages {got} do not match configured {expected}")
         data["languages"] = [by_code[c] for c in expected]
     for lang in data["languages"]:

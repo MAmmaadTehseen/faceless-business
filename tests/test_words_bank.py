@@ -81,3 +81,11 @@ def test_released_bundle_deleted_when_setting_on(tmp_path, monkeypatch):
     db.set_setting('stockpile_delete_released', True)
     assert release_banked.release(db, ch, drive=drive) == 1
     assert drive.moves == ['deleted:' + meta['folder_id']]
+
+
+def test_extra_language_entry_is_dropped():
+    from pipeline import words
+    langs = words.languages(Channel('tentongues'))
+    data = json.loads(words.FIXTURE.read_text())
+    data['languages'].append({**data['languages'][0], 'code': 'fr-example-note'})
+    assert [l['code'] for l in words.validate_episode(data, langs)['languages']] == [l['code'] for l in langs]
