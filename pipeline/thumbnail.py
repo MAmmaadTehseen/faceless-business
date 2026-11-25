@@ -9,9 +9,10 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from .common import ASSETS_DIR, log
 
 
-def _font(size: int) -> ImageFont.FreeTypeFont:
-    for p in sorted((ASSETS_DIR / "fonts").glob("*.ttf")):
-        return ImageFont.truetype(str(p), size)
+def _font(size: int, font_path: Path | str | None = None) -> ImageFont.FreeTypeFont:
+    for p in ([Path(font_path)] if font_path else []) + sorted((ASSETS_DIR / "fonts").glob("*.ttf")):
+        if p.exists():
+            return ImageFont.truetype(str(p), size)
     for cand in ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"):
         if Path(cand).exists():
             return ImageFont.truetype(cand, size)
@@ -79,7 +80,7 @@ def thumbnail_lines(text: str) -> list[str]:
     return lines[:3]
 
 
-def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, frame: Path | None = None, accent: tuple | None = None) -> Path:
+def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, frame: Path | None = None, accent: tuple | None = None, font_path: Path | str | None = None) -> Path:
     """Growth log 2026-11-19: subject-first text, big and high-contrast, on the sharpest clean frame.
 
     Research consensus (vidIQ 2026 study and others): 1-5 words that say what the video is about,
@@ -106,7 +107,7 @@ def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, fram
     lines = thumbnail_lines(text)
     longest = max((len(l) for l in lines), default=1)
     size = 190 if longest <= 7 else 160 if longest <= 9 else 130
-    font = _font(size)
+    font = _font(size, font_path)
     lh = int(size * 1.0)
     block = lh * len(lines)
     y = (720 - block) // 2 + 10
@@ -131,7 +132,7 @@ def make_thumbnail(video: Path, text: str, out: Path, at_sec: float = 12.0, fram
     return out
 
 
-def make_card_thumbnail(text: str, out: Path, accent: tuple, bg: tuple = (14, 18, 26)) -> Path:
+def make_card_thumbnail(text: str, out: Path, accent: tuple, bg: tuple = (14, 18, 26), font_path: Path | str | None = None) -> Path:
     """Branded typographic thumbnail (no photo): dark channel background, accent glow and bar, big text.
 
     Used when no frame from the video itself is available (backfills of scheduled videos): a stock
@@ -152,12 +153,12 @@ def make_card_thumbnail(text: str, out: Path, accent: tuple, bg: tuple = (14, 18
     lines = thumbnail_lines(text)
     longest = max((len(l) for l in lines), default=1)
     size = 190 if longest <= 7 else 160 if longest <= 9 else 130
-    font = _font(size)
+    font = _font(size, font_path)
     # Shrink until the widest line fits inside the 64 px margins (13-char lines like
     # "HORMUZ: WATCH" overflowed the 1280 px frame at 130 px).
     while size > 60 and max((draw.textlength(l, font=font) for l in lines), default=0) > 1280 - 64 * 2:
         size -= 6
-        font = _font(size)
+        font = _font(size, font_path)
     lh = int(size * 1.0)
     y = (720 - lh * len(lines)) // 2 + 10
     for i, line in enumerate(lines):

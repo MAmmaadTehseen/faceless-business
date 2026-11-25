@@ -45,7 +45,9 @@
     "caption_colour": "&H00FFFFFF",
     "caption_outline": "&H90000000",
     "font_size_long": 19,
-    "font_size_short": 25
+    "font_size_short": 25,
+    "fonts": {"caption": "Anton-Regular.ttf", "headline": "Oswald-Bold.ttf"},
+    "motion": false
   },
   "footage": {
     "providers": [

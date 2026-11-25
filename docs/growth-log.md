@@ -889,3 +889,20 @@ Workflows: one `words` bank run failed at 06:36 with `DriveFull` ("Drive reserve
 
 - Embedding: re-run the status sample on the next run. New uploads and re-slotted videos should show true. Hub embed plays (`hub_events`) on FW/TW/EV articles from 2026-11-26.
 - Unchanged: native-language tags (2026-12-02), Ten Tongues title A/B and hour rotation (2026-12-04/08), round 5 visuals (2026-12-08), Related video (2026-12-09), backlog brake (each run), quick vs standard Shorts (January).
+
+## 2026-11-25 — Motion round: Remotion animation, channel fonts, word-highlight captions
+
+Why: content was judged not entertaining enough. Stock footage alone repeats, and the 10-21 s retention dip sits on plain footage stretches.
+
+Shipped (code by LunaRoute GLM 5.3 headless, reviewed and fixed by me):
+- `motion/` Remotion 4.0.547 project: Chart, Map, KineticText, Timeline, Scale, Orbit, WordReveal compositions; `pipeline/remotion.py` wrapper (self-installs with `npm ci` on runners, bundles once per process).
+- Typed shot plan in `pipeline/render.py`: every segment is footage | chart | map | diagram | text | presenter. `presenter` is a stub for the owner's voice/avatar clone (`_presenter_slot`). Data comes only from the script's own facts.
+- Per-channel switch `style.motion` (default false in channel.json); `--motion` forces it for one run. Any Remotion failure falls back to the Pillow graphic for that segment.
+- Fonts (owner-approved, OFL, `assets/fonts/ofl`): FW Montserrat Black/ExtraBold, TW Anton/Oswald Bold, EV Bebas Neue/Exo 2 Black, TT Poppins ExtraBold. Used in captions, hook titles, cards, charts, thumbnails and the Remotion compositions.
+- Captions: ASS file from the TTS word timings, 2-3 words per chunk, white with a black outline, the spoken word in the channel accent, chunks narrower than 88 % of the frame so long words never crop.
+- Fixes found on the samples: mixed timebases in the concat (picture ran 55 s against 40.6 s of narration on explainers, 50 s against 33 s on Ten Tongues) are now normalised (`render._uniform`, also used by `words._segment_clips`).
+- `run_all --now` / `words --now`: owner one-off that publishes public immediately and skips the backlog brake; `mark_published_now` records publish_at as the upload time.
+
+Samples (motion/out/samples, not committed): FW 40.8 s, TW 42.9 s, EV 36.7 s, TT 32.3 s, picture and audio in sync.
+
+Measuring: one animated long video per channel published immediately on 2026-11-25. Compare 48 h views and the 10-30 s retention against the previous five long videos per channel on 2026-11-28 (`scripts/retention_curves.py`). If retention at 30 s is not better, keep motion for Shorts only.

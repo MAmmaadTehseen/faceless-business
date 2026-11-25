@@ -264,7 +264,8 @@ def run_qa(claude: Claude, video: Path, thumbnail: Path | None, expected_sec: fl
                 log.info("qa caption downgrade to minor: %s", finding["text"])
     res["thumbnail"] = thumbnail
     if thumbnail and not res.get("thumbnail_ok", True):
-        res["thumbnail"] = _retry_thumbnail(claude, video, thumbnail, content_id, res)
+        res["thumbnail"] = _retry_thumbnail(claude, video, thumbnail, content_id, res,
+                                            style=claude.channel.style if claude else None)
     res["issues"] = issues + res["issues"]
     finalize_qa(res, strict)
     return res
@@ -278,13 +279,14 @@ def _quotes_narration(finding: str, narration: str) -> bool:
     return bool(quotes) and all(" ".join(norm(q).split()) in body for q in quotes)
 
 
-def _retry_thumbnail(claude: Claude, video: Path, thumbnail: Path, content_id: str, res: dict) -> Path:
+def _retry_thumbnail(claude: Claude, video: Path, thumbnail: Path, content_id: str, res: dict, style: dict | None = None) -> Path:
     """Try other clean frames until one passes the thumbnail rules. Keeps the original if none does."""
+    from .render import font_for
     from .thumbnail import candidate_frames, make_thumbnail
     text = _thumb_text_from(video)
     for frame in candidate_frames(video)[1:]:
         cand = thumbnail.with_suffix(f".{frame.stem.split('.')[-1]}.jpg")
-        make_thumbnail(video, text, cand, frame=frame)
+        make_thumbnail(video, text, cand, frame=frame, font_path=font_for(style, "headline"))
         try:
             chk, _ = claude.vision("qa", f"This is a YouTube thumbnail. {THUMB_RULES} Return ok=true if it passes.", [cand], THUMB_SCHEMA, content_id=content_id)
         except Exception as e:

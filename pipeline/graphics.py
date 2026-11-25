@@ -22,7 +22,6 @@ from PIL import Image, ImageDraw, ImageFont
 from .common import ASSETS_DIR, log
 
 GEO = ASSETS_DIR / "geo" / "ne_110m_countries.geojson"
-FONT = ASSETS_DIR / "fonts" / "DejaVuSans-Bold.ttf"
 
 ALIASES = {
     "us": "united states of america", "usa": "united states of america", "united states": "united states of america",
@@ -38,9 +37,11 @@ EU = ["austria", "belgium", "bulgaria", "croatia", "cyprus", "czechia", "denmark
       "poland", "portugal", "romania", "slovakia", "slovenia", "spain", "sweden"]
 
 
-def _font(size: int) -> ImageFont.FreeTypeFont:
+def _font(size: int, style: dict | None = None) -> ImageFont.FreeTypeFont:
+    """Chart/map text font: the channel headline font when the style carries one, else DejaVu."""
+    from .render import font_for
     try:
-        return ImageFont.truetype(str(FONT), size)
+        return ImageFont.truetype(str(font_for(style, "headline")), size)
     except OSError:
         return ImageFont.load_default()
 
@@ -49,11 +50,11 @@ def _rgb(c, default=(251, 191, 36)) -> tuple:
     return tuple(int(x) for x in (c or default))[:3]
 
 
-def _fit(draw: ImageDraw.ImageDraw, text: str, max_w: int, size: int, min_size: int = 18):
+def _fit(draw: ImageDraw.ImageDraw, text: str, max_w: int, size: int, min_size: int = 18, style: dict | None = None):
     """Largest font size (from `size` down) at which `text` fits in max_w pixels."""
-    while size > min_size and draw.textlength(text, font=_font(size)) > max_w:
+    while size > min_size and draw.textlength(text, font=_font(size, style)) > max_w:
         size -= 2
-    return _font(size)
+    return _font(size, style)
 
 
 def _wrap(draw, text: str, font, max_w: int, max_lines: int = 2) -> list[str]:
@@ -112,7 +113,7 @@ def chart_image(spec: str, size: tuple[int, int], style: dict | None = None) -> 
     pad = int(w * 0.07)
     top = int(h * 0.07) if portrait else int(h * 0.08)
     if title:
-        tfont = _fit(d, title, w - 2 * pad, int(w * (0.075 if portrait else 0.045)))
+        tfont = _fit(d, title, w - 2 * pad, int(w * (0.075 if portrait else 0.045)), style=style)
         for i, line in enumerate(_wrap(d, title, tfont, w - 2 * pad)):
             d.text((w / 2, top + i * tfont.size * 1.15), line, font=tfont, fill=(255, 255, 255), anchor="ma")
         top += int(tfont.size * 2.6)
@@ -125,8 +126,8 @@ def chart_image(spec: str, size: tuple[int, int], style: dict | None = None) -> 
         area_bottom = int(h * 0.94)
         slot = (area_bottom - top) / n
         bar_h = slot * 0.55
-        lfont = _font(int(min(slot * 0.28, w * 0.055)))
-        vfont = _font(int(min(slot * 0.34, w * 0.07)))
+        lfont = _font(int(min(slot * 0.28, w * 0.055)), style)
+        vfont = _font(int(min(slot * 0.34, w * 0.07)), style)
         for i, (label, value, shown) in enumerate(items):
             y = top + i * slot
             d.text((pad, y), label, font=lfont, fill=(225, 228, 235))
@@ -139,8 +140,8 @@ def chart_image(spec: str, size: tuple[int, int], style: dict | None = None) -> 
         base = int(h * 0.80)
         gap = (w - 2 * pad) / n
         bar_w = gap * 0.55
-        lfont = _font(int(h * 0.04))
-        vfont = _font(int(h * 0.055))
+        lfont = _font(int(h * 0.04), style)
+        vfont = _font(int(h * 0.055), style)
         for i, (label, value, shown) in enumerate(items):
             x = pad + i * gap + (gap - bar_w) / 2
             height = max(8, (base - top - vfont.size * 1.6) * value / peak)
@@ -218,7 +219,7 @@ def map_image(spec: str, size: tuple[int, int], style: dict | None = None) -> Im
     d.rectangle([(0, 0), (w, max(8, h // 60))], fill=accent)
     text = label or ", ".join(names)
     portrait = h > w
-    font = _fit(d, text, int(w * 0.86), int(w * (0.085 if portrait else 0.05)))
+    font = _fit(d, text, int(w * 0.86), int(w * (0.085 if portrait else 0.05)), style=style)
     # Portrait label goes to the bottom edge: the hook title owns the top zone for the first seconds.
     y = int(h * (0.88 if portrait else 0.06))
     for i, line in enumerate(_wrap(d, text.upper(), font, int(w * 0.86))):

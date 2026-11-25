@@ -9,6 +9,7 @@ from pathlib import Path
 from .common import Channel, Claude, CostGuard, log
 from .db import DB
 from .publish import youtube
+from .render import font_for
 from .thumbnail import make_thumbnail
 
 PICK = {"type": "object", "additionalProperties": False, "required": ["title", "thumbnail_text", "reason"],
@@ -66,7 +67,7 @@ def optimize_channel(db, channel):
             pick, _ = claude.run("optimize", prompt, schema=PICK, effort="medium", max_tokens=1500, content_id=c["id"])
             youtube.update_title(p["platform_id"], pick["title"])
             if c.get("file_path") and Path(c["file_path"]).exists():
-                thumb = make_thumbnail(Path(c["file_path"]), pick["thumbnail_text"], Path(c["file_path"]).with_suffix(".v2.jpg"), accent=tuple(channel.style.get("accent", (255, 214, 0))))
+                thumb = make_thumbnail(Path(c["file_path"]), pick["thumbnail_text"], Path(c["file_path"]).with_suffix(".v2.jpg"), accent=tuple(channel.style.get("accent", (255, 214, 0))), font_path=font_for(channel.style, 'headline'))
                 youtube.set_thumbnail(p["platform_id"], thumb)
             new_variants = [f"[swapped] {c['title']} -> {pick['title']} @views/day {ctr:.1f}"] + [v for v in variants if v != pick["title"]]
             db.update("content", {"id": c["id"]}, {"title": pick["title"], "title_variants": new_variants})

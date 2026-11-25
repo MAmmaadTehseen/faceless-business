@@ -44,14 +44,28 @@ def hit(seconds: float = 0.45) -> np.ndarray:
     return out / (np.abs(out).max() or 1)
 
 
+# Query-prefix keys that mean a synthesised graphic, not stock footage (pipeline/render.py
+# PREFIX_TYPES): every non-footage, non-presenter prefix gets a hit.
+_GRAPHIC_PREFIXES = ("CARD", "CHART", "MAP", "TIMELINE", "SCALE", "ORBIT", "TEXT")
+_GRAPHIC_TYPES = ("chart", "map", "diagram", "text")
+
+
+def _is_graphic(seg: dict) -> bool:
+    """A synthesised graphic segment: card/chart/map/diagram/text, not stock footage or a presenter."""
+    if bool(seg.get("card") or seg.get("graphic")):
+        return True
+    if (seg.get("type") or "") in _GRAPHIC_TYPES:
+        return True
+    return (seg.get("query") or "").split(":", 1)[0].strip().upper() in _GRAPHIC_PREFIXES
+
+
 def cue_times(segments: list[dict], orientation: str) -> list[tuple[float, str]]:
-    """(time, kind) cues: a hit at every card/chart/map start; whooshes at every cut in Shorts,
+    """(time, kind) cues: a hit at every graphic start; whooshes at every cut in Shorts,
     only into graphics in long videos (a whoosh every 5 s for ten minutes would tire)."""
     cues = []
     t = 0.0
     for i, seg in enumerate(segments):
-        graphic = bool(seg.get("card") or seg.get("graphic") or
-                       (seg.get("query") or "").split(":", 1)[0].strip().upper() in ("CARD", "CHART", "MAP"))
+        graphic = _is_graphic(seg)
         if i > 0 and (orientation == "portrait" or graphic):
             cues.append((t, "whoosh"))
         if graphic:

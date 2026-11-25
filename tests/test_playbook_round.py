@@ -48,3 +48,29 @@ def test_opening_has_viewer_stake():
     assert not opening_has_viewer_stake(["The Dutch government just put a number on the desk jobs it no longer needs. Twenty-five thousand."])
     # "you" after the 45-word window does not count
     assert not opening_has_viewer_stake([" ".join(["word"] * 50) + " you"])
+
+
+def test_motion_hint_follows_the_style_flag():
+    """motion_hint is empty unless style.motion is set, and names the diagram shot formats."""
+    from types import SimpleNamespace
+
+    from pipeline.script import motion_hint, nasa_hint
+
+    def claude(motion):
+        return SimpleNamespace(channel=SimpleNamespace(
+            key="escapevelocity", footage={"nasa": False}, style={"motion": motion} if motion is not None else {}))
+
+    assert motion_hint(claude(None)) == ""
+    assert motion_hint(claude(False)) == ""
+    hint = motion_hint(claude(True))
+    for needle in ("TIMELINE: title | 1977=Launch, 1979=Jupiter",
+                   "SCALE: title | label=value, label=value",
+                   "ORBIT: Body, Body | label",
+                   "TEXT: <key line, max 8 words>",
+                   "at most four", "one paragraph in four", "facts the script states"):
+        assert needle in hint, needle
+    # The hint is wired next to nasa_hint in both prompts.
+    src = Path("pipeline/script.py").read_text()
+    assert "f\"{motion_hint(claude)}\"" in src and "f\"{nasa_hint(claude)}\"" in src
+    daily = Path("pipeline/shorts_daily.py").read_text()
+    assert "motion_hint(claude)" in daily and "nasa_hint(claude)" in daily

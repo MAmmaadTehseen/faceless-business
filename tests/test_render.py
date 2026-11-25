@@ -1,9 +1,12 @@
 """Fast slot regressions; all media generated locally and encoded at tiny dimensions."""
+import json
+import re
 import subprocess
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+from PIL import Image
 
 from pipeline import render
 from pipeline.footage import Footage
@@ -231,7 +234,6 @@ def test_post_render_retry_loop_and_fallback(tmp_path, monkeypatch, caplog, fail
     monkeypatch.setattr(render, '_fill_slot', fill)
     monkeypatch.setattr(render, '_check_black', Mock())
     monkeypatch.setattr(render, '_music', lambda: None)
-    monkeypatch.setattr(render, '_font', lambda: None)
     scan = Mock(side_effect=[[(6, 10.1)]] * failures + [[]])
     card = Mock()
     monkeypatch.setattr(render, '_background_card', card)
@@ -285,7 +287,6 @@ def test_frozen_card_fails_closed_and_cleans_work(monkeypatch, tmp_path):
     monkeypatch.setattr(render, '_background_card', Mock())
     monkeypatch.setattr(render, '_check_black', Mock())
     monkeypatch.setattr(render, '_music', lambda: None)
-    monkeypatch.setattr(render, '_font', lambda: None)
     monkeypatch.setattr('pipeline.qa.probe', lambda path: {'duration': 6})
     monkeypatch.setattr('pipeline.qa.freeze_segments', lambda path: [(0, 6)])
     monkeypatch.setattr(subprocess, 'run', Mock())
@@ -311,9 +312,97 @@ def test_hook_filter_only_for_portrait(tmp_path):
     # 15-character lines since 2026-11-24 (92 px type): "Swift fell 114 km" wraps to two lines.
     assert f.count("drawtext=") == 2 and (tmp_path / "hook_0.txt").read_text() == "Swift fell 114"
     assert "fontcolor=black" in f and "boxcolor=0xfbbf24" in f  # black on the default accent
+    assert f"fontfile='{render._font_path(render.FALLBACK_FONT)}':" in f  # no style -> DejaVu fallback
     two = _hook_filter("Only 5 Starship Launches This Year?", tmp_path, "portrait", {"accent": (34, 211, 238)})
     assert two.count("drawtext=") == 3  # one per wrapped line (ffmpeg 8 draws newlines as missing glyphs)
     assert "boxcolor=0x22d3ee" in two and (tmp_path / "hook_2.txt").read_text() == "Year?"
+
+
+# ---------- per-channel fonts (2026-11-25) ----------
+
+def test_font_for_each_channel_and_fallback():
+    """channel.json style.fonts picks the vendored file; anything else falls back to DejaVu."""
+    from pipeline.common import Channel
+    from pipeline.render import FALLBACK_FONT, OFL_FONT_DIR, font_for
+    expected = {
+        "futurework": ("Montserrat-Black.ttf", "Montserrat-ExtraBold.ttf"),
+        "tradewinds": ("Anton-Regular.ttf", "Oswald-Bold.ttf"),
+        "escapevelocity": ("BebasNeue-Regular.ttf", "Exo2-Black.ttf"),
+        "tentongues": ("Poppins-ExtraBold.ttf", "Poppins-ExtraBold.ttf"),
+    }
+    for key, (caption, headline) in expected.items():
+        style = Channel(key).style
+        assert font_for(style, "caption") == OFL_FONT_DIR / caption, key
+        assert font_for(style, "headline") == OFL_FONT_DIR / headline, key
+        assert font_for(style, "caption").is_file(), key  # vendored files must exist
+    assert font_for(None, "caption") == FALLBACK_FONT
+    assert font_for({}, "headline") == FALLBACK_FONT
+    assert font_for({"fonts": {}}, "caption") == FALLBACK_FONT
+    # a missing file (typo in channel.json) must fall back, never fail a render
+    assert font_for({"fonts": {"caption": "Nope.ttf", "headline": ""}}, "caption") == FALLBACK_FONT
+    assert font_for({"fonts": {"headline": "../evil.ttf"}}, "headline") == FALLBACK_FONT
+
+
+def test_hook_filter_and_card_use_the_headline_fontfile(tmp_path):
+    """drawtext hooks and stat cards burn the channel's headline font, not the DejaVu default."""
+    from pipeline.common import Channel
+    from pipeline.render import _background_card, _font_path, _hook_filter, font_for
+    style = Channel("tradewinds").style
+    headline = font_for(style, "headline")
+    assert headline.name == "Oswald-Bold.ttf"
+    vf = _hook_filter("Swift fell 114 km", tmp_path, "portrait", style)
+    assert f"fontfile='{_font_path(headline)}':" in vf
+    assert "DejaVu" not in vf
+    card = _background_card("25,000 JOBS", 2, "portrait", tmp_path / "card.mp4", style, big=True)
+    assert card.is_file()  # ffmpeg accepted the fontfile and rendered
+
+
+def test_caption_style_names_the_caption_family_and_fontsdir_is_its_folder():
+    """force_style FontName must be a name libass/fontconfig matches (see render._font_family),
+    and fontsdir must be exactly the caption font's own folder (the scan is not recursive
+    and a multi-directory value silently disables app-font loading)."""
+    from pipeline.common import Channel
+    from pipeline.render import FALLBACK_FONT, _caption_style, caption_fontsdir, font_for
+    for key, family in [("futurework", "Montserrat Black"), ("tradewinds", "Anton Regular"),
+                        ("escapevelocity", "Bebas Neue Regular"), ("tentongues", "Poppins ExtraBold")]:
+        style = Channel(key).style
+        assert f"FontName={family}" in _caption_style("portrait", style), key
+        assert "DejaVu" not in _caption_style("portrait", style), key
+        assert caption_fontsdir(style) == f":fontsdir={font_for(style, 'caption').parent}", key
+    # no style -> DejaVu fallback, fontsdir points at assets/fonts (its own folder)
+    assert "FontName=DejaVu Sans Bold" in _caption_style("landscape", None)
+    assert caption_fontsdir(None) == f":fontsdir={FALLBACK_FONT.parent}"
+    # the named family must be the real TTF family of the caption font, not the file stem
+    from PIL import ImageFont
+    fam, sub = ImageFont.truetype(str(font_for(Channel("futurework").style, "caption")), 24).getname()
+    assert _caption_style("portrait", Channel("futurework").style).split(",")[0] == f"FontName={fam} {sub}"
+
+
+def test_graphics_and_thumbnails_use_the_headline_font(tmp_path):
+    """Charts/maps draw their text in the headline font; thumbnails take an optional font path."""
+    from PIL import ImageFont
+    from pipeline.common import Channel
+    from pipeline.graphics import chart_image, map_image
+    from pipeline.render import font_for
+    from pipeline.thumbnail import make_card_thumbnail, make_thumbnail
+    style = Channel("tradewinds").style
+    headline = font_for(style, "headline")
+    chart = chart_image("US tariff | 2023=25%, 2024=100%", (160, 90), style)
+    ImageFont.truetype(str(headline), 12)  # headline font is a loadable TTF the chart drew with
+    assert chart.size == (160, 90)
+    map_img = map_image("Iran, Oman | Strait of Hormuz", (160, 90), style)
+    assert map_img.size == (160, 90)
+    # DejaVu is kept as the fallback when style has no fonts
+    assert chart_image("T | a=1, b=2", (160, 90), None).size == (160, 90)
+    assert map_image("Iran | Hormuz", (160, 90), {}).size == (160, 90)
+    thumb = make_card_thumbnail("AI JOB CUTS", tmp_path / "card.jpg", (251, 191, 36), font_path=headline)
+    assert thumb.is_file() and thumb.stat().st_size > 1000
+    # the frame thumbnail takes the same optional font path (its pipeline callers pass it)
+    frame = tmp_path / "frame.jpg"
+    Image.new("RGB", (640, 360), (30, 30, 60)).save(frame)
+    photo_thumb = make_thumbnail(tmp_path / "missing.mp4", "AI JOB CUTS", tmp_path / "photo.jpg",
+                                  frame=frame, font_path=headline)
+    assert photo_thumb.is_file() and photo_thumb.stat().st_size > 1000
 
 
 def test_add_hook_card_reencodes_portrait_clip(tmp_path):
@@ -358,6 +447,227 @@ def test_chart_and_map_shots(tmp_path):
     assert out.with_suffix(".txt").read_text() == "NOWHERE"  # unknown place falls back to a stat card
 
 
+# ---------- word-highlight captions (2026-11-25) ----------
+
+@pytest.fixture()
+def real_frames(monkeypatch):
+    """The module fixture shrinks frames to 160x90 for fast slot encodes; caption layout needs the
+    real 1080x1920 / 1920x1080 PlayRes the production filter burns, so restore it per test."""
+    monkeypatch.setattr(render, '_dims', lambda orientation: (1920, 1080) if orientation == 'landscape' else (1080, 1920))
+
+
+def _word_timings(*lines, gap=0.4, dur=0.4):
+    """[sentence] -> tts-style timings [{index,start,end,words:[{text,start,end}]}]]."""
+    timings, words, t = [], [], 0.0
+    for i, line in enumerate(lines):
+        sent = []
+        for w in line.split():
+            sent.append({"text": w, "start": t, "end": t + dur})
+            t += gap
+        timings.append({"index": i, "start": sent[0]["start"], "end": sent[-1]["end"], "words": sent})
+        words.extend(sent)
+    return timings
+
+
+def _dialogues(ass_text):
+    return [l.split(",", 9)[-1] for l in ass_text.splitlines() if l.startswith("Dialogue:")]
+
+
+def test_caption_chunks_two_to_three_words_with_punctuation_break(real_frames):
+    from pipeline.render import caption_chunks
+    words = _word_timings("The new robots are coming for office jobs now. Stay calm.")[-1]["words"]
+    chunks = caption_chunks(words, None, 60.0, 1080)
+    assert [len(c) for c in chunks] == [3, 3, 3, 2]
+    assert [w["text"] for c in chunks for w in c] == [w["text"] for w in words]
+    # a sentence ender closes its chunk; the next word starts a fresh one
+    assert chunks[2][-1]["text"] == "now." and chunks[3][0]["text"] == "Stay"
+    # a mid-sentence comma does not shatter a chunk (only sentence enders break early)
+    comma = _word_timings("Robots are coming, but slowly.")[-1]["words"]
+    assert [len(c) for c in caption_chunks(comma, None, 60.0, 1080)] == [3, 2]
+
+
+def test_write_ass_highlights_only_the_active_word_in_the_accent_colour(tmp_path, real_frames):
+    from pipeline.render import caption_chunks, font_size_portrait, write_ass
+    style = {"accent": [34, 211, 238]}
+    timings = _word_timings("The robots are coming")
+    out = write_ass(timings, tmp_path / "cap.ass", "portrait", style)
+    text = out.read_text()
+    dialogues = _dialogues(text)
+    words = timings[0]["words"]
+    chunks = caption_chunks(words, style, font_size_portrait(style), 1080)
+    assert len(dialogues) == len(words)  # one event per word
+    # RGB 34,211,238 -> ASS &H00BBGGRR& with B=238 G=211 R=34 = &H00EED322&
+    assert "&H00EED322&" in dialogues[0]
+    for line, (chunk, active) in zip(dialogues, [(c, w) for c in chunks for w in c]):
+        # exactly one accent-colour override per event: the active word, reset to white after it
+        assert line.count("{\\c&H00EED322&}") == 1 and line.count("{\\c&H00FFFFFF&}") == 1
+        marked = line.split("{\\c&H00EED322&}")[1].split("{\\c&H00FFFFFF&}")[0]
+        assert marked == active["text"]
+        # strip the tags and the event reads back as the whole chunk, in order
+        plain = line.replace("{\\c&H00EED322&}", "").replace("{\\c&H00FFFFFF&}", "")
+        assert plain == " ".join(w["text"] for w in chunk)
+
+
+def test_write_ass_preserves_word_timings_verbatim(tmp_path, real_frames):
+    from pipeline.render import _ass_ts, write_ass
+    timings = _word_timings("Automation will replace forty percent of jobs", gap=0.31, dur=0.25)
+    out = write_ass(timings, tmp_path / "cap.ass", "landscape", {})
+    lines = [l for l in out.read_text().splitlines() if l.startswith("Dialogue:")]
+    flat = [w for t in timings for w in t["words"]]
+    assert len(lines) == len(flat)
+    for line, word in zip(lines, flat):
+        fields = line.split(",")
+        assert fields[1] == _ass_ts(word["start"]) and fields[2] == _ass_ts(word["end"])
+    # the first event starts at the first word's start, the last ends at the last word's end
+    assert lines[0].split(",")[1] == "0:00:00.00"
+    assert float(timings[-1]["words"][-1]["end"]) > 1.0  # the data really spans past a second
+
+
+def test_write_ass_shrinks_a_single_over_wide_word(tmp_path, real_frames):
+    from pipeline.render import caption_chunks, write_ass
+    # a long single word at the full caption size is wider than 88% of a 1080 px frame
+    long_word = "Extraordinarilyunbelievableantidisestablishmentarianism"
+    timings = _word_timings(f"one {long_word} two", gap=0.4, dur=0.3)
+    words = timings[0]["words"]
+    size = 173.33
+    chunks = caption_chunks(words, None, size, 1080)
+    assert [w["text"] for c in chunks for w in c] == [w["text"] for w in words]
+    out = write_ass(timings, tmp_path / "cap.ass", "portrait", None)
+    dialogues = _dialogues(out.read_text())
+    assert len(dialogues) == 3
+    assert not dialogues[0].startswith("{\\fs")  # 'one' at the default size needs no shrink
+    shrunk = dialogues[1]
+    assert shrunk.startswith("{\\fs")
+    assert long_word in shrunk and "Extra" in shrunk
+    # the shrink actually brings the measured width under the limit
+    from pipeline.render import _caption_font
+    fs = int(shrunk.split("}")[0][len("{\\fs"):])
+    assert _caption_font(None, fs).getlength(long_word) <= 1080 * 0.88
+    # a normal word next to it keeps the default size
+    assert not dialogues[2].startswith("{\\fs")
+
+
+def test_write_ass_splits_wide_chunks_and_keeps_style_frame(tmp_path, real_frames):
+    from pipeline.render import write_ass
+    from pipeline.common import Channel
+    style = Channel("futurework").style
+    timings = _word_timings("Automation will replace forty percent of jobs now", gap=0.4, dur=0.3)
+    out = write_ass(timings, tmp_path / "cap.ass", "portrait", style)
+    text = out.read_text()
+    assert "PlayResX: 1080" in text and "PlayResY: 1920" in text
+    assert f"Style: Cap,Montserrat Black,173.33," in text
+    assert ",1,6,0,2,0,0,733,1" in text  # Outline 6 portrait, BorderStyle 1, Shadow 0, Alignment 2, MarginV 733
+    landscape = write_ass(timings, tmp_path / "cap2.ass", "landscape", style).read_text()
+    assert "PlayResX: 1920" in landscape and "PlayResY: 1080" in landscape
+    assert f"Style: Cap,Montserrat Black,75.00," in landscape
+    assert ",1,4,0,2,0,0,180,1" in landscape  # Outline 4 landscape, MarginV 180
+    # every event text stays within 88% of the frame width as libass will measure it
+    from pipeline.render import _caption_font, font_size_portrait
+    font_size = font_size_portrait(style)
+    for line in _dialogues(text):
+        # strip every override tag ({\fsNN} shrink, {\c...} colour) before measuring the chunk
+        body = re.sub(r"\{\\[^}]*\}", "", line)
+        assert _caption_font(style, font_size).getlength(body) <= 1080 * 0.88, body
+
+
+def test_render_uses_ass_when_timings_exist_else_srt(tmp_path, monkeypatch, real_frames):
+    """render() burns the word-highlight ASS for word timings, the SRT path when there are none."""
+    from pipeline.render import _caption_ass, write_ass
+    timings = _word_timings("Robots are taking over the office", gap=0.4, dur=0.3)
+    style = {"accent": [251, 191, 36], "fonts": {"caption": "Montserrat-Black.ttf"}}
+    # explicit timings -> an ASS with word-highlight events
+    ass = _caption_ass(timings, tmp_path / "voice.mp3", tmp_path, "portrait", style)
+    assert ass is not None and "Dialogue: 0," in ass.read_text()
+    assert "{\\c&H0024BFFB&}" in ass.read_text()  # RGB 251,191,36 -> &H0024BFFB&
+    # timings=None -> loaded from <audio stem>_timings.json next to the audio
+    audio = tmp_path / "voice.mp3"
+    audio.write_bytes(b"")
+    (tmp_path / "voice_timings.json").write_text(
+        json.dumps([{"index": 0, "start": 0, "end": 1.2,
+                     "words": [{"text": w, "start": i * 0.4, "end": i * 0.4 + 0.3}
+                               for i, w in enumerate("a b c".split())]}]))
+    ass = _caption_ass(None, audio, tmp_path, "portrait", style)
+    assert ass is not None and _dialogues(ass.read_text())[:1] == ["{\\c&H0024BFFB&}a{\\c&H00FFFFFF&} b c"]
+    # a timings file without per-word detail (retained audio) -> None: keep the SRT path
+    (tmp_path / "voice_timings.json").write_text(json.dumps([{"index": 0, "start": 0, "end": 2}]))
+    assert _caption_ass(None, audio, tmp_path, "portrait", style) is None
+    # no timings anywhere -> None
+    assert _caption_ass(None, tmp_path / "missing.mp3", tmp_path, "portrait", style) is None
+    # an empty/invalid JSON timings file must not break the render
+    (tmp_path / "voice_timings.json").write_text("{oops")
+    assert _caption_ass(None, audio, tmp_path, "portrait", style) is None
+
+
+def test_render_passes_the_ass_to_the_subtitles_filter(tmp_path, monkeypatch, caplog):
+    """_render builds captions.ass in its work dir and burns it with fontsdir (no force_style)."""
+    caplog.set_level('INFO')
+    monkeypatch.setattr(render, '_fill_slot', lambda seg, sec, orientation, out, *a: out)
+    monkeypatch.setattr(render, '_check_black', Mock())
+    monkeypatch.setattr(render, '_music', lambda: None)
+    monkeypatch.setattr('pipeline.qa.freeze_segments', lambda path: [])
+    runner = Mock()
+    monkeypatch.setattr(subprocess, 'run', runner)
+    timings = _word_timings("Robots are taking over the office", gap=0.4, dur=0.3)
+    out = tmp_path / 'final.mp4'
+    render.render([{'query': 'robots', 'start': 0, 'end': 1.2}], tmp_path / 'voice.wav',
+                  tmp_path / 'captions.srt', out, footage=Mock(), hook_text=None, timings=timings)
+    vf_line = None
+    for c in runner.call_args_list:
+        for item in (c.args[0] if c.args and isinstance(c.args[0], (list, tuple)) else c.args):
+            if isinstance(item, str) and item.startswith('subtitles='):
+                vf_line = item
+    assert vf_line is not None and vf_line.startswith("subtitles='")
+    assert '.ass' in vf_line and 'force_style' not in vf_line and ':fontsdir=' in vf_line
+    assert 'word-highlight captions' in caplog.text
+    assert not (tmp_path / 'final_work').exists()  # render() cleans the work dir
+
+
+def test_render_keeps_srt_path_without_timings(tmp_path, monkeypatch):
+    monkeypatch.setattr(render, '_fill_slot', lambda seg, sec, orientation, out, *a: out)
+    monkeypatch.setattr(render, '_check_black', Mock())
+    monkeypatch.setattr(render, '_music', lambda: None)
+    monkeypatch.setattr('pipeline.qa.freeze_segments', lambda path: [])
+    runner = Mock()
+    monkeypatch.setattr(subprocess, 'run', runner)
+    render.render([{'query': 'robots', 'start': 0, 'end': 1.2}], tmp_path / 'novoice.wav',
+                  tmp_path / 'captions.srt', tmp_path / 'final.mp4', footage=Mock())
+    vf_line = None
+    for c in runner.call_args_list:
+        for item in (c.args[0] if c.args and isinstance(c.args[0], (list, tuple)) else c.args):
+            if isinstance(item, str) and item.startswith('subtitles='):
+                vf_line = item
+    assert vf_line is not None and '.srt' in vf_line and 'force_style' in vf_line
+    # no <audio stem>_timings.json exists next to the audio, so nothing switched the pass on
+
+
+def test_caption_chunks_shrink_measured_with_pil_at_libass_equivalent_size(real_frames):
+    """The 88% rule measures with PIL at the em-corrected size, which matches libass within ~1%
+    (measured 2026-11-25: 'hello world' PIL 909 vs libass 910 at Fontsize 173.33). The check is
+    per-chunk: every returned chunk fits one line, and a chunk that would wrap is split."""
+    from pipeline.render import _caption_font, caption_chunks, font_size_portrait
+    size = font_size_portrait()  # 26 * 1920/288 = 173.33
+    font = _caption_font(None, size)
+    words = _word_timings("robots are coming to an office near you")[-1]["words"]
+    chunks = caption_chunks(words, None, size, 1080)
+    assert 1 <= len(chunks) <= 4 and [w["text"] for c in chunks for w in c] == [w["text"] for w in words]
+    for chunk in chunks:
+        assert 1 <= len(chunk) <= 3
+        assert font.getlength(" ".join(w["text"] for w in chunk)) <= 1080 * 0.88
+    # 'to an office' fits at this size, so the greedy 3-word chunk stays intact
+    assert ["to", "an", "office"] in [[w["text"] for w in c] for c in chunks]
+    # 'robots are coming' is wider than the frame at this size (libass wraps it: measured 858 px
+    # on a 1080 px frame with a 318 px tall multi-line block), so it can never come back as one chunk
+    assert ["robots", "are", "coming"] not in [[w["text"] for w in c] for c in chunks]
+
+
+def test_font_size_portrait_and_landscape_scale():
+    from pipeline.render import font_size_landscape, font_size_portrait
+    assert font_size_portrait() == pytest.approx(26 * 1920 / 288)  # 173.33
+    assert font_size_portrait({"font_size_short": 30}) == pytest.approx(30 * 1920 / 288)
+    assert font_size_landscape() == pytest.approx(20 * 1080 / 288)  # 75
+    assert font_size_landscape({"font_size_long": 24}) == pytest.approx(24 * 1080 / 288)
+
+
 def test_sfx_cues_and_track(tmp_path):
     from pipeline.sfx import cue_times, track
     segs = [{"query": "a", "start": 0, "end": 2}, {"card": "25,000 JOBS", "start": 2, "end": 4},
@@ -367,3 +677,215 @@ def test_sfx_cues_and_track(tmp_path):
     out = track(segs, "portrait", 8.0, tmp_path / "sfx.wav")
     assert out.exists() and out.stat().st_size > 1000
     assert track([{"query": "a", "start": 0, "end": 2}], "landscape", 2.0, tmp_path / "none.wav") is None
+
+
+def test_sfx_cue_times_counts_all_graphic_segments():
+    """Every synthesised graphic segment gets a hit: chart/map/diagram/text types,
+    the old card/graphic keys and the CARD/CHART/MAP/TIMELINE/SCALE/ORBIT/TEXT
+    query prefixes; plain footage and PRESENTER shots do not (they are not graphics)."""
+    from pipeline.sfx import cue_times
+    segs = [{"query": "cargo ship at port", "start": 0, "end": 2},
+            {"type": "chart", "query": "CHART: T | a=1", "start": 2, "end": 4},
+            {"type": "diagram", "sub_kind": "timeline", "query": "TIMELINE: Voyager | 1977=Launch", "start": 4, "end": 6},
+            {"type": "text", "query": "TEXT: one key line", "start": 6, "end": 8},
+            {"type": "map", "query": "MAP: Iran | Hormuz", "start": 8, "end": 10},
+            {"query": "SCALE: Earth vs Moon | a=1, b=2", "start": 10, "end": 12},   # prefix only, no type
+            {"query": "ORBIT: Earth, Mars | transfer", "start": 12, "end": 14},     # prefix only
+            {"card": "25,000 JOBS", "start": 14, "end": 16},                        # legacy key
+            {"graphic": ("chart", "T | a=1"), "start": 16, "end": 18},              # legacy key
+            {"type": "presenter", "presenter_text": "hi", "query": "PRESENTER: hi", "start": 18, "end": 20},
+            {"query": "worker packing boxes", "start": 20, "end": 22}]
+    cues = cue_times(segs, "landscape")
+    hits = [t for t, kind in cues if kind == "hit"]
+    assert hits == [2, 4, 6, 8, 10, 12, 14, 16]  # every graphic, not the presenter/footage shots
+    assert all(t not in (0, 18, 20) for t, _ in cues)
+    # Portrait: whoosh into every cut, including the plain footage segments.
+    portrait = [(t, k) for t, k in cue_times(segs, "portrait") if k == "whoosh"]
+    assert portrait == [(2, "whoosh"), (4, "whoosh"), (6, "whoosh"), (8, "whoosh"), (10, "whoosh"),
+                        (12, "whoosh"), (14, "whoosh"), (16, "whoosh"), (18, "whoosh"), (20, "whoosh")]
+
+
+# ---------- typed shot plan + Remotion engine switch (stage 2) ----------
+
+def test_shot_type_per_prefix():
+    from pipeline.render import shot_type
+    assert shot_type("cargo ship at port") == "footage"
+    assert shot_type("CARD: 25,000 JOBS") == "text"
+    assert shot_type("TEXT: big idea") == "text"
+    assert shot_type("CHART: T | a=1, b=2") == "chart"
+    assert shot_type("MAP: Iran | Hormuz") == "map"
+    assert shot_type("TIMELINE: Voyager | 1977=Launch") == "diagram"
+    assert shot_type("SCALE: Earth vs Jupiter | a=1, b=2") == "diagram"
+    assert shot_type("ORBIT: Earth, Mars | transfer") == "diagram"
+    assert shot_type("PRESENTER: welcome back") == "presenter"
+    assert shot_type("") == "footage"
+
+
+def test_apply_shots_types_each_prefix():
+    from pipeline.render import apply_shots
+    segs = apply_shots([{"query": "q", "caption": "c"} for _ in range(8)],
+                       ["plain query", "CARD: A BIG NUMBER", "CHART: T | a=1, b=2",
+                        "MAP: Iran | Hormuz", "TIMELINE: Voyager | 1977=Launch, 2012=Exit",
+                        "SCALE: Sizes | a=1, b=2", "ORBIT: Earth, Mars | transfer",
+                        "PRESENTER: hi there"], "q")
+    assert segs[0]["type"] == "footage" and segs[0]["query"] == "plain query"
+    assert segs[1]["type"] == "text" and segs[1]["card"] == "A BIG NUMBER"
+    assert segs[2]["type"] == "chart" and segs[2]["graphic"] == ("chart", "T | a=1, b=2")
+    assert segs[3]["type"] == "map" and segs[3]["graphic"] == ("map", "Iran | Hormuz")
+    assert segs[4]["type"] == "diagram" and segs[4]["sub_kind"] == "timeline"
+    assert segs[4]["graphic"] == ("timeline", "Voyager | 1977=Launch, 2012=Exit")
+    assert segs[5]["type"] == "diagram" and segs[5]["sub_kind"] == "scale"
+    assert segs[6]["type"] == "diagram" and segs[6]["sub_kind"] == "orbit"
+    assert segs[7]["type"] == "presenter" and segs[7]["presenter_text"] == "hi there"
+
+
+def test_long_video_prefix_handling_types():
+    """_fill_slot derives the same typed plan from a raw long-video query."""
+    from pipeline.render import _typed_seg
+    seg = _typed_seg({"query": "TIMELINE: Voyager | 1977=Launch, 2012=Exit", "caption": "c"}, "TIMELINE: Voyager | 1977=Launch, 2012=Exit")
+    assert seg["type"] == "diagram" and seg["sub_kind"] == "timeline" and seg["graphic"][0] == "timeline"
+    seg = _typed_seg({"query": "PRESENTER: hello", "caption": "c"}, "PRESENTER: hello")
+    assert seg["type"] == "presenter" and seg["presenter_text"] == "hello"
+    # old scripts: a plain query keeps the footage path
+    assert _typed_seg({"query": "server room"}, "server room")["type"] == "footage"
+
+
+def test_presenter_stub_text_card_and_footage_fallback(tmp_path):
+    from pipeline.render import _presenter_slot
+    footage = Mock()
+    footage.clip.return_value = colour(tmp_path)
+    out = _presenter_slot({"presenter_text": "WELCOME TO THE SHOW", "query": "news anchor studio",
+                           "caption": "c"}, 0.2, "landscape", tmp_path / "p1.mp4", footage)
+    assert out.exists() and out.with_suffix(".txt").read_text() == "WELCOME TO THE"  # 16-char wrap
+    assert not footage.clip.called  # the text renders, not the stock query
+    out = _presenter_slot({"type": "presenter", "query": "news anchor studio", "caption": "c"},
+                          0.2, "landscape", tmp_path / "p2.mp4", footage)
+    assert footage.clip.call_args.args[0] == "news anchor studio"  # no text: the query is the visual
+
+
+def _motion_style(**extra):
+    return {"accent": [34, 211, 238], "bg": [4, 7, 14], "motion": True, **extra}
+
+
+class _FakeRemotion:
+    def __init__(self, fail=False):
+        self.calls = []
+        self.fail = fail
+
+    def available(self):
+        return True
+
+    def ensure_installed(self):
+        return True
+
+    def bundled_entry_point(self):
+        return "out/bundle"
+
+    def render_segment(self, kind, props, seconds, orientation, out, brand, entry_point=None):
+        self.calls.append((kind, props, seconds, orientation, entry_point))
+        if self.fail:
+            raise RuntimeError("remotion exploded")
+        Path(out).write_bytes(b"mp4")
+        return Path(out)
+
+
+def test_engine_off_uses_pillow(tmp_path, monkeypatch):
+    import pipeline.remotion as R
+    fake = _FakeRemotion()
+    monkeypatch.setattr("pipeline.remotion.ensure_installed", fake.ensure_installed)
+    monkeypatch.setattr("pipeline.remotion.render_segment", fake.render_segment)
+    monkeypatch.setattr("pipeline.remotion.bundled_entry_point", fake.bundled_entry_point)
+    monkeypatch.setattr(R, "available", lambda: True)
+    footage = Mock()
+    footage.clip.return_value = colour(tmp_path)
+    seg = {"query": "q", "graphic": ("chart", "T | a=1, b=2"), "type": "chart", "caption": "c"}
+    out = render._fill_slot(dict(seg), 0.3, "landscape", tmp_path / "off.mp4", footage,
+                             {"accent": [34, 211, 238], "bg": [4, 7, 14]})  # motion not set
+    assert not fake.calls and out.exists()
+
+
+def test_engine_on_renders_with_remotion(tmp_path, monkeypatch):
+    import pipeline.remotion as R
+    fake = _FakeRemotion()
+    monkeypatch.setattr("pipeline.remotion.ensure_installed", fake.ensure_installed)
+    monkeypatch.setattr("pipeline.remotion.render_segment", fake.render_segment)
+    monkeypatch.setattr("pipeline.remotion.bundled_entry_point", fake.bundled_entry_point)
+    footage = Mock()
+    for kind, spec, expected in (
+        ("chart", "T | a=1, b=2", "chart"),
+        ("map", "Iran, Oman | Hormuz", "map"),
+        ("timeline", "Voyager | 1977=Launch, 2012=Interstellar", "timeline"),
+        ("scale", "Sizes | Earth=1, Jupiter=11", "scale"),
+        ("orbit", "Earth, Mars | Transfer", "orbit"),
+        ("text", "A BIG NUMBER", "text"),
+    ):
+        seg = {"query": "q", "caption": "c", "type": "diagram" if kind in ("timeline", "scale", "orbit") else kind}
+        if kind == "text":
+            seg["card"] = spec
+        else:
+            seg["graphic"] = (kind, spec)
+        if kind in ("timeline", "scale", "orbit"):
+            seg["sub_kind"] = kind
+        out = tmp_path / f"on-{kind}.mp4"
+        render._fill_slot(seg, 0.5, "portrait", out, footage, _motion_style())
+        assert out.exists()
+    kinds = [c[0] for c in fake.calls]
+    assert kinds == ["chart", "map", "timeline", "scale", "orbit", "text"]
+    # spec parsing reached the compositions as structured props
+    assert fake.calls[0][1]["items"][0]["label"] == "a"
+    assert fake.calls[1][1]["countries"] == ["Iran", "Oman"]
+    assert fake.calls[2][1]["events"] == [{"when": "1977", "label": "Launch"},
+                                          {"when": "2012", "label": "Interstellar"}]
+    assert fake.calls[4][1]["bodies"] == ["Earth", "Mars"]
+    assert fake.calls[5][1]["text"] == "A BIG NUMBER"
+    assert all(c[3] == "portrait" for c in fake.calls)
+    assert all(c[4] == "out/bundle" for c in fake.calls)
+    assert not footage.clip.called
+
+
+def test_engine_failure_falls_back_to_pillow(tmp_path, monkeypatch, caplog):
+    import pipeline.remotion as R
+    fake = _FakeRemotion(fail=True)
+    monkeypatch.setattr("pipeline.remotion.ensure_installed", fake.ensure_installed)
+    monkeypatch.setattr("pipeline.remotion.render_segment", fake.render_segment)
+    monkeypatch.setattr("pipeline.remotion.bundled_entry_point", fake.bundled_entry_point)
+    caplog.set_level("WARNING")
+    footage = Mock()
+    seg = {"query": "q", "caption": "c", "type": "chart", "graphic": ("chart", "T | a=1, b=2")}
+    out = render._fill_slot(seg, 0.5, "landscape", tmp_path / "fail.mp4", footage, _motion_style())
+    assert fake.calls and out.exists()  # Pillow chart still rendered
+    assert "fell back to Pillow" in caplog.text
+    # a diagram failure falls back to a text card of the title
+    seg = {"query": "q", "caption": "c", "type": "diagram", "sub_kind": "timeline",
+           "graphic": ("timeline", "Voyager | 1977=Launch")}
+    out = render._fill_slot(seg, 0.5, "landscape", tmp_path / "fail2.mp4", footage, _motion_style())
+    assert out.with_suffix(".txt").read_text() == "VOYAGER"
+
+
+def test_engine_unavailable_uses_pillow_diagram_card(tmp_path, monkeypatch):
+    monkeypatch.setattr("pipeline.remotion.ensure_installed", lambda: False)
+    monkeypatch.setattr("pipeline.remotion.render_segment",
+                        lambda *a, **k: pytest.fail("render_segment must not run"))
+    footage = Mock()
+    seg = {"query": "q", "caption": "c", "type": "diagram", "sub_kind": "timeline",
+           "graphic": ("timeline", "Voyager | 1977=Launch, 2012=Exit")}
+    out = render._fill_slot(seg, 0.5, "landscape", tmp_path / "noengine.mp4", footage, _motion_style())
+    assert out.exists() and out.with_suffix(".txt").read_text() == "VOYAGER"  # title text card
+
+
+def test_remotion_specs_that_do_not_parse_fall_back(tmp_path, monkeypatch):
+    import pipeline.remotion as R
+    fake = _FakeRemotion()
+    monkeypatch.setattr("pipeline.remotion.ensure_installed", lambda: True)
+    monkeypatch.setattr("pipeline.remotion.render_segment", fake.render_segment)
+    monkeypatch.setattr("pipeline.remotion.bundled_entry_point", fake.bundled_entry_point)
+    monkeypatch.setattr(R, "available", lambda: True)
+    footage = Mock()
+    # a chart with no numbers and a timeline with no events cannot be parsed
+    seg = {"query": "q", "caption": "c", "type": "chart", "graphic": ("chart", "no numbers here")}
+    out = render._fill_slot(seg, 0.5, "landscape", tmp_path / "unparsable.mp4", footage, _motion_style())
+    assert out.exists() and not fake.calls  # Pillow path, no remotion attempt past parsing
+    seg = {"query": "q", "caption": "c", "type": "diagram", "sub_kind": "timeline",
+           "graphic": ("timeline", "only one | 1977=Launch")}
+    out = render._fill_slot(seg, 0.5, "landscape", tmp_path / "shorttl.mp4", footage, _motion_style())
+    assert out.exists()

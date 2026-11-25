@@ -44,7 +44,9 @@
     "caption_colour": "&H00FFFFFF",
     "caption_outline": "&H80000000",
     "font_size_long": 20,
-    "font_size_short": 26
+    "font_size_short": 26,
+    "fonts": {"caption": "Montserrat-Black.ttf", "headline": "Montserrat-ExtraBold.ttf"},
+    "motion": false
   },
   "footage": {
     "providers": [

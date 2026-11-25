@@ -9,7 +9,7 @@
   "tagline": "One everyday English word a day, taught in ten languages.",
   "niche_keywords": ["learn languages", "word of the day", "how to say", "pronunciation", "vocabulary"],
   "voice": {"kokoro": "af_bella", "edge": "en-US-AvaNeural", "rate": "-4%"},
-  "style": {"accent": [167, 139, 250], "bg": [20, 14, 36], "caption_colour": "&H00FFFFFF", "caption_outline": "&H90000000", "font_size_long": 19, "font_size_short": 25},
+  "style": {"accent": [167, 139, 250], "bg": [20, 14, 36], "caption_colour": "&H00FFFFFF", "caption_outline": "&H90000000", "font_size_long": 19, "font_size_short": 25, "fonts": {"caption": "Poppins-ExtraBold.ttf", "headline": "Poppins-ExtraBold.ttf"}, "motion": false},
   "footage": {"providers": [], "nasa": false},
   "schedule": {"days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], "utc_hour": 7},
   "shorts_hour_utc": 9,

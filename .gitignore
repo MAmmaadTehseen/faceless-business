@@ -28,3 +28,8 @@ supabase/.temp/
 data/scoreboard/
 .env.*
 .melo/
+
+motion/node_modules/
+motion/out/
+motion/public/fonts/*.ttf
+!motion/public/fonts/NotoNastaliqUrdu-Bold.ttf

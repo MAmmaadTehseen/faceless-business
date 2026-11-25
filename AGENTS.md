@@ -408,3 +408,10 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   release from Drive. Actions variable `STOCKPILE_BACKEND=homelab` switches new banking; bank/words/sync workflows then join
   the tailnet (secrets `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, tag `tag:ci`) and use `HOMELAB_SSH_KEY` (key restricted to
   100.64.0.0/10 in the server's authorized_keys). Locally: `HOMELAB_SSH_KEY_FILE=~/.ssh/faceless_ci_stockpile`.
+
+## Motion graphics and channel fonts (2026-11-25)
+- Remotion project in `motion/` (pinned 4.0.547; `motion/node_modules` and `motion/out` are git-ignored) and `pipeline/remotion.py`. Segments are typed footage | chart | map | diagram | text | presenter (`render.apply_shots`); prefixes CARD/TEXT, CHART, MAP, TIMELINE/SCALE/ORBIT, PRESENTER. `presenter` is a stub (`render._presenter_slot`) where the owner's clone will plug in.
+- channel.json `style.motion` (default false) turns Remotion on; on runners `remotion.ensure_installed()` runs `npm ci` and `npx remotion browser ensure` once. Failures fall back to the Pillow graphic. Ten Tongues uses the WordReveal composition for the native-word card.
+- Fonts: channel.json `style.fonts.caption/headline` -> `assets/fonts/ofl/` (OFL), resolved by `render.font_for`; copied to `motion/public/fonts` at bundle time (git-ignored copies). Captions are an ASS file built from TTS word timings (`render.write_ass`): 2-3 words, white with black outline, the spoken word in the accent. libass `fontsdir` must be exactly the caption font's folder.
+- Concat with `-c copy` needs identical timebase/pix_fmt: every slot passes `render._uniform` (yuv420p, 30 fps, 1/15360).
+- Owner one-off `--now` (run_all and words): public immediately, no backlog brake, publish_at set to the upload time.

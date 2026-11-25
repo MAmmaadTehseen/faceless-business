@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -197,6 +198,16 @@ def _word_card(channel, cfg, lang, n, total, word):
             "colour": cfg["colour"], "footer": channel.name}
 
 
+def _reveal_payload(cfg: dict, lang: dict) -> dict:
+    """Props for the Remotion WordReveal composition that replaces this native-word card clip
+    (handwriting-style reveal of the word, romanisation fading in below). Rendered only when the
+    channel has style.motion on and the motion project is installed; the still card stays the
+    source of truth for everything the reveal does not show (kicker, IPA, footer)."""
+    script = cfg["script"]
+    return {"native": lang["native"], "romanisation": lang["romanisation"], "language": cfg["name"],
+            "script": script, "direction": "rtl" if script in ("arabic", "nastaliq") else "ltr"}
+
+
 def _sentence_card(channel, cfg, lang, n, total, word):
     return {"kicker": f"{n} / {total}  ·  {cfg['name']}  ·  example", "headline": lang["example_native"],
             "headline_script": cfg["script"], "sub": lang["example_romanised"], "sub2": lang["example_english"],
@@ -232,10 +243,12 @@ def long_segments(channel: Channel, data: dict) -> list[dict]:
     for n, (cfg, lang) in enumerate(zip(langs, data["languages"]), 1):
         native = {**cfg["tts"], "rate": "+0%"}
         word_card = _word_card(channel, cfg, lang, n, total, word)
+        reveal = _reveal_payload(cfg, lang)
         segs += [
-            {"kind": "narrator", "text": lang["narrator_intro"], "spec": narrator, "card": word_card},
+            {"kind": "narrator", "text": lang["narrator_intro"], "spec": narrator, "card": word_card,
+             "reveal": reveal},
             {"kind": "native", "text": lang.get("tts_word") or f"{lang['native']}. {lang['native']}.", "spec": native,
-             "caption": f"{lang['romanisation']}  ·  {lang['romanisation']}", "card": word_card},
+             "caption": f"{lang['romanisation']}  ·  {lang['romanisation']}", "card": word_card, "reveal": reveal},
             {"kind": "native", "text": lang.get("tts_example") or lang["example_native"], "spec": native,
              "caption": lang["example_romanised"], "card": _sentence_card(channel, cfg, lang, n, total, word)},
             {"kind": "narrator", "text": lang["narrator_wrap"], "spec": narrator, "card": _hook_card(channel, cfg, lang, n, total, word)},
@@ -253,47 +266,93 @@ def short_segments(channel: Channel, data: dict, code: str) -> list[dict]:
     n = [l["code"] for l in languages(channel)].index(code) + 1
     total = len(languages(channel))
     word_card = _word_card(channel, cfg, lang, n, total, word)
+    reveal = _reveal_payload(cfg, lang)
     intro = re.sub(r"^\s*number\s+\w+[,.]?\s*", "", lang["narrator_intro"], flags=re.I).strip()
     return [
         {"kind": "narrator", "text": f"How do you say {word} in {cfg['name']}?", "spec": narrator,
          "card": _title_card(channel, word, f"in {cfg['name']}", cfg["colour"])},
-        {"kind": "narrator", "text": intro, "spec": narrator, "card": word_card},
+        {"kind": "narrator", "text": intro, "spec": narrator, "card": word_card, "reveal": reveal},
         {"kind": "native", "text": lang.get("tts_word") or f"{lang['native']}. {lang['native']}.", "spec": native,
-         "caption": f"{lang['romanisation']}  ·  {lang['romanisation']}", "card": word_card},
+         "caption": f"{lang['romanisation']}  ·  {lang['romanisation']}", "card": word_card, "reveal": reveal},
         {"kind": "native", "text": lang.get("tts_example") or lang["example_native"], "spec": native,
          "caption": lang["example_romanised"], "card": _sentence_card(channel, cfg, lang, n, total, word)},
         {"kind": "narrator", "text": lang["narrator_wrap"], "spec": narrator, "card": _hook_card(channel, cfg, lang, n, total, word)},
-        {"kind": "narrator", "text": f"Say it with me: {lang['romanisation']}. New word tomorrow.", "spec": narrator, "card": word_card},
+        {"kind": "narrator", "text": f"Say it with me: {lang['romanisation']}. New word tomorrow.", "spec": narrator,
+         "card": word_card, "reveal": reveal},
     ]
 
 
 # ---------- rendering ----------
 
-def render_cards_video(timings: list[dict], audio: Path, srt: Path, out: Path, orientation: str,
-                       channel: Channel, music_db: float = -24.0) -> Path:
-    from .render import FONT_DIR, _caption_style, _check_black, _font, _music
+def _reveal_clip(remotion, payload: dict, sec: float, orientation: str, out: Path, style: dict) -> Path | None:
+    """One native-word card clip through the Remotion WordReveal composition, or None to fall back.
+
+    `sec` is quantised to the exact frame count the Pillow card_clip would produce for the same
+    segment (ceil(sec*30) frames at 30 fps, passed as frames/30 seconds), so the reveal has
+    exactly the duration of the card it replaces: the concatenated visual timeline, the audio and
+    the burned SRT never shift between the two paths."""
+    from .render import _brand
+    frames = max(1, math.ceil(sec * 30))
+    try:
+        return remotion.render_segment(
+            "reveal", payload, frames / 30.0, orientation, out,
+            _brand(style, accent=(167, 139, 250), bg=(20, 14, 36)),
+            entry_point=remotion.bundled_entry_point(),
+        )
+    except Exception as exc:  # noqa: BLE001 - any failure falls back to the still card clip
+        log.warning("remotion word reveal fell back to the card clip (%s): %s", type(exc).__name__, exc)
+        return None
+
+
+def _segment_clips(timings: list[dict], orientation: str, channel: Channel, work: Path) -> list[Path]:
+    """One clip per timing entry, in order. Segments carrying a `reveal` payload (the native-word
+    card, in the long episode and in each language Short) render through the Remotion WordReveal
+    composition when channel style.motion is on and the motion project is installed
+    (ensure_installed); every other segment, and any reveal failure, uses the existing still card
+    clip. Durations are identical either way, so audio and SRT timing never change."""
+    from . import remotion
     style = channel.style
     size = LANDSCAPE if orientation == "landscape" else PORTRAIT
+    ready = bool(style.get("motion")) and remotion.ensure_installed()
+    pngs: dict[str, Path] = {}
+    clips = []
+    total = timings[-1]["end"]
+    for i, t in enumerate(timings):
+        # Each card stays up through the silence gap until the next segment starts.
+        until = timings[i + 1]["start"] if i + 1 < len(timings) else total
+        sec = max(until - t["start"], 0.5)
+        out = work / f"seg_{t['index']:03d}.mp4"
+        payload = t["segment"].get("reveal") if ready else None
+        if payload:
+            clip = _reveal_clip(remotion, payload, sec, orientation, out, style)
+            if clip:
+                clips.append(clip)
+                continue
+        card = t["segment"]["card"]
+        key = json.dumps(card, sort_keys=True, ensure_ascii=False) + orientation
+        if key not in pngs:
+            pngs[key] = render_card(work / f"card_{len(pngs):03d}.png", size=size, bg=tuple(style.get("bg", (20, 14, 36))),
+                                    accent=tuple(style.get("accent", (167, 139, 250))), colour=tuple(card["colour"]),
+                                    kicker=card["kicker"], headline=card["headline"], headline_script=card.get("headline_script", "latin"),
+                                    sub=card.get("sub", ""), sub2=card.get("sub2", ""), lines=card.get("lines"), footer=card.get("footer", ""),
+                                    chips=[tuple(c) for c in card.get("chips", [])] or None,
+                                    headline_scale=card.get("headline_scale", 1.0))
+        clips.append(card_clip(pngs[key], sec, out, orientation))
+    # Remotion reveal clips and Pillow card clips come out with different timebases/pixel
+    # formats; concat -c copy then stretches the video past the audio. Normalise them all.
+    from .render import _uniform
+    return [_uniform(c) for c in clips]
+
+
+def render_cards_video(timings: list[dict], audio: Path, srt: Path, out: Path, orientation: str,
+                       channel: Channel, music_db: float = -24.0) -> Path:
+    from .render import _caption_style, _check_black, _music, caption_fontsdir
+    style = channel.style
     work = out.parent / f"{out.stem}_work"
     work.mkdir(parents=True, exist_ok=True)
     try:
-        pngs: dict[str, Path] = {}
-        clips = []
+        clips = _segment_clips(timings, orientation, channel, work)
         total = timings[-1]["end"]
-        for i, t in enumerate(timings):
-            # Each card stays up through the silence gap until the next segment starts.
-            until = timings[i + 1]["start"] if i + 1 < len(timings) else total
-            card = t["segment"]["card"]
-            key = json.dumps(card, sort_keys=True, ensure_ascii=False) + orientation
-            if key not in pngs:
-                pngs[key] = render_card(work / f"card_{len(pngs):03d}.png", size=size, bg=tuple(style.get("bg", (20, 14, 36))),
-                                        accent=tuple(style.get("accent", (167, 139, 250))), colour=tuple(card["colour"]),
-                                        kicker=card["kicker"], headline=card["headline"], headline_script=card.get("headline_script", "latin"),
-                                        sub=card.get("sub", ""), sub2=card.get("sub2", ""), lines=card.get("lines"), footer=card.get("footer", ""),
-                                        chips=[tuple(c) for c in card.get("chips", [])] or None,
-                                        headline_scale=card.get("headline_scale", 1.0))
-            sec = max(until - t["start"], 0.5)
-            clips.append(card_clip(pngs[key], sec, work / f"seg_{t['index']:03d}.mp4", orientation))
         listing = work / "list.txt"
         listing.write_text("".join(f"file '{c.resolve()}'\n" for c in clips))
         visual = work / "visual.mp4"
@@ -302,8 +361,7 @@ def render_cards_video(timings: list[dict], audio: Path, srt: Path, out: Path, o
             clean = out.with_suffix(f".clean{i}.jpg") if i else out.with_suffix(".clean.jpg")
             subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", f"{max(1.0, total * frac):.2f}", "-i", str(visual), "-frames:v", "1", "-q:v", "2", str(clean)], check=True)
         srt_path = str(srt.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
-        fontsdir = f":fontsdir={FONT_DIR}" if _font() else ""
-        vf = f"subtitles='{srt_path}':force_style='{_caption_style(orientation, style)}'{fontsdir}"
+        vf = f"subtitles='{srt_path}':force_style='{_caption_style(orientation, style)}'{caption_fontsdir(style)}"
         cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(visual), "-i", str(audio)]
         music = _music()
         if music:
@@ -551,15 +609,24 @@ def main():
     ap.add_argument("--word", help="force a word from words.json (owner re-runs)")
     ap.add_argument("--resume", help="content id: re-render from the saved episode without a new model call")
     ap.add_argument("--bank", action="store_true", help="store the finished episode in the Drive stockpile, no publications")
+    ap.add_argument("--now", action="store_true", help="owner one-off: publish public immediately (no publishAt)")
+    ap.add_argument("--motion", action="store_true", help="force Remotion word reveals on for this run")
     args = ap.parse_args()
+    if args.now:
+        args.privacy = "public"
     db = DB()
     channel = Channel(args.channel)
+    if args.motion:
+        channel.style = {**channel.style, "motion": True}
     # Bank runs log separately so the daily gap fill never mistakes them for the live run.
     run = db.insert("runs", {"workflow": "words-bank" if args.bank else "words", "channel": channel.key, "status": "running"})
     try:
         result = produce_episode(db, channel, dry_run=args.dry_run, no_publish=args.no_publish or not args.publish,
                                  privacy=args.privacy, resume=args.resume, word=args.word, bank=args.bank)
         from .publish import youtube
+        if args.now and isinstance(result, dict) and result.get("content_id"):
+            from .publish import mark_published_now
+            mark_published_now(db, result["content_id"])
         expired = youtube.auth_failed(channel)
         db.update("runs", {"id": run["id"]}, {"status": "failed" if expired else "ok" if result else "skipped",
                   "finished_at": now_iso(), "log": json.dumps({"result": result, "error": youtube.auth_error(channel)} if expired else result)[:20000]})

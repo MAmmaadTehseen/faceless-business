@@ -20,7 +20,7 @@ from .db import DB
 from .footage import Footage
 from .ideate import choose_topic
 from .qa import probe, run_qa
-from .render import apply_shots, render, segments_from_timings
+from .render import apply_shots, font_for, render, segments_from_timings
 from .script import write_script
 from .shorts import make_short
 from .thumbnail import make_thumbnail
@@ -82,7 +82,7 @@ def rerender_short(short: dict, out_dir: Path, voice, footage: Footage, name: st
              for t in tts["timings"]]
     segs = apply_shots(segments_from_timings(tts["timings"], shots, min_shot=2.5, max_shot=4.0), short.get("shots"), short["query"])
     video = out_dir / f"{name}.mp4"
-    render(segs, tts["audio"], tts["srt"], video, "portrait", footage, music_db=-20.0, style=style, hook_text=short.get("hook_title"))
+    render(segs, tts["audio"], tts["srt"], video, "portrait", footage, music_db=-20.0, style=style, hook_text=short.get("hook_title"), timings=tts["timings"])
     return {"file": video, "duration": tts["duration"], "title": short["hook_title"], "script": short["script"]}
 
 
@@ -238,10 +238,10 @@ def produce_one(db: DB, claude: Claude | None, footage: Footage, *, dry_run: boo
     else:
         tts = retained_tts(out_dir) if rerender and (out_dir / "voice.mp3").is_file() else synthesize(data["script"], out_dir, voice=voice)
         segs = segments_from_timings(tts["timings"], data["shot_list"], min_shot=4.0, max_shot=6.5)
-        video = render(segs, tts["audio"], tts["srt"], video, "landscape", footage, style=style)
+        video = render(segs, tts["audio"], tts["srt"], video, "landscape", footage, style=style, timings=tts["timings"])
     thumb = out_dir / f"{content_id}.jpg"
     if not (resume and not rerender and thumb.exists()):
-        thumb = make_thumbnail(video, data["thumbnail_text"], thumb, accent=accent)
+        thumb = make_thumbnail(video, data["thumbnail_text"], thumb, accent=accent, font_path=font_for(style, 'headline'))
 
     chapters = (row.get("chapters") or []) if reused_render and not tts["timings"] else []
     for ch in data.get("chapters", []):
@@ -339,6 +339,8 @@ def backlog_full(db, channel: Channel, args) -> bool:
     """
     if args.resume or args.dry_run or args.bank or not args.publish or args.no_publish:
         return False
+    if getattr(args, "now", False):
+        return False
     if db.setting("production_backlog_brake_enabled", True) is False:
         return False
     from .publish import long_backlog_days
@@ -363,7 +365,11 @@ def main():
     ap.add_argument("--rerender", action="store_true", help="with --resume, rebuild long and Shorts from saved scripts and shot queries")
     ap.add_argument("--rebuild", action="store_true", help="with --resume, regenerate media from DB without an artifact or script calls")
     ap.add_argument("--channel", default=None, help="channel key (folder in channels/). Default: futurework, or inferred from --resume id")
+    ap.add_argument("--now", action="store_true", help="owner one-off: publish public immediately (no publishAt) and skip the backlog brake")
+    ap.add_argument("--motion", action="store_true", help="force Remotion motion graphics on for this run (channel.json style.motion)")
     args = ap.parse_args()
+    if args.now:
+        args.privacy = "public"
 
     if (args.rerender or args.rebuild) and not args.resume:
         ap.error("--rerender/--rebuild requires --resume")
@@ -373,6 +379,8 @@ def main():
     db = DB()
     ckey = args.channel or (args.resume.split("-20")[0] if args.resume and not args.resume.startswith("20") else None) or "futurework"
     channel = Channel(ckey)
+    if args.motion:
+        channel.style = {**channel.style, "motion": True}
     log.info("channel: %s (%s)", channel.key, channel.name)
     run = db.insert("runs", {"workflow": "produce", "channel": channel.key, "status": "running"})
     if db.setting("pipeline_paused", False) and not args.dry_run:
@@ -410,6 +418,11 @@ def main():
                 errors.append(f"{e}\n{traceback.format_exc()}")
                 log.error("produce failed: %s", e)
     from .publish import youtube
+    if args.now:
+        from .publish import mark_published_now
+        for r in results:
+            if isinstance(r, dict) and r.get("content_id"):
+                mark_published_now(db, r["content_id"])
     if youtube.auth_failed(channel):
         errors.append(youtube.auth_error(channel))
     db.update("runs", {"id": run["id"]}, {"status": "failed" if youtube.auth_failed(channel) or (errors and not results) else "ok", "finished_at": now_iso(),

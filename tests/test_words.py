@@ -1,7 +1,9 @@
 """Ten Tongues words channel: inventory, episode validation, segment plans, captions, calendar, playlists."""
 import json
+import math
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -200,3 +202,107 @@ def test_short_tags_native_queries():
     french = words.short_tags("fruit", {"name": "French", "code": "fr"}, {"romanisation": "fruit"})
     assert "fruit in english" not in french and len(french) == len(set(french)) <= 15
     assert words.short_tags("rice", {"name": "Russian", "code": "ru"}) == words.short_tags("rice", {"name": "Russian"})
+
+
+# ---------- word reveal (Remotion WordReveal, mocked; ffmpeg never runs) ----------
+
+REVEAL_TIMINGS = [
+    {"index": 0, "start": 0.0, "end": 2.0, "segment": {"card": {"kicker": "title", "headline": "WATER", "colour": [1, 2, 3]}}},
+    {"index": 1, "start": 2.45, "end": 5.0, "segment": {"card": {"kicker": "urdu", "headline": "پانی", "colour": [4, 5, 6]},
+                                                       "reveal": {"native": "پانی", "romanisation": "pānī", "language": "Urdu",
+                                                                  "script": "nastaliq", "direction": "rtl"}}},
+    {"index": 2, "start": 5.45, "end": 8.0, "segment": {"card": {"kicker": "example", "headline": "میں پانی پیتا ہوں", "colour": [4, 5, 6]}}},
+    {"index": 3, "start": 8.45, "end": 12.0, "segment": {"card": {"kicker": "remember it", "headline": "pānī", "colour": [4, 5, 6]}}},
+]
+
+
+def _motion_channel(channel):
+    """The same Channel with style.motion forced on (channel.json ships it false)."""
+    channel.style = {**channel.style, "motion": True}
+    return channel
+
+
+def test_reveal_used_when_motion_on(tmp_path, monkeypatch, channel):
+    """style.motion on + ensure_installed true -> the native-word card segment renders through
+    remotion.render_segment('reveal', ...) with exactly the card clip's duration."""
+    from pipeline import remotion
+
+    channel = _motion_channel(channel)
+    renders = MagicMock(return_value=tmp_path / "seg_reveal.mp4")
+    cards = MagicMock(side_effect=lambda png, sec, out, orientation: out)
+    monkeypatch.setattr(remotion, "render_segment", renders)
+    monkeypatch.setattr(remotion, "ensure_installed", MagicMock(return_value=True))
+    monkeypatch.setattr(remotion, "bundled_entry_point", lambda: "src/Root.tsx")
+    monkeypatch.setattr(words, "render_card", lambda *a, **k: tmp_path / "c.png")
+    monkeypatch.setattr(words, "card_clip", cards)
+
+    clips = words._segment_clips(REVEAL_TIMINGS, "landscape", channel, tmp_path / "work")
+
+    assert renders.call_count == 1  # only the native-word card segment
+    args = renders.call_args.args
+    assert args[0] == "reveal"
+    assert args[1] == {"native": "پانی", "romanisation": "pānī", "language": "Urdu",
+                       "script": "nastaliq", "direction": "rtl"}
+    # same duration as the card clip it replaces: ceil(sec*30) frames at 30 fps
+    until = REVEAL_TIMINGS[2]["start"]  # the card stays up through the gap
+    assert args[2] == math.ceil(max(until - REVEAL_TIMINGS[1]["start"], 0.5) * 30) / 30
+    assert args[3] == "landscape" and args[4].name == "seg_001.mp4"
+    assert {"accent", "bg"} <= set(args[5]) and args[5].get("fontFile", "Poppins-ExtraBold.ttf") == "Poppins-ExtraBold.ttf"
+    assert args[5]["accent"] == list(channel.style["accent"])
+    assert cards.call_count == 3  # the other three segments use the still card clip
+    assert [c.name for c in clips][1] == "seg_reveal.mp4"
+
+
+def test_reveal_off_when_motion_false(tmp_path, monkeypatch, channel):
+    """style.motion false (channel.json today) -> no remotion call at all, every clip a card."""
+    from pipeline import remotion
+
+    renders = MagicMock()
+    monkeypatch.setattr(remotion, "render_segment", renders)
+    monkeypatch.setattr(remotion, "ensure_installed", MagicMock(return_value=True))
+    monkeypatch.setattr(words, "render_card", lambda *a, **k: tmp_path / "c.png")
+    monkeypatch.setattr(words, "card_clip", MagicMock(side_effect=lambda png, sec, out, orientation: out))
+
+    clips = words._segment_clips(REVEAL_TIMINGS, "portrait", channel, tmp_path / "work")
+
+    renders.assert_not_called()
+    assert len(clips) == len(REVEAL_TIMINGS)
+
+
+def test_reveal_failure_falls_back_to_card(tmp_path, monkeypatch, channel):
+    """remotion.render_segment raising -> the existing still card clip is used for that segment."""
+    from pipeline import remotion
+
+    channel = _motion_channel(channel)
+    monkeypatch.setattr(remotion, "render_segment", MagicMock(side_effect=RuntimeError("chrome missing")))
+    monkeypatch.setattr(remotion, "ensure_installed", MagicMock(return_value=True))
+    monkeypatch.setattr(remotion, "bundled_entry_point", lambda: "src/Root.tsx")
+    monkeypatch.setattr(words, "render_card", lambda *a, **k: tmp_path / "c.png")
+    cards = MagicMock(side_effect=lambda png, sec, out, orientation: out)
+    monkeypatch.setattr(words, "card_clip", cards)
+
+    clips = words._segment_clips(REVEAL_TIMINGS, "landscape", channel, tmp_path / "work")
+
+    assert len(clips) == len(REVEAL_TIMINGS)  # one clip per segment, no gaps
+    assert cards.call_count == 4  # the failed reveal fell back to the card path
+
+
+def test_reveal_direction_rtl_for_urdu_and_ltr_others(channel, fixture):
+    """nastaliq/arabic scripts reveal right to left; every other script left to right."""
+    ur = next(cfg for cfg in words.languages(channel) if cfg["code"] == "ur")
+    urdu = next(l for l in fixture["languages"] if l["code"] == "ur")
+    assert words._reveal_payload(ur, urdu) == {"native": "پانی", "romanisation": "pānī", "language": "Urdu",
+                                               "script": "nastaliq", "direction": "rtl"}
+    for cfg, lang in zip(words.languages(channel), fixture["languages"]):
+        payload = words._reveal_payload(cfg, lang)
+        assert payload["direction"] == ("rtl" if cfg["script"] in ("arabic", "nastaliq") else "ltr")
+        assert payload["script"] == cfg["script"] and payload["language"] == cfg["name"]
+        assert payload["native"] == lang["native"] and payload["romanisation"] == lang["romanisation"]
+    # segment plans attach the payload to the native-word card segments only
+    long = words.long_segments(channel, fixture)
+    with_reveal = [s for s in long if s.get("reveal")]
+    assert len(with_reveal) == 2 * len(words.languages(channel))
+    assert all(s["card"]["headline"] == s["reveal"]["native"] for s in with_reveal)
+    assert not any(s.get("reveal") for s in long if s not in with_reveal)
+    short = words.short_segments(channel, fixture, "ur")
+    assert [s.get("reveal") for s in short].count(words._reveal_payload(ur, urdu)) == 3

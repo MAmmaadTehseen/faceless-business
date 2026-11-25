@@ -46,7 +46,9 @@
     "caption_colour": "&H00FFFFFF",
     "caption_outline": "&HA0000000",
     "font_size_long": 20,
-    "font_size_short": 26
+    "font_size_short": 26,
+    "fonts": {"caption": "BebasNeue-Regular.ttf", "headline": "Exo2-Black.ttf"},
+    "motion": false
   },
   "footage": {
     "providers": [

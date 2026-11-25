@@ -616,6 +616,24 @@ def publish_short(db, short_row, channel, privacy, long_url=None, *, slot=None, 
     return results
 
 
+def mark_published_now(db, content_id: str) -> int:
+    """Owner `--now` runs: public uploads went live at once, so record publish_at as now.
+
+    The calendar slot chosen for the row would otherwise stay in the future, holding that slot
+    and making Reels wait for it (reels_wait_for_youtube). Only public live YouTube rows of the
+    content and its child Shorts change. Returns the number of rows updated.
+    """
+    ids = [content_id] + [r["id"] for r in db.select("content", {"parent_id": content_id})]
+    now = datetime.now(timezone.utc).isoformat()
+    n = 0
+    for cid in ids:
+        for p in db.select("publications", {"content_id": cid, "platform": "youtube"}):
+            if p.get("status") == "live" and p.get("privacy") == "public":
+                db.update("publications", {"id": p["id"]}, {"publish_at": now})
+                n += 1
+    return n
+
+
 def publish_all(db, content_id, privacy="private", channel=None):
     long = db.one("content", {"id": content_id})
     channel = channel or Channel(long.get("channel") or "futurework")

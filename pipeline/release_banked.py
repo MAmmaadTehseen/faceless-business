@@ -71,7 +71,7 @@ def release_one(db, channel, row, drive):
             from .render import add_hook_card
             try:
                 src = Path(changes['file_path'])
-                changes['file_path'] = str(add_hook_card(src, src.with_name(src.stem + '.hook.mp4'), current.get('title') or saved.get('title') or ''))
+                changes['file_path'] = str(add_hook_card(src, src.with_name(src.stem + '.hook.mp4'), current.get('title') or saved.get('title') or '', style=channel.style))
             except Exception as exc:  # the Short still publishes without the card
                 log.warning('hook card skipped for %s (%s)', saved['id'], type(exc).__name__)
         db.update('content', {'id': saved['id']}, changes)

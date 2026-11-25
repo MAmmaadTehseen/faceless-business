@@ -1,0 +1,26 @@
+{
+  "name": "faceless-motion",
+  "version": "1.0.0",
+  "description": "Remotion compositions for animated explainer segments",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "studio": "remotion studio",
+    "render": "remotion render"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@remotion/cli": "4.0.547",
+    "@remotion/renderer": "4.0.547",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.547"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3"
+  },
+  "private": true
+}

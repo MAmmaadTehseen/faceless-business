@@ -190,6 +190,21 @@ def nasa_hint(claude) -> str:
             "'Artemis II rocket launch', 'James Webb telescope mirror'), overriding the generic-query rule for shot_list.\n")
 
 
+def motion_hint(claude) -> str:
+    """Channels with style.motion (Remotion compositions, pipeline/render.py) may script
+    TIMELINE/SCALE/ORBIT/TEXT shots in addition to CARD/CHART/MAP: the renderer animates them."""
+    ch = getattr(claude, "channel", None)
+    if not ch or not (getattr(ch, "style", None) or {}).get("motion"):
+        return ""
+    return ("Motion-graphics note: this channel renders animated diagrams, so `shots` and shot-list queries "
+            "may also use 'TIMELINE: title | 1977=Launch, 1979=Jupiter' (an animated progression of dated events "
+            "the script states), 'SCALE: title | label=value, label=value' (an animated size or distance comparison), "
+            "'ORBIT: Body, Body | label' (bodies orbiting a primary) and 'TEXT: <key line, max 8 words>' "
+            "(one key line as an animated title card). Use them only with facts the script states, at most four "
+            "non-footage shots (CARD/CHART/MAP/TIMELINE/SCALE/ORBIT/TEXT) per Short and about one paragraph in "
+            "four for long videos, and prefer stock footage wherever a matching clip exists.\n")
+
+
 def retention_hint(claude, kind: str) -> str:
     """This channel's measured drop-off moments from the weekly retention review (pipeline.retention_review)."""
     ch = getattr(claude, "channel", None)
@@ -206,6 +221,7 @@ def write_script(claude: Claude, topic: dict, content_id: str, shorts_per_long: 
         f"Seed headline: {topic.get('source_headline') or ''}\nSeed url: {topic.get('source_url') or ''}\n"
         f"{search_block(topic)}\n"
         f"{nasa_hint(claude)}"
+        f"{motion_hint(claude)}"
         f"{retention_hint(claude, 'long')}{retention_hint(claude, 'short')}"
         "Step 1: research. Use web search to confirm the core facts, find 4-8 concrete, recent, attributable facts "
         "(numbers, names, dates, quotes) and at least one contrasting view. Prefer primary sources and major outlets.\n"
