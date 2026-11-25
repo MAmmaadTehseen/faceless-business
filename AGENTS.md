@@ -387,3 +387,18 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
 - `pipeline/retention_review.py`: weekly from sync, stores drop-off moments in `retention_lessons_<channel>`;
   prompts include them via `retention_hint`. Details: docs/growth-log.md rounds 5 and 5b.
 
+
+## Ten Tongues bank and film batch (2026-11-25)
+- `python -m pipeline.words --channel tentongues --bank` produces a full episode (long + language Shorts) and stores it
+  through `stockpile.bank_bundle` (Drive manifest, checksums, status `banked`, no publications, no explainer article).
+  Words are claimed under the `words_pick_<key>` lock and marked used at pick time, so parallel bank jobs never repeat.
+  Cloud: `gh workflow run words.yml -f bank=true -f count=N -f provider=lunaroute` (matrix, 3 at a time, max 20 per run;
+  `provider=lunaroute` also sets LUNAROUTE_THINKING_BUDGET=3000). Bank runs log `runs.workflow = words-bank`.
+- Release: `release_banked` publishes words bundles like others and then writes the deterministic words article.
+  Sync runs `release_banked --channel tentongues --fill-gap`: after 06:00 UTC (`words_fill_after_hour_utc`), if no long
+  video is scheduled for today or later and no live `words` run is in flight, one banked episode takes the next free
+  calendar slot. Setting `words_bank_fill_enabled` (default true) turns it off. It never adds a second episode to a covered day.
+- Film batch: `gh workflow run recap.yml -f action=produce -f parallel=N -f provider=lunaroute` runs N jobs (4 at once,
+  max 40), each claiming its own inbox film (`recap_claim_<film id>` setting; stale after 6 h) and never uploading.
+  Films without a rights sidecar stay in the inbox as `needs rights`. Uploads still come only from `approve` via the
+  scheduled run, and every upload takes a channel calendar slot.

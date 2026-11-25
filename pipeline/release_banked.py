@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from .common import Channel, OUT_DIR, now_iso, slugify, log
 from .db import DB
@@ -93,7 +93,13 @@ def release_one(db, channel, row, drive):
     publications = [db.one('publications', {'content_id': saved['id'], 'platform': 'youtube'}) or {} for saved in rows]
     if not all(p.get('platform_id') for p in publications):
         return False
-    if manifest.get('article'):
+    if channel.cfg.get('format') == 'words':
+        try:  # deterministic, no model calls; a failure never blocks the release
+            from .words_article import write_words_article
+            write_words_article(db, row['id'])
+        except Exception as exc:
+            log.warning('words article skipped for %s (%s)', row['id'], type(exc).__name__)
+    elif manifest.get('article'):
         from .article import article_thumbnail, ping_indexnow
         from .publish.youtube_promotion import article_saved
         article = dict(manifest['article'])
@@ -168,14 +174,48 @@ def _release(db, channel, maximum=1, *, scheduled=False, drive=None):
     return completed
 
 
+def day_covered(db, channel, now=None):
+    """True when a long video is scheduled (live or queued) for today or later, or a words run is in flight."""
+    now = now or datetime.now(timezone.utc)
+    today = now.date().isoformat()
+    longs = {c['id'] for c in db.select('content', {'channel': channel.key}) if c.get('kind') == 'long'}
+    for p in db.select('publications', {'platform': 'youtube'}):
+        if p['content_id'] in longs and p.get('status') in ('live', 'queued', 'uploading') and str(p.get('publish_at') or '')[:10] >= today:
+            return True
+    recent = (now - timedelta(hours=4)).isoformat()
+    return any(r.get('status') == 'running' and str(r.get('started_at') or r.get('created_at') or '') >= recent
+               for r in db.select('runs', {'workflow': 'words', 'channel': channel.key}))
+
+
+def fill_gap(db, channel, *, now=None, drive=None):
+    """Words channels: release one banked episode when the daily run left nothing scheduled.
+
+    Runs after the daily production window (setting `words_fill_after_hour_utc`, default 6) so an
+    in-flight live run is never doubled; the calendar gives the release the next free long slot.
+    Setting `words_bank_fill_enabled` (default true) turns it off.
+    """
+    now = now or datetime.now(timezone.utc)
+    if channel.cfg.get('format') != 'words' or db.setting('words_bank_fill_enabled', True) is False:
+        return 0
+    if now.hour < int(db.setting('words_fill_after_hour_utc', 6)) or day_covered(db, channel, now):
+        return 0
+    if not pending(db, channel):
+        return 0
+    log.info('release[%s]: no episode scheduled today; releasing one banked episode', channel.key)
+    return release(db, channel, 1, drive=drive)
+
+
 def main():
     ap = argparse.ArgumentParser(__doc__)
+    ap.add_argument('--fill-gap', action='store_true', help='words channels: release one bundle if nothing is scheduled today')
     ap.add_argument('--channel', required=True, choices=Channel.keys())
     ap.add_argument('--max', type=int, default=1)
     ap.add_argument('--scheduled', action='store_true')
     args = ap.parse_args()
     try:
-        print(f'Released {release(DB(), Channel(args.channel), args.max, scheduled=args.scheduled)} bundles')
+        db, channel = DB(), Channel(args.channel)
+        n = fill_gap(db, channel) if args.fill_gap else release(db, channel, args.max, scheduled=args.scheduled)
+        print(f'Released {n} bundles')
     except Exception as exc:
         # Provider exceptions can contain transport details; keep CLI logs safe.
         log.error('Stockpile release stopped (%s); checkpoint retained', type(exc).__name__)

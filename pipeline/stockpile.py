@@ -107,7 +107,8 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
     out = OUT_DIR / content_id
     article = None
     article_failed = False
-    if root['kind'] == 'long':
+    if root['kind'] == 'long' and channel.cfg.get('format') != 'words':
+        # Words episodes build their hub article deterministically at release (words_article).
         from .article import write_article
         cached = out / 'bank-article.json'
         try:

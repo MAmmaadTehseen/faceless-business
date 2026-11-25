@@ -54,6 +54,8 @@ jobs:
           for channel in futurework tradewinds escapevelocity; do
             python -m pipeline.release_banked --channel "$channel" --max 100 --scheduled
           done
+      - name: Ten Tongues never misses a day (one banked episode when nothing is scheduled today)
+        run: python -m pipeline.release_banked --channel tentongues --fill-gap
       - name: Warm the dashboard cache with the new data
         if: always()
         run: curl -fsS --max-time 90 https://faceless.ammaad.online/api/warm || true

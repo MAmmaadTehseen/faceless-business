@@ -23,23 +23,63 @@ on:
       artifact_run_id:
         description: "Run id holding words-<channel>-<run_id> (for resume)"
         required: false
+      bank:
+        description: "Bank episodes to the Drive stockpile instead of publishing"
+        type: boolean
+        default: false
+      count:
+        description: "Bank mode: episodes to produce (parallel jobs, 3 at a time, max 20 per run)"
+        default: "1"
+        required: false
+      provider:
+        description: "LLM provider override for this run only (blank = Actions variable)"
+        type: choice
+        options: ["", anthropic, lunaroute]
+        required: false
 concurrency:
-  group: words-${{ github.event.inputs.channel || 'tentongues' }}
+  # Bank runs are independent of the daily run and of each other (words are claimed under a DB lock).
+  group: words-${{ github.event.inputs.channel || 'tentongues' }}${{ inputs.bank && format('-bank-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 permissions:
   contents: write
   actions: read
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      jobs: ${{ steps.plan.outputs.jobs }}
+    steps:
+      - id: plan
+        env:
+          BANK: ${{ inputs.bank }}
+          COUNT: ${{ inputs.count }}
+        run: |
+          n=1
+          if [ "$BANK" = "true" ]; then
+            [[ "$COUNT" =~ ^[0-9]+$ ]] || { echo "count must be a number" >&2; exit 1; }
+            n=$(( COUNT < 1 ? 1 : COUNT > 20 ? 20 : COUNT ))
+          fi
+          echo "jobs=$(python3 -c "import json,sys; print(json.dumps(list(range(1, int(sys.argv[1]) + 1))))" "$n")" >> "$GITHUB_OUTPUT"
   words:
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        n: ${{ fromJSON(needs.plan.outputs.jobs) }}
     env:
       JARVIS_WEBHOOK_URL: ${{ secrets.JARVIS_WEBHOOK_URL }}
       JARVIS_WEBHOOK_SECRET: ${{ secrets.JARVIS_WEBHOOK_SECRET }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'anthropic' }}
+      LLM_PROVIDER: ${{ inputs.provider || vars.LLM_PROVIDER || 'anthropic' }}
       LUNAROUTE_API_KEY: ${{ secrets.LUNAROUTE_API_KEY }}
       LUNAROUTE_BASE_URL: ${{ vars.LUNAROUTE_BASE_URL || 'https://gw.lunaroute.com' }}
+      # GLM thinks to max_tokens on long structured prompts unless capped (recap uses the same cap).
+      LUNAROUTE_THINKING_BUDGET: ${{ inputs.provider == 'lunaroute' && '3000' || '' }}
+      GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
@@ -97,9 +137,11 @@ jobs:
           PRIVACY: ${{ github.event.inputs.privacy }}
           WORD: ${{ github.event.inputs.word }}
           RESUME_ID: ${{ github.event.inputs.resume_id }}
+          BANK: ${{ inputs.bank }}
         run: |
           case "$CHANNEL" in tentongues) ;; *) echo "Unknown words channel: $CHANNEL" >&2; exit 1 ;; esac
           ARGS=(--channel "$CHANNEL" --publish)
+          if [ "$BANK" = "true" ]; then ARGS=(--channel "$CHANNEL" --bank); fi
           if [ -n "$PRIVACY" ]; then ARGS+=(--privacy "$PRIVACY"); fi
           if [ -n "$WORD" ]; then ARGS+=(--word "$WORD"); fi
           if [ -n "$RESUME_ID" ]; then ARGS+=(--resume "$RESUME_ID"); fi
@@ -108,7 +150,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: words-${{ github.event.inputs.channel || 'tentongues' }}-${{ github.run_id }}
+          name: words-${{ github.event.inputs.channel || 'tentongues' }}-${{ github.run_id }}${{ inputs.bank && format('-{0}', matrix.n) || '' }}
           path: |
             out/**/*.mp4
             out/**/*.jpg

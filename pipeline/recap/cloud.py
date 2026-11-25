@@ -10,6 +10,8 @@ import json
 import os
 import shutil
 import sys
+import time
+import uuid
 from pathlib import Path
 
 from . import core
@@ -194,8 +196,30 @@ def scan(db, accounts_):
     return report
 
 
-def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True):
-    """Produce up to `limit` inbox films, newest account order first. Returns per-film statuses."""
+CLAIM_TTL = 6 * 3600  # longer than the 350-minute job timeout
+
+
+def claim_film(db, ident):
+    """Parallel batch jobs share one inbox: the first job to insert the claim row owns the film.
+    A claim older than CLAIM_TTL belongs to a cancelled runner and is taken over."""
+    from pipeline.stockpile import _lock_age
+    key, owner = "recap_claim_" + ident, f"{uuid.uuid4().hex}@{int(time.time())}"
+    try:
+        db.insert("settings", {"key": key, "value": owner})
+        return True
+    except Exception:
+        current = db.setting(key)
+        if current == owner:
+            return True
+        if current is not None and _lock_age(current) > CLAIM_TTL:
+            db.set_setting(key, owner)
+            return db.setting(key) == owner
+        return False
+
+
+def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True, claim=False):
+    """Produce up to `limit` inbox films, newest account order first. Returns per-film statuses.
+    With `claim`, films another job has claimed are skipped (batch mode, one film per job at a time)."""
     from .worker import generate
     runner = runner or generate
     results = []
@@ -241,6 +265,8 @@ def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True):
                                           "content_hash": f["md5Checksum"], "status": "needs rights", "project_id": None,
                                           "content_ids": "[]", "rights": "{}", "duplicate_confirmed": False}, on="id")
                 results.append({"id": ident, "status": "needs rights"})
+                continue
+            if claim and not claim_film(db, ident):
                 continue
             local = INBOX_DIR / f["name"]
             log(f"recap cloud: downloading film {ident} from account {account.slot}")
@@ -647,6 +673,8 @@ def main():
     parser.add_argument("--project", help="regenerate: project id (state.json id) in approve/ or review/")
     parser.add_argument("--piece", choices=list(core.PIECES), help="regenerate: which piece to re-make")
     parser.add_argument("--gated", action="store_true", help="Exit quietly unless setting recap_cloud_enabled is true")
+    parser.add_argument("--claim", action="store_true", help="produce: batch mode, skip films claimed by a parallel job")
+    parser.add_argument("--no-upload", action="store_true", help="produce: never upload in this run (batch jobs leave uploads to the scheduled run)")
     args = parser.parse_args()
     os.environ.setdefault("LUNAROUTE_THINKING_BUDGET", "3000")
     from pipeline.db import DB
@@ -673,8 +701,9 @@ def main():
     elif args.action == "upload":
         result = upload_approved(db, found)
     else:
-        result = produce(db, found, limit=args.limit, auto_upload=_strict_enabled(db.setting("recap_auto_upload", True)))
-        if any(r.get("queued_for_upload") for r in result):
+        result = produce(db, found, limit=args.limit, auto_upload=_strict_enabled(db.setting("recap_auto_upload", True)),
+                         claim=args.claim)
+        if any(r.get("queued_for_upload") for r in result) and not args.no_upload:
             result += upload_approved(db, found)
     print(json.dumps(result))
     if any(r["status"] in ("failed", "upload failed", "qa failed") for r in result):

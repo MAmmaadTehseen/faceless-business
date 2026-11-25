@@ -430,7 +430,7 @@ def _notes(issues, channel) -> dict:
 
 
 def produce_episode(db, channel: Channel, *, dry_run=False, no_publish=False, privacy=None,
-                    resume: str | None = None, word: str | None = None) -> dict:
+                    resume: str | None = None, word: str | None = None, bank: bool = False) -> dict:
     if channel.cfg.get("format") != "words":
         raise ValueError(f"channel {channel.key} is not a words-format channel")
     if db.setting("pipeline_paused", False) and not dry_run:
@@ -451,10 +451,17 @@ def produce_episode(db, channel: Channel, *, dry_run=False, no_publish=False, pr
         word = data["word"]
         content_id = f"{channel.key}-{today}-{slugify(word, 30)}"
     else:
-        word = pick_word(db, channel, word)
-        content_id = f"{channel.key}-{today}-{slugify(word, 30)}"
-        db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "long", "topic": word,
-                              "title": f"{word.upper()} in 10 languages", "status": "draft"}, on="id")
+        if bank:
+            from .stockpile import preflight
+            preflight(db)  # Drive space before paying for the episode
+        # Parallel bank runs share the inventory: pick and claim the word (draft row) under one lock.
+        from .stockpile import lock
+        with lock(db, f"words_pick_{channel.key}", wait_seconds=600):
+            word = pick_word(db, channel, word)
+            content_id = f"{channel.key}-{today}-{slugify(word, 30)}"
+            db.upsert("content", {"id": content_id, "channel": channel.key, "kind": "long", "topic": word,
+                                  "title": f"{word.upper()} in 10 languages", "status": "draft"}, on="id")
+            mark_used(db, channel, word)
         data = generate_episode(claude, db, channel, word, content_id)
     data = validate_episode(data, langs)
     out = OUT_DIR / content_id
@@ -517,7 +524,10 @@ def produce_episode(db, channel: Channel, *, dry_run=False, no_publish=False, pr
         mark_used(db, channel, word)
     result = {"content_id": content_id, "word": word, "video": str(video), "thumbnail": str(thumb),
               "shorts": [s["file"] for s in shorts], "title": data["title"]}
-    if not dry_run and not no_publish:
+    if bank and not dry_run:
+        from .stockpile import bank_bundle
+        result["stockpile"] = bank_bundle(db, content_id, channel, claude=claude)
+    elif not dry_run and not no_publish:
         from .publish import publish_all
         result["publications"] = publish_all(db, content_id, privacy or db.setting("publish_privacy", "private"), channel)
         if any(p.get("platform") == "youtube" and p.get("content_id") == content_id for p in result["publications"]):
@@ -539,13 +549,15 @@ def main():
     ap.add_argument("--privacy", choices=["private", "public", "unlisted"])
     ap.add_argument("--word", help="force a word from words.json (owner re-runs)")
     ap.add_argument("--resume", help="content id: re-render from the saved episode without a new model call")
+    ap.add_argument("--bank", action="store_true", help="store the finished episode in the Drive stockpile, no publications")
     args = ap.parse_args()
     db = DB()
     channel = Channel(args.channel)
-    run = db.insert("runs", {"workflow": "words", "channel": channel.key, "status": "running"})
+    # Bank runs log separately so the daily gap fill never mistakes them for the live run.
+    run = db.insert("runs", {"workflow": "words-bank" if args.bank else "words", "channel": channel.key, "status": "running"})
     try:
         result = produce_episode(db, channel, dry_run=args.dry_run, no_publish=args.no_publish or not args.publish,
-                                 privacy=args.privacy, resume=args.resume, word=args.word)
+                                 privacy=args.privacy, resume=args.resume, word=args.word, bank=args.bank)
         from .publish import youtube
         expired = youtube.auth_failed(channel)
         db.update("runs", {"id": run["id"]}, {"status": "failed" if expired else "ok" if result else "skipped",

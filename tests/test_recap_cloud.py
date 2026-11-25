@@ -467,3 +467,20 @@ def test_regenerate_promotes_review_folder_once_long_passes(tmp_path, monkeypatc
     assert account.files["rev-3"]["parent"] == "f-approve"
     latest = json.loads([f for f in account.files.values() if f["parent"] == "rev-3" and f["name"] == "state.json"][-1]["bytes"])
     assert latest["items"]["long"]["qa"]["pass"] and not latest["items"]["short2"]["qa"]["pass"]
+
+
+def test_claimed_film_is_skipped_by_parallel_job(tmp_path, monkeypatch, db, video):
+    monkeypatch.setattr(core, "OUTPUT", tmp_path / "recap")
+    monkeypatch.setattr(cloud, "INBOX_DIR", tmp_path / "inbox")
+    rights = b'{"basis": "own work"}'
+    account = FakeAccount(1, {"Film A 2020.mp4": Path(video).read_bytes(), "Film A 2020.json": rights,
+                              "Film B 2021.mp4": Path(video).read_bytes(), "Film B 2021.json": rights})
+    taken = cloud.film_id("md5-Film A 2020.mp4")
+    assert cloud.claim_film(db, taken)            # another job owns Film A
+    assert not cloud.claim_film(db, taken)        # and nobody else can take it
+    result = cloud.produce(db, [account], limit=2, runner=fake_runner, log=lambda *_: None, claim=True)
+    assert [r["id"] for r in result] == [cloud.film_id("md5-Film B 2021.mp4")]
+    assert account.files["in0"]["parent"] == "f-inbox"
+    # A stale claim (cancelled runner) is taken over.
+    db.set_setting("recap_claim_" + taken, "dead@1")
+    assert cloud.claim_film(db, taken)

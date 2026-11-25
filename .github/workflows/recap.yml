@@ -24,19 +24,49 @@ on:
         type: choice
         options: [short1, short2, short3, short4, long]
         default: short1
+      parallel:
+        description: "produce: batch mode, this many parallel jobs (max 4 at once, up to 40); each claims its own films and never uploads"
+        type: number
+        default: 1
+      provider:
+        description: "LLM provider override for this run only (blank = Actions variable)"
+        type: choice
+        options: ["", anthropic, lunaroute]
+        default: ""
 # contents: write lets large queued media (>45 MB) be checkpointed as release assets before upload, like shorts.yml.
 permissions:
   contents: write
 concurrency:
-  group: recap
+  # Batch runs are separate from the scheduled run; films are claimed per job in the database.
+  group: recap${{ inputs.parallel > 1 && format('-batch-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      jobs: ${{ steps.plan.outputs.jobs }}
+    steps:
+      - id: plan
+        env:
+          PARALLEL: ${{ inputs.parallel }}
+        run: |
+          n=${PARALLEL:-1}
+          [[ "$n" =~ ^[0-9]+$ ]] || n=1
+          n=$(( n < 1 ? 1 : n > 40 ? 40 : n ))
+          echo "jobs=$(python3 -c "import json,sys; print(json.dumps(list(range(1, int(sys.argv[1]) + 1))))" "$n")" >> "$GITHUB_OUTPUT"
   recap:
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        job: ${{ fromJSON(needs.plan.outputs.jobs) }}
     env:
       PYTHON_DOTENV_DISABLED: "1"
-      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'anthropic' }}
+      LLM_PROVIDER: ${{ inputs.provider || vars.LLM_PROVIDER || 'anthropic' }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       LUNAROUTE_API_KEY: ${{ secrets.LUNAROUTE_API_KEY }}
       LUNAROUTE_BASE_URL: ${{ vars.LUNAROUTE_BASE_URL || 'https://gw.lunaroute.com' }}
@@ -60,6 +90,7 @@ jobs:
       RECAP_WHISPER_MODEL: ${{ vars.RECAP_WHISPER_MODEL || 'small' }}
       HF_HOME: ${{ github.workspace }}/.hf
       GATED: ${{ github.event_name == 'schedule' && '--gated' || '' }}
+      BATCH: ${{ inputs.parallel > 1 && '--no-upload' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -76,17 +107,17 @@ jobs:
           path: .hf
           key: recap-models-v1
       - name: Reels and Page posts for recaps that went public
-        if: inputs.action == 'both' || inputs.action == 'upload' || github.event_name == 'schedule'
+        if: (inputs.action == 'both' || inputs.action == 'upload' || github.event_name == 'schedule') && !(inputs.parallel > 1)
         run: python -m pipeline.recap.cloud social $GATED
       - name: Upload approved folders
-        if: inputs.action == 'both' || inputs.action == 'upload' || github.event_name == 'schedule'
+        if: (inputs.action == 'both' || inputs.action == 'upload' || github.event_name == 'schedule') && !(inputs.parallel > 1)
         run: python -m pipeline.recap.cloud upload $GATED
       - name: Scan inboxes
         if: inputs.action == 'scan'
         run: python -m pipeline.recap.cloud scan
       - name: Produce inbox films
         if: inputs.action == 'both' || inputs.action == 'produce' || github.event_name == 'schedule'
-        run: python -m pipeline.recap.cloud produce --limit "${{ inputs.limit || 1 }}" $GATED
+        run: python -m pipeline.recap.cloud produce --limit "${{ inputs.limit || 1 }}" --claim $GATED $BATCH
       - name: Regenerate one piece
         if: inputs.action == 'regenerate'
         run: python -m pipeline.recap.cloud regenerate --project "${{ inputs.project }}" --piece "${{ inputs.piece }}"
