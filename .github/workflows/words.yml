@@ -102,6 +102,7 @@ jobs:
       # GLM thinks to max_tokens on long structured prompts unless capped (recap uses the same cap).
       LUNAROUTE_THINKING_BUDGET: ${{ inputs.provider == 'lunaroute' && '3000' || '' }}
       GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+      STOCKPILE_BACKEND: ${{ vars.STOCKPILE_BACKEND || 'drive' }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
@@ -117,6 +118,20 @@ jobs:
       PIPER_VOICES_DIR: ${{ github.workspace }}/.piper
     steps:
       - uses: actions/checkout@v4
+      - name: Join the tailnet (home-server stockpile)
+        if: vars.STOCKPILE_BACKEND == 'homelab'
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Home-server SSH key
+        if: vars.STOCKPILE_BACKEND == 'homelab'
+        env:
+          HOMELAB_SSH_KEY: ${{ secrets.HOMELAB_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && printf '%s\n' "$HOMELAB_SSH_KEY" > ~/.ssh/homelab_ci && chmod 600 ~/.ssh/homelab_ci
+          echo "HOMELAB_SSH_KEY_FILE=$HOME/.ssh/homelab_ci" >> "$GITHUB_ENV"
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
       - name: System packages (ffmpeg, espeak-ng, Noto fonts for every script)

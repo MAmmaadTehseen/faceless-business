@@ -20,7 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pipeline import publish, release_banked  # noqa: E402
 from pipeline.common import Channel, log  # noqa: E402
 from pipeline.db import DB  # noqa: E402
-from pipeline.drive import Drive  # noqa: E402
+from pipeline.homelab_store import backend_for  # noqa: E402
+from pipeline.stockpile import notes as stockpile_notes  # noqa: E402
 
 
 def spaced_slot(db, channel, gap, now=None, exclude=None):
@@ -73,7 +74,6 @@ def main():
 
 def burst(db, channel, bundles):
     done = 0
-    drive = Drive()
     for row in release_banked.pending(db, channel):
         if done >= bundles:
             break
@@ -81,7 +81,7 @@ def burst(db, channel, bundles):
         if not release_banked.capacity(db, [row, *children]):
             log.warning("quota full; rerun after the reset (08:00 UTC)")
             break
-        if not release_banked.release_one(db, channel, row, drive):
+        if not release_banked.release_one(db, channel, row, backend_for(stockpile_notes(row)['stockpile'])):
             log.warning("%s not fully released (quota or upload); rerun later", row["id"])
             break
         done += 1

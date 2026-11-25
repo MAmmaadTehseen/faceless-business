@@ -7,6 +7,7 @@ from pathlib import Path
 from .common import Channel, OUT_DIR, now_iso, slugify, log
 from .db import DB
 from .drive import Drive
+from .homelab_store import backend_for
 from .stockpile import notes, lock
 
 
@@ -171,7 +172,7 @@ def _release(db, channel, maximum=1, *, scheduled=False, drive=None):
         if row['id'] not in ledger:
             ledger.append(row['id'])
             db.set_setting(ledger_key, ledger)
-        if release_one(db, channel, row, drive or Drive()):
+        if release_one(db, channel, row, drive or backend_for(notes(row)['stockpile'])):
             completed += 1
         else:
             break

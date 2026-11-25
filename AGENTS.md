@@ -403,3 +403,8 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   Films without a rights sidecar stay in the inbox as `needs rights`. Uploads still come only from `approve` via the
   scheduled run, and every upload takes a channel calendar slot.
 - Setting `stockpile_delete_released` (true since 2026-11-25, owner decision) permanently deletes a bundle's Drive folder after release instead of moving it to `released/`; `banked_release_per_day` raised to 2.
+- Home-server stockpile (2026-11-25): `pipeline/homelab_store.py` stores bundles on ammaadlab `/mnt/data/stockpile` (287 GB,
+  20 GiB floor) over Tailscale + SSH, same interface as Drive; checkpoints record `backend`, so existing Drive bundles still
+  release from Drive. Actions variable `STOCKPILE_BACKEND=homelab` switches new banking; bank/words/sync workflows then join
+  the tailnet (secrets `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, tag `tag:ci`) and use `HOMELAB_SSH_KEY` (key restricted to
+  100.64.0.0/10 in the server's authorized_keys). Locally: `HOMELAB_SSH_KEY_FILE=~/.ssh/faceless_ci_stockpile`.

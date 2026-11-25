@@ -7,6 +7,13 @@ import time
 from pathlib import Path
 from .common import OUT_DIR, now_iso, write_json, log
 from .drive import Drive, digest
+from .homelab_store import HomelabStore
+import os
+
+
+def backend_for():
+    """New bundles go to the home server when STOCKPILE_BACKEND=homelab, else Google Drive."""
+    return HomelabStore() if os.getenv('STOCKPILE_BACKEND') == 'homelab' else Drive()
 
 
 def notes(row):
@@ -63,7 +70,7 @@ def lock(db, name, wait_seconds=0):
 
 
 def preflight(db, drive=None):
-    drive = drive or Drive()
+    drive = drive or backend_for()
     # Conservative allowance before paying for production; exact bundle checked later.
     space = drive.space(2 * 1024**3)
     db.set_setting('stockpile_drive_space', {**space, 'checked_at': now_iso()})
@@ -93,7 +100,7 @@ def bank_bundle(db, content_id, channel, *, claude=None, drive=None):
 
 
 def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
-    drive = drive or Drive()
+    drive = drive or backend_for()
     root = db.one('content', {'id': content_id})
     if notes(root).get('stockpile'):
         raise RuntimeError('Bundle already checkpointed; release or recover it before banking again')
@@ -158,7 +165,7 @@ def _bank_bundle(db, content_id, channel, *, claude=None, drive=None):
     manifest_path = out / 'manifest.json'
     write_json(manifest_path, manifest)
     manifest_id = drive.upload(manifest_path, folder)
-    metadata = {'root_id': drive_root, 'folder_id': folder, 'manifest_id': manifest_id,
+    metadata = {'backend': getattr(drive, 'backend', 'drive'), 'root_id': drive_root, 'folder_id': folder, 'manifest_id': manifest_id,
         'manifest_sha256': digest(manifest_path), 'files': entries, 'bytes': total + manifest_path.stat().st_size,
         'banked_at': now_iso(), 'released': False, 'article_failed': article_failed}
     mark_banked(db, rows, metadata)

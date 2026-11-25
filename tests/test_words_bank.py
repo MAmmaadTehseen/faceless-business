@@ -89,3 +89,22 @@ def test_extra_language_entry_is_dropped():
     data = json.loads(words.FIXTURE.read_text())
     data['languages'].append({**data['languages'][0], 'code': 'fr-example-note'})
     assert [l['code'] for l in words.validate_episode(data, langs)['languages']] == [l['code'] for l in langs]
+
+
+def test_homelab_store_bank_and_release_roundtrip(tmp_path, monkeypatch):
+    from pipeline.homelab_store import HomelabStore, backend_for
+    db, _ = words_bundle(tmp_path, monkeypatch)
+    store = HomelabStore(root=str(tmp_path / 'server'), local=True)
+    monkeypatch.setattr('pipeline.homelab_store.FLOOR', 0)
+    ch = Channel('tentongues')
+    meta = stockpile.bank_bundle(db, CID, ch, drive=store)
+    assert meta['backend'] == 'homelab' and meta['folder_id'].startswith(str(tmp_path / 'server'))
+    assert isinstance(backend_for(meta), HomelabStore)
+    mock_publish(monkeypatch)
+    monkeypatch.setattr('pipeline.words_article.write_words_article', lambda db, cid: None)
+    db.set_setting('stockpile_delete_released', True)
+    assert release_banked.release(db, ch, drive=store) == 1
+    assert not (tmp_path / 'server' / 'Faceless Stockpile' / 'tentongues' / CID).exists()
+    import pytest
+    with pytest.raises(RuntimeError):
+        store.delete_folder(str(tmp_path))  # outside the root
