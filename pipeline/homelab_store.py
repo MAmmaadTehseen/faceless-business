@@ -70,7 +70,7 @@ class HomelabStore:
         pair = [str(src), remote] if to_remote else [remote, str(dst)]
         for attempt in range(3):
             try:
-                subprocess.run(['scp', '-q', *self._ssh_args(), *pair], check=True, timeout=3600)
+                subprocess.run(['scp', '-q', *self._ssh_args(), *pair], check=True, timeout=4 * 3600)
                 return
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                 if attempt == 2:

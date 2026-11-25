@@ -293,17 +293,33 @@ def produce(db, accounts_, limit=1, runner=None, log=print, auto_upload=True, cl
                 state["batch_resume"] = True
                 state["cloud_source"] = {"slot": account.slot, "film": f["id"], "sidecar": film["sidecar"]["id"], "registry": ident}
                 store = homelab()
+                copy = {}
                 if store:
-                    # Keep a checksummed copy on the home server; the Drive copy goes once the recap is produced.
+                    # Copy the film to the home server while the recap renders (a 3 GB film can take hours over
+                    # the tailnet). The Drive copy is deleted only when this copy finished.
+                    import threading
                     from ..drive import digest
-                    state["cloud_source"]["homelab"] = {"key": store.upload(local, homelab_dir(store, ident)),
-                                                        "sha256": digest(local), "name": f["name"]}
+
+                    def offload():
+                        try:
+                            copy.update(key=store.upload(local, homelab_dir(store, ident)), sha256=digest(local), name=f["name"])
+                        except Exception as exc:
+                            log(f"recap cloud: home-server copy failed: {type(exc).__name__}")
+                    copier = threading.Thread(target=offload, daemon=True)
+                    copier.start()
                 core.dump(work / "state.json", state)
                 restore_checkpoints(account, ident, work)
                 try:
                     runner(work, state, db=db)
                 finally:
                     save_checkpoints(account, ident, work)
+                    if store:
+                        copier.join()
+                state = json.loads((work / "state.json").read_text())
+                if copy:
+                    state.setdefault("cloud_source", {})["homelab"] = copy
+                    core.dump(work / "state.json", state)
+                store = store if copy else None
                 state = json.loads((work / "state.json").read_text())
                 # Passing recaps go straight to the upload queue; a failed long recap waits for the owner in review.
                 ready = auto_upload and bool(state["items"].get("long", {}).get("qa", {}).get("pass"))
