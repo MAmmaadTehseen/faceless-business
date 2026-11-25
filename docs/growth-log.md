@@ -850,3 +850,42 @@ The `compress_schedule.py` dry run (read-only) shows 81 scheduled YouTube upload
 - Backlog brake: re-run `compress_schedule.py` dry runs on each loop. Future Work's last long slot should stop moving later. Success means the first post-brake Future Work long publishes within 14 days of being produced.
 - Related video: Studio "Shorts" traffic source into the linked long videos (TEA, MILK, SALT, RICE, EGG, COFFEE episodes) after 14 days, read on 2026-12-09.
 - Unchanged: Ten Tongues title A/B and hour rotation (2026-12-04/08), native-language tags (2026-12-02), round 5 visuals (2026-12-08), quick vs standard Shorts (January).
+
+## Loop run: 2026-11-25 07:23 UTC
+
+### Scoreboard (`data/scoreboard/2026-11-25T07.json`)
+
+| channel | long n / median / best | short n / median / best |
+|---|---|---|
+| futurework | 14 / 8.5 / 27 | 45 / 9 / 92 |
+| tradewinds | 12 / 1 / 59 | 45 / 20 / 265 |
+| escapevelocity | 12 / 5 / 29 | 45 / 27 / 620 |
+| tentongues | 8 / 2.5 / 32 | 77 / 24 / 920 |
+| filmreview | 2 / 38 / 76 | 5 / 91 / 421 |
+
+Best long: Frame and Argument 76 (0.8% of 10,000). Best Short: "Rice in Russian: ris" 920 (2.3% of 40,000). Nothing moved in the 1.7 h since the last run. New uploads: FW "One Number Decides Every Restructure" (1 view at 0.2 d) and TT "APPLE in 10 languages" (0 views). Trade Winds "The Six-Digit Code" is still at 0 views after 0.8 days. Quick vs standard: no explainer Short under 30 s is older than 48 h yet (FW 5 standard, median 5; EV 2, median 10.5; TW 0), so no verdict. Owner to-do: nothing newly ticked.
+
+Ten Tongues Shorts older than 48 h, median views by language: Russian 282 (n=6), Italian 118, Japanese 93, Bengali 45, Urdu 40, Hindi 36, Spanish 33, French 28, Mandarin 17, Portuguese 12. Russian leads clearly. Analytics country data for the Russian Shorts: RU 166, US 150, UZ 56, PH 51, TR 41. The views come from the Shorts feed, not search, so this is learner and Russian-speaker interest. That is not enough evidence to change the language list, which is an owner decision. Logged so it can be revisited.
+
+Workflows: one `words` bank run failed at 06:36 with `DriveFull` ("Drive reserve reached; banking stopped (keep 5 GiB free)"). The 06:46 retry succeeded. This is bank territory, owned by another session, and I left it alone. Everything else in the last 30 runs succeeded.
+
+### Finding: embedding off and view counts hidden on three channels
+
+`videos.list` status, sampled across the 50 newest uploads per channel: Future Work 40 of 50, Trade Winds 50 of 50 and Escape Velocity 46 of 50 are `embeddable: false` and `publicStatsViewable: false`. Ten Tongues is 50 of 50 true. The upload body never set these fields, so each channel's Studio upload defaults applied. The impact: every hub article embeds its video (lite YouTube facade), and on these three channels those players cannot play. External embeds are blocked too, and the hidden view count removes social proof.
+
+### Shipped (c0c0c2b)
+
+- `pipeline/publish/youtube.py` `upload`: `status.embeddable` and `status.publicStatsViewable` are now always true. Test: `tests/test_youtube_upload_status.py`.
+- `pipeline/publish/reschedule.py`: the publishAt update it already sends (51 units, part=status) now also sets both fields to true. Every scheduled video that `compress()` re-slots gets fixed at no extra quota cost. `tests/test_reschedule.py` asserts it. Suite 528 passed.
+- Already-public videos stay as they are: about 136 videos at 51 units each would cost roughly 7,000 units through the API. Owner to-do added (priority 1, `yt-allow-embedding`): set the upload defaults and bulk-edit "Allow embedding" in Studio, free.
+
+### Browser
+
+- Claude in Chrome: "Related video" set on 15 child Shorts. Ten Tongues: yY1lIwFT5qA, UsaCkbq7t-k, AY9qHMT881w, YlurStgZ4o0, IWEJLF2rH0Q, 9C6Yfxl1lOQ, AYHv856nMS8, z-XYPlCH7qQ, PEkElzhlIwQ (all linked to FRUIT 1bwP3Fkk2-Y). Trade Winds: Lebb6CzRQ4o and 8WlRxnxU350 (linked to ey6S36JUzRA), tHNrVOxEURA (linked to UsX-KRHzk2Y). Escape Velocity: 1noTsFZ4Q-M and hm5scJ-jMqY (linked to YaFfHSER-Ss). Future Work: Ufu_OpUwisQ (linked to 0cHNl-pTq0Y). `yt_related_set_<id>` was written for all 15, and 91 eligible pairs remain. Method note: the picker lists only the **active Studio identity's** videos. Opening a Short's edit URL on another channel loads the page but leaves the picker empty, so switch first (avatar, Switch account) and check `ytcfg.get('CHANNEL_ID')`. Wait for `#save` to become disabled before navigating away, or a "Leave site?" dialog blocks the next page.
+- Community post: no new FW/TW/EV long went public since 05:41, apart from E_c9M-SD2TY, which already has its post.
+- Search Console: the built-in pane is signed out of Google again, so no indexing this run. The existing to-do `browser-google-signin-2` covers it. Queue: milk, coffee, apple, starship-ship-42, /c/tentongues, layoffs-fell, china-busan, october-jobs.
+
+### Measuring
+
+- Embedding: re-run the status sample on the next run. New uploads and re-slotted videos should show true. Hub embed plays (`hub_events`) on FW/TW/EV articles from 2026-11-26.
+- Unchanged: native-language tags (2026-12-02), Ten Tongues title A/B and hour rotation (2026-12-04/08), round 5 visuals (2026-12-08), Related video (2026-12-09), backlog brake (each run), quick vs standard Shorts (January).
