@@ -55,7 +55,7 @@ def lock(db, name, wait_seconds=0):
                 log.warning('Stockpile lock %s is stale; taking it over', key)
                 db.set_setting(key, owner)
                 break
-            if current is None or time.monotonic() >= deadline:
+            if time.monotonic() >= deadline:
                 raise RuntimeError('Stockpile operation locked/unavailable; review ' + key) from None
             time.sleep(10)
     try:
@@ -94,8 +94,10 @@ def mark_banked(db, rows, metadata):
 
 
 def bank_bundle(db, content_id, channel, *, claude=None, drive=None):
-    # Serialize quota checks/uploads across both production slots to preserve the reserve.
-    with lock(db, 'drive_upload', wait_seconds=3600):
+    # Serialize quota checks/uploads across both production slots to preserve Drive's reserve.
+    # The home server has hundreds of GB above its floor, so its bundles upload in parallel.
+    name = f'homelab_upload_{content_id}' if os.getenv('STOCKPILE_BACKEND') == 'homelab' else 'drive_upload'
+    with lock(db, name, wait_seconds=3600):
         return _bank_bundle(db, content_id, channel, claude=claude, drive=drive)
 
 
