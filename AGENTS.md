@@ -295,7 +295,7 @@ are absent. Review database ACLs/policies as well. The anon check does not test 
   Partial releases remain discoverable; existing uncertainty guards prohibit duplicates.
 - `bank.yml`: hourly cron gated by JSON boolean `bank_mode_enabled` (default false) and
   inclusive ISO `bank_until`; manual dispatch intentionally bypasses those two gates.
-  Global workflow concurrency + matrix max-parallel 2 caps bank jobs at two overall.
+  Global workflow concurrency + matrix max-parallel 3 runs all three explainer channels at once; a Ten Tongues words bank adds the fourth LunaRoute lane (words bank max-parallel 1).
   Sync releases after normal sync only when `banked_release_per_day` > 0 (default 0),
   counting bundles per channel per UTC day, with existing quota reserves/calendar.
 - Cross-runner settings locks fail closed after crashes. Owner may remove only
