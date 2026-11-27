@@ -4,7 +4,7 @@ R = pathlib.Path(__file__).resolve().parent
 AVATAR = R.parent / "avatar"                     # reused models, vendor code and venvs
 VOICE_PY = AVATAR / "voice/.venv/bin/python"      # Chatterbox + faster-whisper
 FACE_PY = AVATAR / ".venv/bin/python"             # torch CPU + cv2 (MuseTalk UNet/VAE use voice venv)
-FLOOR = 20 * 2**30
+FLOOR = int(float(os.environ.get("CLONE_FLOOR_GIB", "20")) * 2**30)   # override only for a single known-small step
 
 for k, v in {"TMPDIR": "work/tmp", "XDG_CACHE_HOME": "work/cache", "NUMBA_CACHE_DIR": "work/cache/numba",
              "MPLCONFIGDIR": "work/cache/mpl", "TORCH_HOME": str(AVATAR / "cache/torch")}.items():

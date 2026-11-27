@@ -1,13 +1,16 @@
-# Owner recordings, model weights, environments and renders never enter git.
 input/
-results/
-work/
-.venv*
-*.wav
 *.m4a
 *.mp3
 *.mp4
+oracle/instance.json
+oracle/launch.log
+# Owner recordings, model weights, environments and renders never enter git.
 *.pt
 *.pth
-*.safetensors
 __pycache__/
+results/
+*.safetensors
+.venv*
+.venv-oci/
+*.wav
+work/

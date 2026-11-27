@@ -27,12 +27,18 @@ class Colour:                      # slow-moving per-channel offset so generated
         self.d = d if self.d is None else 0.15 * d + 0.85 * self.d
         return np.clip(gen.astype(float) + self.d, 0, 255).astype(np.float32)
 
+class Packed:
+    """A frame kept as JPEG bytes (about 0.3 MB instead of 6 MB raw) and decoded on demand."""
+    __slots__ = ("buf", "shape")
+    def __init__(self, f): self.buf = cv2.imencode(".jpg", f, [cv2.IMWRITE_JPEG_QUALITY, 96])[1]; self.shape = f.shape
+    def get(self): return cv2.imdecode(self.buf, cv2.IMREAD_COLOR)
+
 def read_video(path, max_frames=2000):
     cap = cv2.VideoCapture(str(path)); fps = cap.get(cv2.CAP_PROP_FPS) or 25; frames = []
     while len(frames) < max_frames:
         ok, f = cap.read()
         if not ok: break
-        frames.append(f)
+        frames.append(Packed(f))
     cap.release(); return frames, fps
 
 def portrait_crop(frames, roi):
@@ -40,14 +46,14 @@ def portrait_crop(frames, roi):
     H, W = frames[0].shape[:2]; x, y, w, h = roi
     if W * 16 <= H * 9:  return frames, roi, (W, H)
     cw = int(H * 9 / 16); cx = min(max(x + w // 2, cw // 2), W - cw // 2); x0 = cx - cw // 2
-    return [f[:, x0:x0 + cw] for f in frames], (x - x0, y, w, h), (cw, H)
+    return [Packed(f.get()[:, x0:x0 + cw]) for f in frames], (x - x0, y, w, h), (cw, H)
 
 def loop_frames(frames, n_needed, xfade):
     """Forward play; at the wrap, dissolve the last xfade frames into the first ones (no reverse play)."""
     base = frames[:]
     if xfade and len(base) > 2 * xfade:
         for k in range(xfade):
-            a = (k + 1) / (xfade + 1); base[-xfade + k] = cv2.addWeighted(base[-xfade + k], 1 - a, frames[k], a, 0)
+            a = (k + 1) / (xfade + 1); base[-xfade + k] = Packed(cv2.addWeighted(base[-xfade + k].get(), 1 - a, frames[k].get(), a, 0))
     out = []
     while len(out) < n_needed: out += base
     return out[:n_needed]
@@ -60,7 +66,7 @@ def main():
     ap.add_argument("--max-src-frames", type=int, default=900)
     a = ap.parse_args(); guard(); torch.set_num_threads(a.threads); torch.set_num_interop_threads(1); torch.manual_seed(1234)
     t = time.monotonic()
-    vae = AutoencoderKL.from_pretrained(AVATAR / "models/sd-vae", local_files_only=True).eval(); vae.enable_slicing()
+    vae = AutoencoderKL.from_pretrained(AVATAR / "models/sd-vae", local_files_only=True, use_safetensors=False).eval(); vae.enable_slicing()
     cfg = json.loads((AVATAR / "models/musetalk/musetalk.json").read_text()); unet = UNet2DConditionModel(**cfg)
     unet.load_state_dict(torch.load(AVATAR / "models/musetalk/unet.pth", map_location="cpu", weights_only=True)); unet.eval(); pe = PositionalEncoding(384)
     whisper = WhisperModel.from_pretrained(AVATAR / "models/whisper-tiny", local_files_only=True).eval()
@@ -99,7 +105,7 @@ def main():
         for i, f in enumerate(seq):
             key = id(f)
             if key not in uniq:
-                crop = cv2.resize(f[y:y + h, x:x + w], (256, 256), interpolation=cv2.INTER_AREA)
+                crop = cv2.resize(f.get()[y:y + h, x:x + w], (256, 256), interpolation=cv2.INTER_AREA)
                 ten = torch.from_numpy(crop[:, :, ::-1].copy()).permute(2, 0, 1).float()[None] / 255
                 masked = ten.clone(); masked[:, :, 128:] = 0
                 lat = torch.cat([vae.encode(masked * 2 - 1).latent_dist.mode(), vae.encode(ten * 2 - 1).latent_dist.mode()], 1) * vae.config.scaling_factor
@@ -121,7 +127,7 @@ def main():
                 pred = vae.decode(lat / vae.config.scaling_factor).sample
                 pred = ((pred / 2 + 0.5).clamp(0, 1).permute(0, 2, 3, 1).numpy() * 255).astype(np.uint8)[..., ::-1]
                 for j, i in enumerate(b):
-                    base = seq[i]; gen = base.copy(); gen[y:y + h, x:x + w] = cv2.resize(pred[j], (w, h), interpolation=cv2.INTER_CUBIC)
+                    base = seq[i].get(); gen = base.copy(); gen[y:y + h, x:x + w] = cv2.resize(pred[j], (w, h), interpolation=cv2.INTER_CUBIC)
                     region = base[y:y + h, x:x + w].astype(np.float32); matched = colour.apply(gen[y:y + h, x:x + w], base[y:y + h, x:x + w], mask)
                     comp = base.copy(); comp[y:y + h, x:x + w] = np.clip(region * (1 - mask) + matched * mask, 0, 255).astype(np.uint8)
                     p.stdin.write(comp.tobytes())

@@ -89,7 +89,7 @@ jobs:
     timeout-minutes: 150
     strategy:
       fail-fast: false
-      max-parallel: ${{ inputs.bank && 1 || 3 }}
+      max-parallel: 3
       matrix:
         n: ${{ fromJSON(needs.plan.outputs.jobs) }}
     env:
