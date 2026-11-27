@@ -30,7 +30,7 @@ JOBS = (
     Job("produce-futurework", "produce.yml", "0 6 * * 1,3,5", 195, {"channel": "futurework"}),
     Job("produce-tradewinds", "produce.yml", "0 11 * * 2,4,6", 195, {"channel": "tradewinds"}),
     Job("produce-escapevelocity", "produce.yml", "0 16 * * 1,4,0", 195, {"channel": "escapevelocity"}),
-    Job("words", "words.yml", "30 3 * * *", 165),
+    Job("words", "words.yml", "30 3 * * *", 1440),
     Job("shorts", "shorts.yml", "30 9 * * *", 75),
     Job("sync", "sync.yml", "15 */6 * * *", 75),
     Job("engage", "engage.yml", "45 */6 * * *", 30),
